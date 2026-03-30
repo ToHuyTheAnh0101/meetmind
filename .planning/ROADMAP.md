@@ -2,7 +2,7 @@
 
 ## Milestone 1: v1 — Calendar Dashboard
 
-**Goal:** Users can log in with Google and immediately see all their meetings on a monthly calendar with status-colored dots and hover cards showing meeting details.
+**Goal:** Users can log in with Google and immediately see all their meetings on a monthly calendar with status-colored dots and hover cards with meeting details.
 
 **Success criteria:**
 - A user with no account can visit the app, click "Sign in with Google", complete OAuth, and land on the calendar dashboard — all without error
@@ -22,15 +22,15 @@
 - AUTH-01, AUTH-02, AUTH-03, AUTH-04, AUTH-05, AUTH-06
 
 **Plans:**
-1. Scaffold and configure — Vite react-ts project on port 3001 with Tailwind, shadcn/ui, TanStack Query, React Router, and Axios configured
-2. Auth flow — Login page, `/auth/callback` token handler, AuthContext with three-state status, ProtectedRoute, and global 401 interceptor
+- [x] 01-01-PLAN.md — Scaffold and configure — Vite react-ts project on port 3001 with Tailwind, shadcn/ui, TanStack Query, React Router, and Axios configured
+- [x] 01-02-PLAN.md — Auth flow — Login page, `/auth/callback` token handler, AuthContext with three-state status, ProtectedRoute, and global 401 interceptor
 
 **Success criteria:**
-- [ ] `npm run dev` starts the app on `localhost:3001` with no errors
-- [ ] Clicking "Sign in with Google" redirects to the backend OAuth flow and returns the user to `/auth/callback` with a stored JWT
-- [ ] Refreshing any protected route with a valid token keeps the user on the page; with no token or an expired token, the user is redirected to `/login`
-- [ ] The JWT does not appear in browser history after the OAuth callback completes
-- [ ] A 401 response from any API call clears the token and redirects to `/login` exactly once
+- [x] `npm run dev` starts the app on `localhost:3001` with no errors
+- [x] Clicking "Sign in with Google" redirects to the backend OAuth flow and returns the user to `/auth/callback` with a stored JWT
+- [x] Refreshing any protected route with a valid token keeps the user on the page; with no token or an expired token, the user is redirected to `/login`
+- [x] The JWT does not appear in browser history after the OAuth callback completes
+- [x] A 401 response from any API call clears the token and redirects to `/login` exactly once
 
 **Dependencies:** None — this is the starting point.
 
@@ -116,6 +116,5 @@
 | DATA-04 | Phase 2 |
 
 ---
-
 *Roadmap created: 2026-03-23*
 *Requirements coverage: 25/25 v1 requirements mapped*
