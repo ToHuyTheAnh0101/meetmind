@@ -1,0 +1,75 @@
+graph TD
+    %% Define subgraphs
+    subgraph Client["Client Cluster"]
+        direction TB
+        UI["UI Components"]
+        SDK["LiveKit Client SDK"]
+        STATE["State Management"]
+    end
+
+    subgraph Backend["Backend Cluster (NestJS)"]
+        direction TB
+        GATEWAY["API Gateway"]
+        AUTH["Auth Service"]
+        ROOM["Room Manager"]
+        AIService["AI Integration Service (RAG Engine)"]
+        
+        %% Internal logic flow
+        GATEWAY <--> AUTH
+        GATEWAY <--> ROOM
+        ROOM <--> AIService
+    end
+
+    subgraph Media["Media Cluster"]
+        direction TB
+        LIVEKIT["LiveKit Server (SFU)"]
+    end
+
+    subgraph Infrastructure["Infrastructure Cluster"]
+        direction TB
+        REDIS["Redis (State Store & Cache)"]
+    end
+
+    subgraph External["External AI Cluster"]
+        Gemini((Gemini AI API))
+        EmbedModel((Embedding Model API))
+    end
+
+    subgraph Storage["Persistence Layer"]
+        direction TB
+        POSTGRES["PostgreSQL + pgvector (Unified DB)"]
+    end
+
+    %% --- CONNECTIONS ---
+
+    %% Client access via Gateway
+    Client -- "HTTPS/REST" --> GATEWAY
+
+    %% Internal Auth & Room coordination
+    ROOM -- "Manage Rooms" --> LIVEKIT
+    AUTH <-->|Session Store| REDIS
+    
+    %% Infrastructure state management
+    LIVEKIT <-->|Room State & Pub/Sub| REDIS
+
+    %% Media stream flow
+    Client -- "WebRTC Stream" --> LIVEKIT
+
+    %% RAG Workflow (No S3 - Direct to Vector Store)
+    LIVEKIT -.->|Transcription Chunks| AIService
+    
+    %% Fixed Syntax for AI Labels
+    AIService <-->|1. Embeddings| EmbedModel
+    AIService -- "2. Vector Store/Search" --> POSTGRES
+    AIService <-->|3. Context Query| Gemini
+    
+    %% Persistence
+    ROOM -- "Meeting Metadata" --> POSTGRES
+
+    %% Styling
+    style Client fill:#e3f2fd,stroke:#1976d2,stroke-width:2px
+    style Backend fill:#f3e5f5,stroke:#7b1fa2,stroke-width:2px
+    style Media fill:#e8f5e9,stroke:#388e3c,stroke-width:2px
+    style Infrastructure fill:#fff9c4,stroke:#f57f17,stroke-width:2px
+    style Storage fill:#fff3e0,stroke:#f57c00,stroke-width:2px
+    style External fill:#f0f0f0,stroke:#606060,stroke-width:2px,stroke-dasharray: 5 5
