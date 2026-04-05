@@ -4,6 +4,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 // Auth context
 import { AuthProvider } from './features/auth/AuthContext'
+import ProtectedRoute from './features/auth/ProtectedRoute'
 
 // Placeholder components
 import LoginPage from './features/auth/LoginPage.tsx'
@@ -21,7 +22,14 @@ function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/auth/callback" element={<AuthCallbackPage />} />
-            <Route path="/" element={<DashboardPage />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              }
+            />
           </Routes>
         </AuthProvider>
       </Router>
