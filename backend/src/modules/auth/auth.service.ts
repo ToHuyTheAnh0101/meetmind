@@ -6,7 +6,7 @@ import { User } from '../users/user.entity';
 export class AuthService {
   constructor(private jwtService: JwtService) {}
 
-  async generateToken(user: User): Promise<string> {
+  generateToken(user: User): string {
     const payload = { sub: user.id, email: user.email };
     return this.jwtService.sign(payload);
   }
