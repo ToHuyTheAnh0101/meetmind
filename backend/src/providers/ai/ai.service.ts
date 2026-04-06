@@ -2,6 +2,28 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 
+interface GeminiResponse {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+      }>;
+    };
+  }>;
+}
+
+interface EmbeddingResponse {
+  embedding?: {
+    values?: number[];
+  };
+}
+
+interface ParsedSummary {
+  summary: string;
+  keyPoints: string[];
+  actionItems: string[];
+}
+
 @Injectable()
 export class AiService {
   private geminiApiKey: string;
@@ -37,7 +59,7 @@ ${transcript}
 Format your response as JSON with keys: summary, keyPoints (array), actionItems (array)
       `;
 
-      const response = await axios.post(
+      const response = await axios.post<GeminiResponse>(
         `${this.geminiApiUrl}/gemini-1.5-flash:generateContent?key=${this.geminiApiKey}`,
         {
           contents: [
@@ -52,8 +74,9 @@ Format your response as JSON with keys: summary, keyPoints (array), actionItems 
         },
       );
 
-      const responseText = response.data.candidates[0].content.parts[0].text;
-      const parsed = JSON.parse(responseText);
+      const responseText =
+        response.data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+      const parsed = JSON.parse(responseText) as ParsedSummary;
 
       return {
         summary: parsed.summary,
@@ -71,7 +94,7 @@ Format your response as JSON with keys: summary, keyPoints (array), actionItems 
    */
   async generateEmbedding(text: string): Promise<number[]> {
     try {
-      const response = await axios.post(
+      const response = await axios.post<EmbeddingResponse>(
         `${this.geminiApiUrl}/embedding-001:embedContent?key=${this.geminiApiKey}`,
         {
           model: 'models/embedding-001',
@@ -85,7 +108,7 @@ Format your response as JSON with keys: summary, keyPoints (array), actionItems 
         },
       );
 
-      return response.data.embedding.values;
+      return response.data.embedding?.values || [];
     } catch (error) {
       console.error('Error generating embedding:', error);
       throw new Error('Failed to generate embedding');
@@ -109,7 +132,7 @@ Question: ${question}
 Provide a clear and concise answer.
       `;
 
-      const response = await axios.post(
+      const response = await axios.post<GeminiResponse>(
         `${this.geminiApiUrl}/gemini-1.5-flash:generateContent?key=${this.geminiApiKey}`,
         {
           contents: [
@@ -124,7 +147,7 @@ Provide a clear and concise answer.
         },
       );
 
-      return response.data.candidates[0].content.parts[0].text;
+      return response.data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     } catch (error) {
       console.error('Error answering question:', error);
       throw new Error('Failed to answer question');

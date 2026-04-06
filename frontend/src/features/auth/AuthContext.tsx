@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { getToken, setToken, clearToken, isTokenExpired } from '@/lib/tokenStorage'
+import { getToken, clearToken, isTokenExpired } from '@/lib/tokenStorage'
 import apiClient from '@/lib/apiClient'
 import type { User } from '@/types/api'
 

@@ -1,15 +1,6 @@
-import {
-  Controller,
-  Post,
-  Get,
-  Param,
-  Body,
-  UseGuards,
-  Request,
-} from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards } from '@nestjs/common';
 import { PollService } from '../services/poll.service';
 import { MeetingPoll } from '../entities';
-import { CreatePollDto } from '../dto/create-poll.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @Controller('meetings/:meetingId/polls')

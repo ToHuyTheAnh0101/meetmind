@@ -1,4 +1,4 @@
-import { IsNumber, IsOptional, IsEnum } from 'class-validator';
+import { IsEnum } from 'class-validator';
 import { EventType } from '../entities';
 
 export class CreateEventDto {

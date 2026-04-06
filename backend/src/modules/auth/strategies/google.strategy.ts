@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { Strategy, VerifyCallback } from 'passport-google-oauth20';
 import { ConfigService } from '@nestjs/config';
@@ -21,14 +21,13 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     private usersService: UsersService,
   ) {
     super({
-      clientID: configService.get<string>('GOOGLE_CLIENT_ID'),
-      clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET'),
+      clientID: configService.get<string>('GOOGLE_CLIENT_ID') || '',
+      clientSecret: configService.get<string>('GOOGLE_CLIENT_SECRET') || '',
       callbackURL:
         configService.get<string>('GOOGLE_CALLBACK_URL') ||
         'http://localhost:3000/auth/google/callback',
       scope: ['email', 'profile'],
-      // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
-    } as any);
+    });
   }
 
   async validate(
@@ -37,9 +36,14 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     profile: GoogleProfile,
     done: VerifyCallback,
   ): Promise<void> {
+    const email = profile.emails?.[0]?.value;
+    if (!email) {
+      throw new BadRequestException('Email not provided by Google');
+    }
+
     const user = await this.usersService.findOrCreateGoogleUser({
       id: profile.id,
-      email: profile.emails?.[0]?.value,
+      email: email,
       given_name: profile.name?.givenName,
       family_name: profile.name?.familyName,
       picture: profile.photos?.[0]?.value,

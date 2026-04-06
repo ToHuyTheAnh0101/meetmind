@@ -152,9 +152,6 @@ export class MeetingsService {
     }
 
     const now = new Date();
-    const duration = Math.floor(
-      (now.getTime() - meeting.startTime.getTime()) / 1000,
-    );
 
     meeting.status = MeetingStatus.COMPLETED;
     meeting.endTime = now;

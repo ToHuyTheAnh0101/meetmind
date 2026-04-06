@@ -10,7 +10,10 @@ export class EventService {
     private meetingRepository: MeetingRepository,
   ) {}
 
-  async create(meetingId: string, data: Partial<MeetingEvent>): Promise<MeetingEvent> {
+  async create(
+    meetingId: string,
+    data: Partial<MeetingEvent>,
+  ): Promise<MeetingEvent> {
     const meeting = await this.meetingRepository.findById(meetingId);
     if (!meeting) {
       throw new NotFoundException('Meeting not found');

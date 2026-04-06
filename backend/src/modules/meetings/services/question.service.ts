@@ -1,8 +1,4 @@
-import {
-  Injectable,
-  NotFoundException,
-  BadRequestException,
-} from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { MeetingQuestion } from '../entities';
 import { QuestionRepository } from '../repositories/question.repository';
 import { MeetingRepository } from '../repositories/meeting.repository';
@@ -14,7 +10,10 @@ export class QuestionService {
     private meetingRepository: MeetingRepository,
   ) {}
 
-  async create(meetingId: string, data: Partial<MeetingQuestion>): Promise<MeetingQuestion> {
+  async create(
+    meetingId: string,
+    data: Partial<MeetingQuestion>,
+  ): Promise<MeetingQuestion> {
     const meeting = await this.meetingRepository.findById(meetingId);
     if (!meeting) {
       throw new NotFoundException('Meeting not found');

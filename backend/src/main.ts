@@ -1,3 +1,10 @@
+import { webcrypto } from 'node:crypto';
+// eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
+if (!globalThis.crypto) {
+  // @ts-ignore
+  globalThis.crypto = webcrypto;
+}
+
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';

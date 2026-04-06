@@ -3,9 +3,7 @@ export { Meeting, MeetingStatus } from './core/meeting.entity';
 export { Participant, MeetingPermission } from './core/participant.entity';
 
 // Scheduling
-export {
-  Notification,
-} from './scheduling/notification.entity';
+export { Notification } from './scheduling/notification.entity';
 export {
   AccessRequest,
   AccessRequestStatus,

@@ -2,7 +2,6 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   AccessToken,
-  VideoGrant,
   RoomServiceClient,
   Room,
   ParticipantInfo,
@@ -100,7 +99,7 @@ export class LiveKitService {
       await this.roomServiceClient.deleteRoom(roomName);
     } catch (error) {
       this.logger.warn(
-        `Room ${roomName} might already be deleted: ${error.message}`,
+        `Room ${roomName} might already be deleted: ${(error as Error).message}`,
       );
     }
   }

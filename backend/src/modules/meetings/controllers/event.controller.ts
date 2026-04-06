@@ -18,7 +18,9 @@ export class EventController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  async findAll(@Param('meetingId') meetingId: string): Promise<MeetingEvent[]> {
+  async findAll(
+    @Param('meetingId') meetingId: string,
+  ): Promise<MeetingEvent[]> {
     return this.eventService.findByMeetingId(meetingId);
   }
 
@@ -33,12 +35,8 @@ export class EventController {
   async create(
     @Param('meetingId') meetingId: string,
     @Body() dto: CreateEventDto,
-    @Request() req,
+    @Request() req: { user: { id: string } },
   ): Promise<MeetingEvent> {
-    return this.eventService.logEvent(
-      meetingId,
-      dto.type,
-      req.user.id,
-    );
+    return this.eventService.logEvent(meetingId, dto.type, req.user.id);
   }
 }

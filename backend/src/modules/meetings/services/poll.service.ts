@@ -14,7 +14,10 @@ export class PollService {
     private meetingRepository: MeetingRepository,
   ) {}
 
-  async create(meetingId: string, data: Partial<MeetingPoll>): Promise<MeetingPoll> {
+  async create(
+    meetingId: string,
+    data: Partial<MeetingPoll>,
+  ): Promise<MeetingPoll> {
     const meeting = await this.meetingRepository.findById(meetingId);
     if (!meeting) {
       throw new NotFoundException('Meeting not found');

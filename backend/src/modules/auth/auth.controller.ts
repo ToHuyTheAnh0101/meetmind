@@ -1,5 +1,5 @@
-import { Controller, Get, UseGuards, Request, Res } from '@nestjs/common';
-import { Response } from 'express';
+import { Controller, Get, UseGuards, Request as Req, Res } from '@nestjs/common';
+import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -26,7 +26,10 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
-  googleAuthCallback(@Request() req: AuthenticatedRequest, @Res() res: Response) {
+  googleAuthCallback(
+    @Req() req: AuthenticatedRequest,
+    @Res() res: Response,
+  ) {
     const token = this.authService.generateToken(req.user);
     // Redirect to frontend with token
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';
@@ -35,7 +38,7 @@ export class AuthController {
 
   @Get('verify')
   @UseGuards(JwtAuthGuard)
-  verifyToken(@Request() req: AuthenticatedRequest) {
+  verifyToken(@Req() req: AuthenticatedRequest) {
     const user = req.user;
     return {
       isAuthenticated: true,

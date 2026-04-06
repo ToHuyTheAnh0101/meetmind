@@ -45,14 +45,14 @@ export class MeetingsController {
   @UseGuards(JwtAuthGuard)
   async create(
     @Body() dto: CreateMeetingDto,
-    @Request() req,
+    @Request() req: { user: { id: string } },
   ): Promise<Meeting> {
     return this.meetingsService.create(dto, req.user.id);
   }
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  async findAll(@Request() req): Promise<Meeting[]> {
+  async findAll(@Request() req: { user: { id: string } }): Promise<Meeting[]> {
     return this.meetingsService.findAll(req.user.id);
   }
 
@@ -67,7 +67,7 @@ export class MeetingsController {
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateMeetingDto,
-    @Request() req,
+    @Request() req: { user: { id: string } },
   ): Promise<Meeting> {
     return this.meetingsService.update(id, dto, req.user.id);
   }
@@ -75,7 +75,10 @@ export class MeetingsController {
   @Delete(':id')
   @UseGuards(JwtAuthGuard)
   @HttpCode(HttpStatus.NO_CONTENT)
-  async remove(@Param('id') id: string, @Request() req): Promise<void> {
+  async remove(
+    @Param('id') id: string,
+    @Request() req: { user: { id: string } },
+  ): Promise<void> {
     return this.meetingsService.remove(id, req.user.id);
   }
 
@@ -83,14 +86,17 @@ export class MeetingsController {
   @UseGuards(JwtAuthGuard)
   async joinMeeting(
     @Param('id') id: string,
-    @Request() req,
+    @Request() req: { user: { id: string } },
   ): Promise<JoinResponseDto> {
     return this.meetingsService.joinMeeting(id, req.user.id);
   }
 
   @Post(':id/end')
   @UseGuards(JwtAuthGuard)
-  async endMeeting(@Param('id') id: string, @Request() req): Promise<Meeting> {
+  async endMeeting(
+    @Param('id') id: string,
+    @Request() req: { user: { id: string } },
+  ): Promise<Meeting> {
     return this.meetingsService.endMeeting(id, req.user.id);
   }
 

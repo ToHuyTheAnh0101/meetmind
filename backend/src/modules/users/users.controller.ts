@@ -15,7 +15,9 @@ export class UsersController {
   constructor(private usersService: UsersService) {}
 
   @Get('me')
-  async getProfile(@Request() req): Promise<UserProfileDto> {
+  async getProfile(
+    @Request() req: { user: { id: string } },
+  ): Promise<UserProfileDto> {
     const user = await this.usersService.findById(req.user.id);
     if (!user) {
       throw new NotFoundException('User not found');

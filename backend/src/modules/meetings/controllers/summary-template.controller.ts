@@ -25,7 +25,7 @@ export class SummaryTemplateController {
   @Get()
   @UseGuards(JwtAuthGuard)
   async findAll(
-    @Request() req,
+    @Request() req: { user: { id: string } },
     @Query('purpose') purpose?: SummaryTemplatePurpose,
   ): Promise<SummaryTemplate[]> {
     return this.summaryTemplateService.getAvailableTemplates(
@@ -43,7 +43,7 @@ export class SummaryTemplateController {
   @Post()
   @UseGuards(JwtAuthGuard)
   async create(
-    @Request() req,
+    @Request() req: { user: { id: string } },
     @Body() dto: CreateSummaryTemplateDto,
   ): Promise<SummaryTemplate> {
     return this.summaryTemplateService.create(dto, req.user.id);

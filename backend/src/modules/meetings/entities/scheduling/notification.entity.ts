@@ -33,7 +33,7 @@ export class Notification {
   title: string;
 
   @Column('text')
-  content: string; 
+  content: string;
 
   @CreateDateColumn()
   createdAt: Date;

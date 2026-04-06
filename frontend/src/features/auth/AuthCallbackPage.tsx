@@ -59,7 +59,12 @@ const AuthCallbackPage: React.FC = () => {
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
           <p className="text-sm text-red-500 mb-4">{error}</p>
-          <Button onClick={() => navigate('/login')}>Try again</Button>
+          <button
+            onClick={() => navigate('/login')}
+            className="px-4 py-2 bg-zinc-900 text-white rounded hover:bg-zinc-800"
+          >
+            Try again
+          </button>
         </div>
       </div>
     )

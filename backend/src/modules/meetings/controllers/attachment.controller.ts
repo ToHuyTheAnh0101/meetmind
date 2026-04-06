@@ -36,7 +36,7 @@ export class AttachmentController {
   async create(
     @Param('meetingId') meetingId: string,
     @Body() dto: CreateAttachmentDto,
-    @Request() req,
+    @Request() req: { user: { id: string } },
   ): Promise<Attachment> {
     return this.attachmentService.create(meetingId, {
       ...dto,

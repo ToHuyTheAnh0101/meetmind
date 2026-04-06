@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Get,
-  Put,
   Param,
   Body,
   UseGuards,
@@ -11,7 +10,6 @@ import {
 import { QuestionService } from '../services/question.service';
 import { MeetingQuestion } from '../entities';
 import { CreateQuestionDto } from '../dto/create-question.dto';
-import { AnswerQuestionDto } from '../dto/answer-question.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @Controller('meetings/:meetingId/qa')
@@ -20,7 +18,9 @@ export class QuestionController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  async findAll(@Param('meetingId') meetingId: string): Promise<MeetingQuestion[]> {
+  async findAll(
+    @Param('meetingId') meetingId: string,
+  ): Promise<MeetingQuestion[]> {
     return this.questionService.findByMeetingId(meetingId);
   }
 
@@ -35,7 +35,7 @@ export class QuestionController {
   async create(
     @Param('meetingId') meetingId: string,
     @Body() dto: CreateQuestionDto,
-    @Request() req,
+    @Request() req: { user: { id: string } },
   ): Promise<MeetingQuestion> {
     return this.questionService.create(meetingId, {
       ...dto,
