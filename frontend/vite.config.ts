@@ -17,8 +17,5 @@ export default defineConfig({
     port: 3001,
     strictPort: true,
     host: true,
-    hmr: {
-      clientPort: 443,
-    },
   },
 })

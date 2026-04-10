@@ -1,1 +1,57 @@
-@import "tailwindcss";
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    font-family: 'Inter', sans-serif;
+    background-color: #f8fafc;
+    color: #1e293b;
+  }
+  
+  body {
+    margin: 0;
+    overflow-x: hidden;
+  }
+}
+
+@layer components {
+  /* Soft Light Mesh Gradient */
+  .mesh-gradient-light {
+    background-color: #f8fafc;
+    background-image: 
+      radial-gradient(at 0% 0%, hsla(240, 100%, 90%, 0.5) 0px, transparent 50%),
+      radial-gradient(at 100% 0%, hsla(0, 100%, 95%, 0.5) 0px, transparent 50%),
+      radial-gradient(at 100% 100%, hsla(210, 100%, 90%, 0.5) 0px, transparent 50%),
+      radial-gradient(at 0% 100%, hsla(280, 100%, 95%, 0.5) 0px, transparent 50%);
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+  }
+
+  .premium-panel {
+    @apply flex overflow-hidden bg-white shadow-[0_35px_60px_-15px_rgba(0,0,0,0.15)] rounded-[2.5rem];
+    min-height: 650px;
+  }
+
+  .left-gradient-panel {
+    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .left-gradient-panel::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+  }
+
+  .google-login-btn {
+    @apply flex items-center justify-center gap-3 w-full h-14 rounded-2xl border border-slate-200 bg-white text-slate-700 font-semibold transition-all duration-300;
+  }
+
+  .google-login-btn:hover {
+    @apply border-slate-300 bg-slate-50 shadow-lg -translate-y-0.5;
+  }
+}
