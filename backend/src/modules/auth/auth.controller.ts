@@ -1,4 +1,10 @@
-import { Controller, Get, UseGuards, Request as Req, Res } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  UseGuards,
+  Request as Req,
+  Res,
+} from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service';
 import { GoogleAuthGuard } from './guards/google-auth.guard';
@@ -26,10 +32,7 @@ export class AuthController {
 
   @Get('google/callback')
   @UseGuards(GoogleAuthGuard)
-  googleAuthCallback(
-    @Req() req: AuthenticatedRequest,
-    @Res() res: Response,
-  ) {
+  googleAuthCallback(@Req() req: AuthenticatedRequest, @Res() res: Response) {
     const token = this.authService.generateToken(req.user);
     // Redirect to frontend with token
     const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:3001';

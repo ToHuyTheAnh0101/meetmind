@@ -1,5 +1,86 @@
 # MeetMind - System Architecture
 
+## Frontend Phase 2 Plan (Navigation + Pages)
+
+### Navigation Strategy
+
+- Desktop: left sidebar for primary sections + top bar for user/actions.
+- Mobile: bottom tab bar for core routes + "More" sheet for secondary routes.
+- Meeting detail: internal tab row for feature switching.
+
+### Route-Level Pages (MVP)
+
+1. Login (`/login`)
+2. Auth callback (`/auth/callback`)
+3. Dashboard calendar (`/`)
+4. Meetings hub (`/meetings`)
+5. Meeting detail shell (`/meetings/:id`)
+6. Meeting create/edit (`/meetings/new`, `/meetings/:id/edit`)
+7. Summary templates list (`/templates`)
+8. Summary template editor (`/templates/new`, `/templates/:id/edit`)
+9. Profile (`/profile`)
+
+### In-Meeting Tabs (Inside Meeting Detail)
+
+1. Overview/Participants
+2. Events timeline
+3. Q&A
+4. Polls (list + vote/close)
+5. Summaries
+6. Attachments
+
+### Why This Structure
+
+- Backend surface already spans multiple meeting sub-features (events, Q&A, polls, summaries, attachments).
+- A flat icon-only switcher will not scale when features increase.
+- Keeping meeting sub-features inside one detail shell reduces route complexity and improves context continuity.
+
+### Delivery Phases
+
+#### Phase 2.1 - App Shell
+
+- Build authenticated layout shell (sidebar + top bar + mobile bottom tabs).
+- Add protected routes for: Dashboard, Meetings, Templates, Profile.
+- Exit criteria: all primary destinations reachable from desktop and mobile navigation.
+
+#### Phase 2.2 - Meetings Core
+
+- Build Meetings hub with list/calendar toggle.
+- Build create/edit meeting form with validation.
+- Build Meeting detail shell and tab container.
+- Wire core APIs: list, create, update, delete, join, end, participants.
+- Exit criteria: full meeting lifecycle works end-to-end.
+
+#### Phase 2.3 - Meeting Sub-Features
+
+- Implement tab content for Events, Q&A, Polls, Summaries, Attachments.
+- Polls scope for MVP: read + vote + close only (create endpoint currently not active).
+- Exit criteria: all tab read flows work and key write actions are functional.
+
+#### Phase 2.4 - Templates + Profile
+
+- Implement template list and editor screens.
+- Implement profile page from current user endpoint.
+- Exit criteria: template CRUD and profile display complete.
+
+#### Phase 2.5 - Hardening
+
+- Add loading/empty/error states for every page and tab.
+- Validate responsive behavior across common breakpoints.
+- Add route fallback and guard edge-case handling.
+- Exit criteria: stable UX on desktop/tablet/mobile and no blocking navigation issues.
+
+### Sprint Split
+
+- Sprint A: Phase 2.1 + Phase 2.2
+- Sprint B: Phase 2.3 + Phase 2.4
+- Sprint C: Phase 2.5
+
+### Current Backend Constraints
+
+- Poll create API is commented out in current backend controller; do not expose poll creation in MVP UI.
+- Public meeting pre-join can be added as an optional route in a later increment.
+
 ## 🏗️ High-Level Architecture
 
 ```

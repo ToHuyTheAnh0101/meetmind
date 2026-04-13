@@ -18,12 +18,8 @@
 @layer components {
   /* Soft Light Mesh Gradient */
   .mesh-gradient-light {
-    background-color: #f8fafc;
-    background-image: 
-      radial-gradient(at 0% 0%, hsla(240, 100%, 90%, 0.5) 0px, transparent 50%),
-      radial-gradient(at 100% 0%, hsla(0, 100%, 95%, 0.5) 0px, transparent 50%),
-      radial-gradient(at 100% 100%, hsla(210, 100%, 90%, 0.5) 0px, transparent 50%),
-      radial-gradient(at 0% 100%, hsla(280, 100%, 95%, 0.5) 0px, transparent 50%);
+    background-color: #f1f4f8;
+    background-image: none;
     position: fixed;
     inset: 0;
     z-index: -1;
@@ -35,7 +31,7 @@
   }
 
   .left-gradient-panel {
-    background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    background: rgba(15, 23, 42, 0.95);
     position: relative;
     overflow: hidden;
   }
@@ -44,7 +40,7 @@
     content: '';
     position: absolute;
     top: 0; left: 0; right: 0; bottom: 0;
-    background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%);
+    background: radial-gradient(circle at 30% 20%, rgba(255, 255, 255, 0.08) 0%, transparent 50%);
   }
 
   .google-login-btn {
@@ -52,6 +48,6 @@
   }
 
   .google-login-btn:hover {
-    @apply border-slate-300 bg-slate-50 shadow-lg -translate-y-0.5;
+    @apply border-indigo-300 bg-indigo-50 text-indigo-800 shadow-lg -translate-y-0.5;
   }
 }

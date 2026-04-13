@@ -1,7 +1,7 @@
 import { webcrypto } from 'node:crypto';
 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
 if (!globalThis.crypto) {
-  // @ts-ignore
+  // @ts-expect-error Node webcrypto type is not assignable to DOM Crypto in this context
   globalThis.crypto = webcrypto;
 }
 

@@ -9,19 +9,19 @@ const LoginPage: React.FC = () => {
   }
 
   return (
-    <div className="relative min-h-screen flex items-center justify-center p-6 sm:p-12 overflow-hidden">
+    <div className="relative min-h-screen flex items-center justify-center p-3 sm:p-6 lg:p-10 overflow-hidden">
       {/* Light Mesh Gradient Background */}
       <div className="mesh-gradient-light" />
       
       {/* Animated Blobs for added airiness */}
-      <div className="absolute top-[-10%] right-[-10%] w-[500px] h-[500px] bg-indigo-100 rounded-full blur-[120px] opacity-70 animate-pulse" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] bg-purple-100 rounded-full blur-[100px] opacity-60 delay-[2s] animate-pulse" />
+      <div className="absolute top-[-12%] right-[-15%] h-[280px] w-[280px] rounded-full bg-indigo-100 blur-[90px] opacity-70 animate-pulse sm:h-[420px] sm:w-[420px] sm:blur-[110px] lg:h-[500px] lg:w-[500px] lg:blur-[120px]" />
+      <div className="absolute bottom-[-12%] left-[-15%] h-[240px] w-[240px] rounded-full bg-indigo-200 blur-[80px] opacity-60 delay-[2s] animate-pulse sm:h-[340px] sm:w-[340px] sm:blur-[95px] lg:h-[400px] lg:w-[400px] lg:blur-[100px]" />
 
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 30 }}
-        animate={{ opacity: 1, scale: 1.15, y: 0 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
         transition={{ duration: 1.5, ease: 'easeOut' }}
-        className="z-10 w-full max-w-7xl premium-panel origin-center"
+        className="z-10 w-full max-w-screen-xl min-h-[calc(100vh-1.5rem)] sm:min-h-[calc(100vh-3rem)] lg:min-h-[680px] premium-panel origin-center"
       >
         {/* Left Part: Dark Branding */}
         <div className="hidden lg:flex lg:w-2/5 left-gradient-panel items-center justify-center p-12">
@@ -50,12 +50,12 @@ const LoginPage: React.FC = () => {
         </div>
 
         {/* Right Part: Form Login */}
-        <div className="w-full lg:w-3/5 bg-white p-10 sm:p-20 flex flex-col justify-center">
-          <div className="space-y-10 max-w-md mx-auto w-full">
+        <div className="w-full lg:w-3/5 bg-white p-5 sm:p-8 md:p-10 xl:p-16 flex flex-col justify-center">
+          <div className="space-y-7 sm:space-y-8 lg:space-y-10 max-w-md mx-auto w-full">
             <header className="space-y-3">
-              <span className="text-slate-400 font-medium tracking-wide uppercase text-xs">Phần mềm quản lý cuộc họp</span>
-              <h1 className="text-4xl sm:text-5xl font-bold text-slate-900 tracking-tight">Chào buổi sáng!</h1>
-              <p className="text-lg text-slate-500 font-light">Chào mừng bạn quay trở lại. Hãy đăng nhập để bắt đầu phiên làm việc.</p>
+              <span className="text-indigo-300 font-medium tracking-wide uppercase text-xs">Phần mềm quản lý cuộc họp</span>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold text-slate-900 tracking-tight">Chào buổi sáng!</h1>
+              <p className="text-base sm:text-lg text-slate-500 font-light">Chào mừng bạn quay trở lại. Hãy đăng nhập để bắt đầu phiên làm việc.</p>
             </header>
 
             <div className="space-y-6">
@@ -63,7 +63,7 @@ const LoginPage: React.FC = () => {
                 <label className="text-sm font-semibold text-slate-700 ml-1">Bắt đầu phiên đăng nhập</label>
                 <Button
                   onClick={handleLogin}
-                  className="google-login-btn group"
+                  className="google-login-btn group h-12 text-sm sm:h-14 sm:text-base"
                 >
                   <svg className="w-6 h-6 transition-transform group-hover:scale-110" viewBox="0 0 24 24">
                     <path
@@ -96,13 +96,13 @@ const LoginPage: React.FC = () => {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between text-sm">
+              <div className="flex flex-col gap-2 text-sm sm:flex-row sm:items-center sm:justify-between">
                 <span className="text-slate-400">Gặp sự cố đăng nhập?</span>
-                <span className="text-indigo-600 hover:text-indigo-700 font-semibold cursor-pointer">Sửa lỗi ngay</span>
+                <span className="text-indigo-600 hover:text-indigo-800 font-semibold cursor-pointer">Sửa lỗi ngay</span>
               </div>
             </div>
 
-            <footer className="pt-12 flex items-center justify-between border-t border-slate-50 text-slate-300 text-xs">
+            <footer className="pt-8 sm:pt-10 lg:pt-12 flex flex-col gap-3 border-t border-slate-50 text-slate-300 text-xs sm:flex-row sm:items-center sm:justify-between">
               <p>© 2024 MeetMind Team.</p>
               <div className="flex gap-4">
                 <span className="hover:text-slate-500 cursor-pointer">Quyền riêng tư</span>
