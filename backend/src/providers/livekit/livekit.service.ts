@@ -47,10 +47,12 @@ export class LiveKitService {
     identity: string,
     participantName: string,
     grants: LiveKitTokenGrants,
+    metadata?: string,
   ): Promise<string> {
     const token = new AccessToken(this.apiKey, this.apiSecret, {
       identity,
       name: participantName,
+      metadata,
       ttl: 3600,
     });
 

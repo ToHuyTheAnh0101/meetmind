@@ -23,4 +23,28 @@ export interface Meeting {
   endTime?: string | null
   createdAt?: string
   updatedAt?: string
+  organizer?: User
+  participants?: Participant[]
+}
+
+export interface Participant {
+  id: string
+  meetingId: string
+  userId: string
+  isOrganizer: boolean
+  user: User
+}
+
+export interface PaginationMeta {
+  total: number
+  page: number
+  limit: number
+  totalPages: number
+  hasNextPage: boolean
+  hasPreviousPage: boolean
+}
+
+export interface PaginatedResponse<T> {
+  items: T[]
+  meta: PaginationMeta
 }

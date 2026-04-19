@@ -17,15 +17,29 @@ export class MeetingRepository {
     });
   }
 
-  async findAllForUser(userId: string): Promise<Meeting[]> {
-    return this.repo
+  async findAllForUser(
+    userId: string,
+    skip?: number,
+    take?: number,
+  ): Promise<[Meeting[], number]> {
+    const query = this.repo
       .createQueryBuilder('meeting')
       .leftJoinAndSelect('meeting.participants', 'participant')
       .leftJoinAndSelect('participant.user', 'user')
       .where('meeting.organizerId = :userId', { userId })
       .orWhere('participant.userId = :userId', { userId })
-      .distinct(true)
-      .getMany();
+      .orderBy('meeting.startTime', 'DESC')
+      .distinct(true);
+
+    if (skip !== undefined) {
+      query.skip(skip);
+    }
+
+    if (take !== undefined) {
+      query.take(take);
+    }
+
+    return query.getManyAndCount();
   }
 
   create(data: Partial<Meeting>): Meeting {

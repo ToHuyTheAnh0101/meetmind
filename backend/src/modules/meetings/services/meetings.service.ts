@@ -13,6 +13,9 @@ import {
 import { UsersService } from '../../users/users.service';
 import { CreateMeetingDto } from '../dto/create-meeting.dto';
 import { UpdateMeetingDto } from '../dto/update-meeting.dto';
+import { ListMeetingsDto } from '../dto/list-meetings.dto';
+import { PaginatedResult } from '../../../common/interfaces/paginated-result.interface';
+import { PaginationHelper } from '../../../common/utils/pagination.helper';
 import {
   JoinResponseDto,
   ParticipantSummaryDto,
@@ -68,76 +71,91 @@ export class MeetingsService {
   }
 
   async joinMeeting(id: string, userId: string): Promise<JoinResponseDto> {
-    const meeting = await this.findOne(id);
+    console.log(`[MeetingsService] Attempting to join meeting: ${id} for user: ${userId} (v2-defensive)`);
+    try {
+      const meeting = await this.findOne(id);
 
-    if (
-      meeting.status === MeetingStatus.COMPLETED ||
-      meeting.status === MeetingStatus.CANCELLED
-    ) {
-      throw new BadRequestException(
-        'Cannot join a completed or cancelled meeting',
-      );
-    }
+      if (
+        meeting.status === MeetingStatus.COMPLETED ||
+        meeting.status === MeetingStatus.CANCELLED
+      ) {
+        throw new BadRequestException(
+          'Cannot join a completed or cancelled meeting',
+        );
+      }
 
-    let participant = await this.participantsRepository.findByMeetingAndUser(
-      id,
-      userId,
-    );
-
-    if (!participant) {
-      participant = await this.participantsRepository.save({
-        meetingId: id,
+      let participant = await this.participantsRepository.findByMeetingAndUser(
+        id,
         userId,
-        isOrganizer: false,
-        permissions: [],
-      });
+      );
+
+      if (!participant) {
+        participant = await this.participantsRepository.save({
+          meetingId: id,
+          userId,
+          isOrganizer: false,
+          permissions: [],
+        });
+      }
+
+      const user = await this.usersService.findById(userId);
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+      const fullName = `${user.firstName} ${user.lastName}`;
+
+      const isOrganizer = participant.isOrganizer;
+      
+      // Safety check for livekit room name
+      const roomName = meeting.livekitRoomName || meeting.id;
+      
+      const grants: LiveKitTokenGrants = {
+        roomJoin: true,
+        room: roomName,
+        canPublish: true, // Allow all for now or check preferences
+        canSubscribe: true,
+        canPublishData: true,
+        roomRecord: isOrganizer,
+      };
+
+      const metadata = JSON.stringify({ avatar: user.picture });
+
+      const token = await this.liveKitService.generateToken(
+        roomName,
+        userId,
+        fullName,
+        grants,
+        metadata,
+      );
+
+      if (meeting.status === MeetingStatus.SCHEDULED) {
+        meeting.status = MeetingStatus.ONGOING;
+        await this.meetingsRepository.save(meeting);
+      }
+
+      const participants = await this.getParticipants(id);
+      const participantSummaries: ParticipantSummaryDto[] = participants
+        .filter(p => p && p.user) // Double defensive check
+        .map(
+          (p) => ({
+            id: p.user?.id || p.userId, // Fallback to userId if user object is partially broken
+            firstName: p.user?.firstName || 'Unknown',
+            lastName: p.user?.lastName || 'Participant',
+            isOrganizer: p.isOrganizer,
+            permissions: p.permissions,
+          }),
+        );
+
+      return {
+        meetingId: meeting.id,
+        token,
+        liveKitUrl: this.configService.get<string>('LIVEKIT_URL') || '',
+        participants: participantSummaries,
+      };
+    } catch (error) {
+      console.error('CRITICAL ERROR in joinMeeting:', error);
+      throw error;
     }
-
-    const user = await this.usersService.findById(userId);
-    if (!user) {
-      throw new NotFoundException('User not found');
-    }
-    const fullName = `${user.firstName} ${user.lastName}`;
-
-    const isOrganizer = participant.isOrganizer;
-    const grants: LiveKitTokenGrants = {
-      roomJoin: true,
-      room: meeting.livekitRoomName,
-      canPublish: isOrganizer,
-      canSubscribe: true,
-      canPublishData: true,
-      roomRecord: isOrganizer,
-    };
-
-    const token = await this.liveKitService.generateToken(
-      meeting.livekitRoomName,
-      userId,
-      fullName,
-      grants,
-    );
-
-    if (meeting.status === MeetingStatus.SCHEDULED) {
-      meeting.status = MeetingStatus.ONGOING;
-      await this.meetingsRepository.save(meeting);
-    }
-
-    const participants = await this.getParticipants(id);
-    const participantSummaries: ParticipantSummaryDto[] = participants.map(
-      (p) => ({
-        id: p.user.id,
-        firstName: p.user.firstName,
-        lastName: p.user.lastName,
-        isOrganizer: p.isOrganizer,
-        permissions: p.permissions,
-      }),
-    );
-
-    return {
-      meetingId: meeting.id,
-      token,
-      liveKitUrl: this.configService.get<string>('LIVEKIT_URL') || '',
-      participants: participantSummaries,
-    };
   }
 
   async endMeeting(id: string, userId: string): Promise<Meeting> {
@@ -161,8 +179,19 @@ export class MeetingsService {
     return this.meetingsRepository.save(meeting);
   }
 
-  async findAll(userId: string): Promise<Meeting[]> {
-    return this.meetingsRepository.findAllForUser(userId);
+  async findAll(
+    userId: string,
+    queryDto?: ListMeetingsDto,
+  ): Promise<PaginatedResult<Meeting>> {
+    const { skip, take } = PaginationHelper.getSkipTake(queryDto || new ListMeetingsDto());
+
+    const [items, total] = await this.meetingsRepository.findAllForUser(
+      userId,
+      skip,
+      take,
+    );
+
+    return PaginationHelper.createPaginatedResult(items, total, queryDto || new ListMeetingsDto());
   }
 
   async findOne(id: string): Promise<Meeting> {

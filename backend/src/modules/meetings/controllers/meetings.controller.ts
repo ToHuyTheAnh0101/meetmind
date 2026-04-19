@@ -10,11 +10,14 @@ import {
   Request,
   HttpCode,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { MeetingsService } from '../services/meetings.service';
 import { Meeting, Participant } from '../entities';
 import { CreateMeetingDto } from '../dto/create-meeting.dto';
 import { UpdateMeetingDto } from '../dto/update-meeting.dto';
+import { ListMeetingsDto } from '../dto/list-meetings.dto';
+import { PaginatedResult } from '../../../common/interfaces/paginated-result.interface';
 import { JoinResponseDto } from '../dto/join-response.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
@@ -52,8 +55,11 @@ export class MeetingsController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  async findAll(@Request() req: { user: { id: string } }): Promise<Meeting[]> {
-    return this.meetingsService.findAll(req.user.id);
+  async findAll(
+    @Request() req: { user: { id: string } },
+    @Query() queryDto: ListMeetingsDto,
+  ): Promise<PaginatedResult<Meeting>> {
+    return this.meetingsService.findAll(req.user.id, queryDto);
   }
 
   @Get(':id')
