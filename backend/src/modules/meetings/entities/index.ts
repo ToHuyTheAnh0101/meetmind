@@ -1,6 +1,6 @@
 // Core Entities
-export { Meeting, MeetingStatus } from './core/meeting.entity';
-export { Participant, MeetingPermission } from './core/participant.entity';
+export { Meeting, MeetingStatus, MeetingAccessType } from './core/meeting.entity';
+export { Participant, MeetingPermission, ParticipantStatus } from './core/participant.entity';
 
 // Scheduling
 export { Notification } from './scheduling/notification.entity';

@@ -40,7 +40,7 @@ const AppShell: React.FC = () => {
               <LayoutGrid className="h-5 w-5 text-cyan-400" />
             </div>
             <div className="hidden lg:block">
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-600">Workspace</p>
+              <p className="text-[11px] font-bold uppercase tracking-widest text-cyan-600">Workspace</p>
               <p className="text-base font-black tracking-tight text-slate-900">MeetMind</p>
             </div>
           </div>

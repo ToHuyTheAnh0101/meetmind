@@ -18,6 +18,12 @@ export enum MeetingPermission {
   EDIT_MEETING_INFO = 'edit_meeting_info',
 }
 
+export enum ParticipantStatus {
+  ADMITTED = 'admitted',
+  WAITING = 'waiting',
+  DENIED = 'denied',
+}
+
 @Entity('participants')
 export class Participant {
   @PrimaryGeneratedColumn('uuid')
@@ -49,6 +55,13 @@ export class Participant {
 
   @Column({ default: false })
   isInMeeting: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: ParticipantStatus,
+    default: ParticipantStatus.ADMITTED,
+  })
+  status: ParticipantStatus;
 
   @UpdateDateColumn()
   updatedAt: Date;

@@ -34,13 +34,21 @@ const getStatusStyles = (status: MeetingStatus) => {
         label: 'Completed',
         border: 'border-slate-200'
       }
-    case 'cancelled':
+    case 'canceled':
       return {
         bg: 'bg-rose-50',
         text: 'text-rose-700',
         dot: 'bg-rose-600',
-        label: 'Cancelled',
+        label: 'Canceled',
         border: 'border-rose-200'
+      }
+    case 'pending_completion':
+      return {
+        bg: 'bg-amber-50',
+        text: 'text-amber-700',
+        dot: 'bg-amber-600',
+        label: 'Closing Soon',
+        border: 'border-amber-200'
       }
     default:
       return {

@@ -14,14 +14,27 @@ import {
   useVisualStableUpdate
 } from '@livekit/components-react';
 import { Track, ConnectionQuality } from 'livekit-client';
-import { MessageSquare, Users as UsersIcon, ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Settings, LogOut } from 'lucide-react';
+import { 
+  MessageSquare, 
+  Users as UsersIcon, 
+  UserPlus,
+  ChevronDown, 
+  ChevronUp, 
+  ChevronLeft, 
+  ChevronRight, 
+  Settings, 
+  LogOut
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 
 interface MeetingMainStageProps {
   meetingId: string;
   isSidebarOpen: boolean;
-  activeTab: 'chat' | 'participants';
-  onToggleSidebar: (tab: 'chat' | 'participants') => void;
+  activeTab: 'chat' | 'roster' | 'lobby' | 'settings';
+  isOrganizer: boolean;
+  onToggleSidebar: (tab: 'chat' | 'roster' | 'lobby' | 'settings') => void;
   onEndSession: () => void;
+  onLeaveSession?: () => void;
 }
 
 const ParticipantAvatarOverlay = () => {
@@ -155,8 +168,7 @@ const CustomVideoGrid = React.memo(() => {
   const [page, setPage] = useState(0);
   const itemsPerPage = 12;
 
-  // Use LiveKit's stability hook to prevent 'jumping' when people join/leave
-  const stabilizedTracks = useVisualStableUpdate(cameraTracks, 48); // Stabilize up to 48 items globally
+  const stabilizedTracks = useVisualStableUpdate(cameraTracks, 48);
 
   const activeScreenShare = useMemo(() => 
     screenShareTracks.length > 0 ? screenShareTracks[0] : null
@@ -246,36 +258,99 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   meetingId,
   isSidebarOpen,
   activeTab,
+  isOrganizer,
   onToggleSidebar,
   onEndSession,
 }) => {
   const [isControlsExpanded, setIsControlsExpanded] = useState(true);
+  const [showEndConfirmation, setShowEndConfirmation] = useState(false);
 
   return (
-    <div className="flex-1 flex flex-col relative overflow-hidden bg-gradient-to-br from-[#0a0a0b] to-[#010101]">
+    <div className="flex-1 flex flex-col relative overflow-hidden max-h-full bg-gradient-to-br from-[#0a0a0b] to-[#010101]">
+      {/* 1. CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {showEndConfirmation && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 sm:p-12">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowEndConfirmation(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg overflow-hidden rounded-[3rem] border border-white/20 bg-[#111115] shadow-2xl"
+            >
+              <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-rose-500/10 blur-[80px]" />
+              
+              <div className="relative z-10 flex flex-col items-center text-center p-12">
+                <div className="mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-rose-500/20 text-rose-500">
+                  <LogOut className="h-10 w-10" />
+                </div>
+                
+                <h2 className="text-3xl font-black tracking-tight text-white">End Session?</h2>
+                <div className="mt-4 flex flex-col gap-2">
+                  <p className="text-slate-400 font-medium leading-relaxed">
+                    You are ending the meeting for <span className="text-white font-bold">everyone</span>. 
+                  </p>
+                  <p className="text-rose-400/80 text-xs font-bold uppercase tracking-widest">
+                    This action is permanent and cannot be undone.
+                  </p>
+                </div>
+
+                <div className="mt-10 flex flex-col w-full gap-3">
+                  <button
+                    onClick={onEndSession}
+                    className="flex h-14 w-full items-center justify-center rounded-2xl bg-rose-500 font-bold text-white shadow-xl shadow-rose-500/20 transition hover:bg-rose-600 hover:scale-[1.02] active:scale-95"
+                  >
+                    End Meeting for All
+                  </button>
+                  <button
+                    onClick={() => setShowEndConfirmation(false)}
+                    className="flex h-14 w-full items-center justify-center rounded-2xl bg-white/5 font-bold text-slate-300 transition hover:bg-white/10"
+                  >
+                    Keep Session Active
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
       {/* Top Bar / Header */}
-      <div className="h-16 px-6 flex items-center justify-between border-b border-white/5 relative z-20 bg-black/20 backdrop-blur-sm">
+      <div className="h-16 px-6 flex items-center justify-between border-b border-white/5 relative z-20 bg-black/40 backdrop-blur-md">
           <div className="flex items-center gap-4">
-            <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_20px_rgba(16,185,129,0.5)]" />
-            <span className="text-base font-black uppercase tracking-widest text-white">
+            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+            <span className="text-sm font-black uppercase tracking-[0.2em] text-white/90">
               Live Session: {meetingId?.slice(0, 8)}
             </span>
           </div>
-         <button 
-           onClick={onEndSession} 
-           className="px-5 py-2.5 translate-y-1 rounded-2xl bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-[11px] font-black text-white transition-all uppercase tracking-[0.15em] shadow-xl shadow-rose-500/20 active:scale-95 border border-rose-400/20"
-         >
-           End Session
-         </button>
+         
+         <div className="flex items-center gap-3">
+           {isOrganizer && (
+              <button 
+                onClick={() => setShowEndConfirmation(true)} 
+                className="px-5 py-2.5 rounded-2xl bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-[10px] font-black text-white transition-all uppercase tracking-[0.15em] shadow-lg shadow-rose-500/20 active:scale-95 border border-rose-400/20"
+              >
+                End Session
+              </button>
+           )}
+         </div>
       </div>
 
-      {/* Video Grid Area */}
-      <div className="flex-1 relative p-4 overflow-hidden">
+      {/* Video Grid Area - Constrained to prevent overflow */}
+      <div className="flex-1 relative px-6 py-8 overflow-hidden min-h-0 flex items-center justify-center">
+         <div className="w-full h-full max-h-full flex items-center justify-center">
             <CustomVideoGrid />
          </div>
+      </div>
 
-      {/* Control Bar Overlay - Slimmer and Collapsible */}
-      <div className={`absolute bottom-12 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 p-2 rounded-[2rem] bg-[#0f0f12]/95 backdrop-blur-3xl border-2 border-white/30 shadow-2xl transition-all duration-300 ${isControlsExpanded ? 'scale-110' : 'scale-100'}`}>
+      {/* Control Bar Overlay - Repositioned and slightly more compact */}
+      <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 p-2 rounded-[2rem] bg-[#0f0f12]/95 backdrop-blur-3xl border border-white/20 shadow-2xl transition-all duration-300 ${isControlsExpanded ? 'scale-105' : 'scale-100'}`}>
          {isControlsExpanded && (
            <>
              <div className="flex items-center gap-2">
@@ -303,19 +378,36 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                 </DisconnectButton>
              </div>
              <div className="w-px h-6 bg-white/10 mx-1" />
-             <button 
-                onClick={() => onToggleSidebar('chat')}
-                className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all ${isSidebarOpen && activeTab === 'chat' ? 'bg-cyan-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
-             >
-                <MessageSquare className="h-4 w-4" />
-             </button>
-             <button 
-                onClick={() => onToggleSidebar('participants')}
-                className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all ${isSidebarOpen && activeTab === 'participants' ? 'bg-indigo-500 text-white' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
-             >
-                <UsersIcon className="h-4 w-4" />
-             </button>
-             <div className="w-px h-6 bg-white/10 mx-1" />
+              <button 
+                 onClick={() => onToggleSidebar('chat')}
+                 className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all ${isSidebarOpen && activeTab === 'chat' ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+              >
+                 <MessageSquare className="h-4 w-4" />
+              </button>
+              <button 
+                 onClick={() => onToggleSidebar('roster')}
+                 className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all ${isSidebarOpen && activeTab === 'roster' ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)]' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+              >
+                 <UsersIcon className="h-4 w-4" />
+              </button>
+
+              {isOrganizer && (
+                <>
+                  <button 
+                    onClick={() => onToggleSidebar('lobby')}
+                    className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all ${isSidebarOpen && activeTab === 'lobby' ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+                  >
+                    <UserPlus className="h-4 w-4" />
+                  </button>
+                  <button 
+                    onClick={() => onToggleSidebar('settings')}
+                    className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all ${isSidebarOpen && activeTab === 'settings' ? 'bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.4)]' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+                  >
+                    <Settings className="h-4 w-4" />
+                  </button>
+                </>
+              )}
+              <div className="w-px h-6 bg-white/10 mx-1" />
            </>
          )}
          

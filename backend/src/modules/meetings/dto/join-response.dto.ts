@@ -1,4 +1,4 @@
-import { MeetingPermission } from '../entities';
+import { MeetingPermission, ParticipantStatus } from '../entities';
 
 export class ParticipantSummaryDto {
   id: string;
@@ -6,10 +6,13 @@ export class ParticipantSummaryDto {
   lastName: string;
   isOrganizer: boolean;
   permissions: MeetingPermission[];
+  status: ParticipantStatus;
 }
 
 export class JoinResponseDto {
   meetingId: string;
+  organizerId: string;
+  status: ParticipantStatus;
   token: string;
   liveKitUrl: string;
   participants: ParticipantSummaryDto[];

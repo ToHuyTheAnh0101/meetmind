@@ -28,6 +28,12 @@ export enum MeetingStatus {
   ONGOING = 'ongoing',
   COMPLETED = 'completed',
   CANCELLED = 'cancelled',
+  PENDING_COMPLETION = 'pending_completion',
+}
+
+export enum MeetingAccessType {
+  PUBLIC = 'public',
+  INVITE_ONLY = 'invite_only',
 }
 
 @Entity('meetings')
@@ -47,6 +53,25 @@ export class Meeting {
     default: MeetingStatus.SCHEDULED,
   })
   status: MeetingStatus;
+
+  @Column({
+    type: 'enum',
+    enum: MeetingAccessType,
+    default: MeetingAccessType.PUBLIC,
+  })
+  accessType: MeetingAccessType;
+
+  @Column({ default: false })
+  waitingRoomEnabled: boolean;
+
+  @Column({ default: false })
+  muteOnJoin: boolean;
+
+  @Column('jsonb', { default: [] })
+  inviteeEmails: string[];
+
+  @Column({ default: 10 })
+  reminderMinutes: number;
 
   @Column()
   startTime: Date;
@@ -124,6 +149,9 @@ export class Meeting {
     cascade: true,
   })
   aiChatHistories: ChatHistory[];
+
+  @Column({ nullable: true })
+  password?: string;
 
   @Column({ nullable: true })
   livekitRoomName: string;

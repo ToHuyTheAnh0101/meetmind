@@ -55,7 +55,7 @@ const CustomConnectionIndicator = () => {
   );
 };
 
-const ParticipantItem = () => {
+const ParticipantItem = ({ organizerId }: { organizerId: string }) => {
   const p = useParticipantContext();
 
   // Extract avatar from metadata
@@ -70,41 +70,48 @@ const ParticipantItem = () => {
   }
 
   return (
-    <div className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.04] border border-white/20 group hover:bg-white/[0.08] transition-all mb-2">
-       <div className="flex items-center gap-3">
-          <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-slate-800 to-slate-950 flex items-center justify-center text-xs font-black text-slate-400 group-hover:text-white transition-colors overflow-hidden">
+    <div className="flex items-center justify-between py-3.5 border-b border-slate-100 group transition-all">
+       <div className="flex items-center gap-4">
+          <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-xs font-bold text-slate-600 group-hover:text-slate-700 transition-colors overflow-hidden border border-slate-100">
              {avatarUrl ? (
                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
              ) : (
-               <User className="h-5 w-5 opacity-40" />
+               <User className="h-5 w-5 opacity-60" />
              )}
           </div>
           <div className="flex flex-col">
-             <span className="text-base font-black text-white leading-none"><ParticipantName /></span>
-             <div className="flex items-center gap-2 mt-2">
+             <span className="text-sm font-bold text-slate-900 leading-none flex items-center">
+                <ParticipantName />
+                {p.identity === organizerId && (
+                  <span className="ml-2 px-1.5 py-0.5 rounded-md bg-cyan-100 text-cyan-600 text-[11px] font-bold border border-cyan-200">
+                    Host
+                  </span>
+                )}
+             </span>
+             <div className="flex items-center gap-3 mt-2.5 opacity-100">
                 <CustomConnectionIndicator />
-                <span className="text-xs text-slate-200 font-bold">Stable Connection</span>
+                <span className="text-[13px] text-slate-700 font-medium tracking-tight">Stable connection</span>
              </div>
           </div>
        </div>
-       <div className="flex items-center gap-2">
-          <TrackMutedIndicator trackRef={{ participant: p, source: Track.Source.Microphone }} className="text-slate-300 h-4 w-4" />
-          <TrackMutedIndicator trackRef={{ participant: p, source: Track.Source.Camera }} className="text-slate-300 h-4 w-4" />
+       <div className="flex items-center gap-3">
+          <TrackMutedIndicator trackRef={{ participant: p, source: Track.Source.Microphone }} className="text-slate-900 h-4.5 w-4.5 opacity-80" />
+          <TrackMutedIndicator trackRef={{ participant: p, source: Track.Source.Camera }} className="text-slate-900 h-4.5 w-4.5 opacity-80" />
        </div>
     </div>
   );
 };
 
-const CustomParticipantList: React.FC = () => {
+const CustomParticipantList: React.FC<{ organizerId: string }> = ({ organizerId }) => {
   const participants = useParticipants();
   
   return (
-    <div className="space-y-3">
-      <div className="flex items-center justify-between mb-6">
-         <span className="text-[10px] font-black uppercase tracking-widest text-slate-300">Participants ({participants.length})</span>
+    <div className="space-y-4">
+      <div className="flex items-center justify-between mb-2">
+         <span className="text-[18px] font-bold text-slate-800">Participants ({participants.length})</span>
       </div>
       <ParticipantLoop participants={participants}>
-        <ParticipantItem />
+        <ParticipantItem organizerId={organizerId} />
       </ParticipantLoop>
     </div>
   );

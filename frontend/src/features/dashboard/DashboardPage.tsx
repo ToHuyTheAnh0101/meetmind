@@ -16,7 +16,6 @@ import {
 // Local components & Utilities
 import apiClient from '@/lib/apiClient'
 import type { Meeting } from '@/types/api'
-import CreateMeetingSheet from '../meetings/components/CreateMeetingSheet'
 
 // --- Types ---
 type CalendarCell = {
@@ -173,6 +172,14 @@ const MOCK_MEETINGS: Meeting[] = [
     status: 'scheduled',
     startTime: new Date(Date.now() + 86400000 * 7).toISOString(), // 7 days later
     participants: []
+  },
+  {
+    id: 'mock-past-1',
+    title: 'Q1 Product Retrospective',
+    description: 'Detailed analysis of Q1 performance, team velocity, and delivery highlights.',
+    status: 'completed',
+    startTime: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
+    participants: []
   }
 ]
 
@@ -183,7 +190,6 @@ const DashboardPage: React.FC = () => {
     new Date(today.getFullYear(), today.getMonth(), 1),
   )
   const [selectedDate, setSelectedDate] = useState(today)
-  const [isCreateSheetOpen, setIsCreateSheetOpen] = useState(false)
   const [isCreatingInstant, setIsCreatingInstant] = useState(false)
   
   // Pagination States
@@ -338,7 +344,7 @@ const DashboardPage: React.FC = () => {
         description: 'Quick collaboration session initialized from dashboard.',
         startTime: new Date().toISOString()
       })
-      navigate(`/meetings/${res.data.id}`)
+      navigate(`/meetings/${res.data.id}/manage`)
     } catch (err) {
       console.error('Failed to create instant meeting:', err)
     } finally {
@@ -357,16 +363,10 @@ const DashboardPage: React.FC = () => {
           <div className="absolute -left-8 -bottom-8 h-48 w-48 rounded-full bg-indigo-400/10 blur-3xl" />
 
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-700 sm:text-xs">
-                Insights & Planning
-              </p>
-              <h1 className="mt-3 text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+            <div className="max-w-xl">
+              <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
                 Dashboard <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-indigo-600">Overview</span>
               </h1>
-              <p className="mt-2 text-sm font-medium text-slate-500 sm:text-base">
-                Monitor your schedule and track meeting performance at a glance.
-              </p>
             </div>
 
             <div className="flex items-center gap-3">
@@ -384,7 +384,7 @@ const DashboardPage: React.FC = () => {
               </button>
 
               <button 
-                onClick={() => setIsCreateSheetOpen(true)}
+                onClick={() => navigate('/meetings/new')}
                 className="flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-br from-cyan-600 to-indigo-600 px-6 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-indigo-100 transition hover:scale-[1.05] active:scale-95 group"
               >
                 <Plus className="h-5 w-5 transition-transform group-hover:rotate-90" />
@@ -530,7 +530,7 @@ const DashboardPage: React.FC = () => {
                   {paginatedSelectedMeetings.map((meeting) => (
                     <li
                       key={meeting.id}
-                      onClick={() => navigate(`/meetings/${meeting.id}`)}
+                      onClick={() => navigate(`/meetings/${meeting.id}/manage`)}
                       className="cursor-pointer rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:border-cyan-200 hover:shadow-md"
                     >
                       <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -606,7 +606,7 @@ const DashboardPage: React.FC = () => {
                       {paginatedUpcomingMeetings.map((meeting) => (
                         <li 
                           key={meeting.id} 
-                          onClick={() => navigate(`/meetings/${meeting.id}`)}
+                          onClick={() => navigate(`/meetings/${meeting.id}/manage`)}
                           className="flex h-[76px] cursor-pointer flex-col justify-center rounded-xl border border-slate-200 bg-white p-3 shadow-sm transition hover:border-cyan-200 hover:shadow-md"
                         >
                           <p className="truncate font-bold text-slate-900">{meeting.title}</p>
@@ -628,10 +628,6 @@ const DashboardPage: React.FC = () => {
             </div>
           </motion.aside>
         </div>
-      <CreateMeetingSheet 
-        isOpen={isCreateSheetOpen} 
-        onClose={() => setIsCreateSheetOpen(false)} 
-      />
     </div>
   )
 }

@@ -102,7 +102,7 @@ const LoginPage: React.FC = () => {
             </motion.div>
             <div className="text-center">
               <h3 className="text-xl font-black tracking-tighter text-slate-900">MeetMind Sync</h3>
-              <p className="mt-1 text-[10px] font-black uppercase tracking-[0.2em] text-cyan-600">
+              <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-cyan-600">
                 Premium Collaboration
               </p>
             </div>
@@ -126,7 +126,7 @@ const LoginPage: React.FC = () => {
 
             <div className="space-y-8">
               <div className="space-y-4">
-                <label className="text-[11px] font-black uppercase tracking-widest text-slate-400">
+                <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
                   Authentication Required
                 </label>
                 <Button

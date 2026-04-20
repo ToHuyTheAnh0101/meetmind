@@ -19,6 +19,7 @@ import { UpdateMeetingDto } from '../dto/update-meeting.dto';
 import { ListMeetingsDto } from '../dto/list-meetings.dto';
 import { PaginatedResult } from '../../../common/interfaces/paginated-result.interface';
 import { JoinResponseDto } from '../dto/join-response.dto';
+import { JoinMeetingDto } from '../dto/join-meeting.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @Controller('meetings')
@@ -92,9 +93,10 @@ export class MeetingsController {
   @UseGuards(JwtAuthGuard)
   async joinMeeting(
     @Param('id') id: string,
+    @Body() dto: JoinMeetingDto,
     @Request() req: { user: { id: string } },
   ): Promise<JoinResponseDto> {
-    return this.meetingsService.joinMeeting(id, req.user.id);
+    return this.meetingsService.joinMeeting(id, req.user.id, dto.password);
   }
 
   @Post(':id/end')
@@ -104,6 +106,28 @@ export class MeetingsController {
     @Request() req: { user: { id: string } },
   ): Promise<Meeting> {
     return this.meetingsService.endMeeting(id, req.user.id);
+  }
+
+  @Post(':id/admit/:userId')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async admitParticipant(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Request() req: { user: { id: string } },
+  ): Promise<void> {
+    return this.meetingsService.admitParticipant(id, userId, req.user.id);
+  }
+
+  @Post(':id/reject/:userId')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async rejectParticipant(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Request() req: { user: { id: string } },
+  ): Promise<void> {
+    return this.meetingsService.rejectParticipant(id, userId, req.user.id);
   }
 
   @Get(':id/participants')

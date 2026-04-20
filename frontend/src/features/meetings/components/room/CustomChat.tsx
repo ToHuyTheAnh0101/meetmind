@@ -42,9 +42,11 @@ const CustomChat: React.FC = () => {
       {/* Messages List */}
       <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
         {chatMessages.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-slate-500 space-y-2 opacity-50">
-             <MessageSquare className="h-10 w-10" />
-             <p className="text-xs font-bold uppercase tracking-widest">No messages yet</p>
+          <div className="h-full flex flex-col items-center justify-center text-slate-300 space-y-3">
+             <div className="p-5 rounded-full bg-slate-50 mb-2 border border-slate-200">
+                <MessageSquare className="h-8 w-8" />
+             </div>
+             <p className="text-[18px] font-bold text-slate-500">No messages yet</p>
           </div>
         ) : (
           chatMessages.map((msg, idx) => {
@@ -65,19 +67,19 @@ const CustomChat: React.FC = () => {
             
             return (
               <div key={msg.id || idx} className={`flex gap-3 ${isSelf ? 'flex-row-reverse' : 'flex-row'}`}>
-                <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-[10px] font-black shrink-0 overflow-hidden ${isSelf ? 'bg-cyan-500 text-white' : 'bg-white/10 text-slate-300'}`}>
+                <div className={`h-9 w-9 rounded-xl flex items-center justify-center text-[10px] font-bold shrink-0 overflow-hidden ${isSelf ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-600 border border-slate-300'}`}>
                    {avatarUrl ? (
                      <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
                    ) : (
                      initials
                    )}
                 </div>
-                <div className={`max-w-[80%] flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}>
+                <div className={`max-w-[85%] flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}>
                    <div className="flex items-center gap-3 mb-2 px-1">
-                      <span className="text-lg font-black text-white">{msg.from?.name || msg.from?.identity}</span>
-                      <span className="text-xs font-bold text-slate-400 uppercase tracking-widest">{formatTime(msg.timestamp)}</span>
+                      <span className="text-sm font-bold text-slate-950">{msg.from?.name || msg.from?.identity}</span>
+                      <span className="text-[10px] font-medium text-slate-500">{formatTime(msg.timestamp)}</span>
                    </div>
-                  <div className={`px-5 py-3.5 rounded-[1.25rem] text-[15px] leading-relaxed border-2 ${isSelf ? 'bg-cyan-500/25 text-white border-cyan-500/50 shadow-lg shadow-cyan-500/10' : 'bg-white/10 text-white border-white/30 shadow-xl'}`}>
+                  <div className={`px-4 py-3 rounded-[1.25rem] text-[14px] leading-relaxed shadow-sm ${isSelf ? 'bg-cyan-600 text-white' : 'bg-slate-50 border border-slate-300 text-slate-950'}`}>
                     {msg.message}
                   </div>
                 </div>
@@ -88,9 +90,9 @@ const CustomChat: React.FC = () => {
         <div ref={lastMessageRef} />
       </div>
 
-      {/* Input Area - Redesigned as a floating bubble without top border */}
+      {/* Input Area */}
       <div className="px-6 pb-12 bg-transparent">
-        <div className="relative flex items-end gap-2 bg-[#1a1a1b] border-2 border-white/20 rounded-[1.75rem] p-3 focus-within:border-cyan-500/40 transition-all shadow-2xl">
+        <div className="relative flex items-center gap-2 bg-slate-50 border border-slate-300 rounded-2xl p-2.5 focus-within:border-cyan-500/40 transition-all shadow-sm">
           <textarea 
             ref={textareaRef}
             value={input}
@@ -98,12 +100,12 @@ const CustomChat: React.FC = () => {
             onKeyDown={handleKeyDown}
             placeholder="Send a message..."
             rows={1}
-            className="flex-1 bg-transparent border-none text-[15px] text-white placeholder:text-slate-500 focus:outline-none focus:ring-0 resize-none max-h-32 py-1.5 pl-2 custom-scrollbar"
+            className="flex-1 bg-transparent border-none text-[14px] text-slate-950 placeholder:text-slate-400 focus:outline-none focus:ring-0 resize-none max-h-32 py-1.5 pl-2 custom-scrollbar"
           />
           <button 
             onClick={handleSend}
             disabled={!input.trim()}
-            className="flex-shrink-0 h-10 w-10 rounded-full bg-cyan-500 text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-30 disabled:grayscale disabled:scale-100"
+            className="flex-shrink-0 h-9 w-9 rounded-xl bg-cyan-600 text-white flex items-center justify-center transition-all hover:scale-105 active:scale-95 disabled:opacity-20 shadow-md"
           >
             <Send className="h-4 w-4" />
           </button>

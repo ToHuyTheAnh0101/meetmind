@@ -6,7 +6,9 @@ import {
   Mic, 
   MicOff, 
   Video, 
-  Loader2 
+  Loader2,
+  Lock,
+  AlertCircle
 } from 'lucide-react';
 import { LocalVideoTrack } from 'livekit-client';
 import { LocalUserChoices } from '@livekit/components-react';
@@ -23,6 +25,10 @@ interface MeetingLobbyProps {
   onJoin: (choices: LocalUserChoices) => void;
   onExit: () => void;
   avatarUrl?: string | null;
+  requiresPassword?: boolean;
+  password?: string;
+  setPassword?: (password: string) => void;
+  error?: string | null;
 }
 
 const MeetingLobby: React.FC<MeetingLobbyProps> = ({
@@ -37,6 +43,10 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
   onJoin,
   onExit,
   avatarUrl,
+  requiresPassword,
+  password = '',
+  setPassword,
+  error,
 }) => {
   return (
     <div className="relative min-h-screen flex flex-col bg-[#050505] overflow-hidden">
@@ -112,6 +122,29 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                   className="w-full bg-white/10 border-2 border-white/20 rounded-2xl py-5 px-8 text-xl text-white font-black placeholder:text-white/20 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 transition-all shadow-2xl" 
                   placeholder="Your Display Name" 
                 />
+
+                {requiresPassword && setPassword && (
+                  <div className="relative group">
+                    <div className="absolute left-6 top-1/2 -translate-y-1/2 text-white/40 group-focus-within:text-cyan-400 transition-colors">
+                      <Lock className="h-5 w-5" />
+                    </div>
+                    <input 
+                      type="password"
+                      value={password} 
+                      onChange={e => setPassword(e.target.value)} 
+                      className="w-full bg-white/10 border-2 border-white/20 rounded-2xl py-5 pl-14 pr-8 text-xl text-white font-bold placeholder:text-white/20 focus:outline-none focus:ring-4 focus:ring-cyan-500/20 transition-all shadow-2xl" 
+                      placeholder="Meeting Password" 
+                    />
+                  </div>
+                )}
+
+                {error && (
+                  <div className="flex items-center gap-2 px-6 py-4 rounded-2xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm font-bold animate-shake">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    {error}
+                  </div>
+                )}
+
                 <button 
                   onClick={() => onJoin({ username, videoEnabled: isCamOn, audioEnabled: isMicOn, videoDeviceId: '', audioDeviceId: '' })}
                   disabled={!username || isLoading}

@@ -12,7 +12,14 @@ export interface AuthVerifyResponse {
   user: User
 }
 
-export type MeetingStatus = 'scheduled' | 'ongoing' | 'completed' | 'cancelled'
+export type MeetingStatus = 'scheduled' | 'ongoing' | 'completed' | 'canceled' | 'pending_completion';
+export type MeetingAccessType = 'public' | 'invite_only';
+
+export enum ParticipantStatus {
+  ADMITTED = 'admitted',
+  WAITING = 'waiting',
+  DENIED = 'denied',
+}
 
 export interface Meeting {
   id: string
@@ -25,6 +32,12 @@ export interface Meeting {
   updatedAt?: string
   organizer?: User
   participants?: Participant[]
+  // Advanced configuration
+  accessType?: MeetingAccessType
+  waitingRoomEnabled?: boolean
+  muteOnJoin?: boolean
+  inviteeEmails?: string[]
+  reminderMinutes?: number
 }
 
 export interface Participant {
@@ -32,6 +45,7 @@ export interface Participant {
   meetingId: string
   userId: string
   isOrganizer: boolean
+  status: ParticipantStatus
   user: User
 }
 

@@ -158,7 +158,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
 
         <div className="grid grid-cols-7 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-inner">
           {WEEK_DAYS.map(day => (
-            <div key={day} className="bg-slate-50 py-3 text-center text-[10px] font-black uppercase tracking-widest text-slate-400 sm:text-xs">
+            <div key={day} className="bg-slate-50 py-3 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400 sm:text-xs">
               {day}
             </div>
           ))}
@@ -212,7 +212,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
           className="flex h-full flex-col rounded-3xl border border-white/50 bg-white/70 p-6 shadow-xl backdrop-blur-sm"
         >
           <div className="mb-6">
-            <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">Selected Date</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Selected Date</p>
             <h4 className="mt-1 text-xl font-black text-slate-900">
               {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </h4>

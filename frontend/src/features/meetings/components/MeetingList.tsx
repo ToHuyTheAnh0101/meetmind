@@ -122,6 +122,14 @@ const MOCK_MEETINGS: Meeting[] = [
     status: 'completed',
     startTime: new Date(Date.now() - 86400000 * 2).toISOString(),
     participants: []
+  },
+  {
+    id: 'mock-past-1',
+    title: 'Q1 Product Retrospective',
+    description: 'Detailed analysis of Q1 performance, team velocity, and delivery highlights.',
+    status: 'completed',
+    startTime: new Date(Date.now() - 86400000 * 3).toISOString(), // 3 days ago
+    participants: []
   }
 ]
 
@@ -215,7 +223,7 @@ const MeetingList: React.FC<MeetingListProps> = ({ searchQuery }) => {
         <div className="flex items-center justify-between rounded-2xl border border-white/50 bg-white/30 px-5 py-3 backdrop-blur-md">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-700">
+            <p className="text-[11px] font-bold uppercase tracking-widest text-cyan-700">
               Meetings Page {page} <span className="text-slate-400">/ {totalPages}</span>
             </p>
           </div>
@@ -258,7 +266,7 @@ const MeetingList: React.FC<MeetingListProps> = ({ searchQuery }) => {
             >
               <MeetingCard 
                 meeting={meeting} 
-                onClick={(id) => navigate(`/meetings/${id}`)}
+                onClick={(id) => navigate(`/meetings/${id}/manage`)}
               />
             </motion.div>
           ))}

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { 
   LiveKitRoom, 
@@ -20,6 +20,7 @@ import MeetingSidebar from './components/room/MeetingSidebar'
 
 interface JoinResponse {
   meetingId: string
+  organizerId: string
   token: string
   liveKitUrl: string
   participants: any[]
@@ -34,16 +35,44 @@ const MeetingRoomPage: React.FC = () => {
   const [joinData, setJoinData] = useState<JoinResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [isLoading, setIsLoading] = useState(false)
+  const [requiresPassword, setRequiresPassword] = useState(false)
+  const [password, setPassword] = useState('')
 
   // Custom Lobby State
   const [username, setUsername] = useState(user ? `${user.firstName} ${user.lastName}` : '')
   const [isMicOn, setIsMicOn] = useState(true)
   const [isCamOn, setIsCamOn] = useState(true)
   const [localVideoTrack, setLocalVideoTrack] = useState<LocalVideoTrack | null>(null)
+  const [isWaitingInLobby, setIsWaitingInLobby] = useState(false)
 
   // Room UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [activeTab, setActiveTab] = useState<'chat' | 'participants'>('participants')
+  const [activeTab, setActiveTab] = useState<'chat' | 'roster' | 'lobby' | 'settings'>('roster')
+
+  // Icons used in Lobby
+  const UsersIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+  );
+
+  // Polling for admittance if in lobby
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isWaitingInLobby && id) {
+      interval = setInterval(async () => {
+        try {
+          const response = await apiClient.post<JoinResponse>(`/meetings/${id}/join`, { password });
+          // @ts-ignore - status exists in runtime but might be missing in older TS definitions
+          if (response.data.status === 'admitted') {
+            setIsWaitingInLobby(false);
+            setJoinData(response.data);
+          }
+        } catch (error) {
+          console.error("Polling for admittance failed", error);
+        }
+      }, 5000);
+    }
+    return () => clearInterval(interval);
+  }, [isWaitingInLobby, id, password]);
 
   // Initialize camera preview
   useEffect(() => {
@@ -72,17 +101,30 @@ const MeetingRoomPage: React.FC = () => {
   const handlePreJoinSubmit = async (choices: LocalUserChoices) => {
     setIsLoading(true)
     try {
-      const response = await apiClient.post(`/meetings/${id}/join`)
+      const response = await apiClient.post<any>(`/meetings/${id}/join`, { password })
+      
+      if (response.data.status === 'waiting') {
+        setIsWaitingInLobby(true);
+        setPreJoinChoices(choices);
+        return;
+      }
+
       setJoinData(response.data)
       setPreJoinChoices(choices)
+      setError(null)
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to join')
+      if (err.response?.status === 401 || err.response?.data?.message?.includes('password')) {
+        setRequiresPassword(true)
+        setError(err.response?.data?.message || 'Password required')
+      } else {
+        setError(err.response?.data?.message || 'Failed to join')
+      }
     } finally {
       setIsLoading(false)
     }
   }
 
-  const handleToggleSidebar = (tab: 'chat' | 'participants') => {
+  const handleToggleSidebar = (tab: 'chat' | 'roster' | 'lobby' | 'settings') => {
     if (isSidebarOpen && activeTab === tab) {
       setIsSidebarOpen(false)
     } else {
@@ -91,7 +133,72 @@ const MeetingRoomPage: React.FC = () => {
     }
   }
 
-  if (error) {
+  const isPasswordError = requiresPassword && error?.toLowerCase().includes('password')
+
+  const isOrganizer = useMemo(() => {
+    if (!joinData || !user) return false
+    return joinData.organizerId === user.id
+  }, [joinData, user])
+
+  const handleEndSession = async () => {
+    try {
+      await apiClient.post(`/meetings/${id}/end`)
+      navigate('/')
+    } catch (err) {
+      console.error("Failed to end meeting", err)
+      navigate('/') // Fallback
+    }
+  }
+
+  const handleLeaveSession = () => {
+    navigate('/')
+  }
+
+  if (isWaitingInLobby) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-[#050505] p-6">
+        <motion.div 
+          initial={{ opacity: 0, scale: 0.9 }}
+          animate={{ opacity: 1, scale: 1 }}
+          className="relative w-full max-w-xl overflow-hidden rounded-[3.5rem] border border-white/20 bg-[#0a0a0b] p-12 text-center shadow-2xl"
+        >
+          {/* Ambient Background */}
+          <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-cyan-500/10 blur-[100px]" />
+          <div className="absolute -right-20 -bottom-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-[100px]" />
+          
+          <div className="relative z-10 flex flex-col items-center">
+            <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-[2.5rem] bg-white/5 border border-white/10 relative">
+               <div className="absolute inset-0 rounded-[2.5rem] border-2 border-cyan-500/20 border-t-cyan-500 animate-spin" />
+               <UsersIcon />
+            </div>
+            
+            <h1 className="text-4xl font-black tracking-tight text-white mb-4">Permission Pending</h1>
+            <p className="text-slate-400 font-medium leading-relaxed max-w-md mx-auto">
+              The host has been notified that you're waiting. 
+              <br />
+              <span className="text-white font-bold">Please stay on this page</span> while we secure your entry.
+            </p>
+            
+            <div className="mt-12 flex flex-col items-center gap-6">
+               <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/5 border border-white/10">
+                  <div className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400">Requesting Admittance...</span>
+               </div>
+               
+               <button 
+                  onClick={() => setIsWaitingInLobby(false)}
+                  className="text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest"
+               >
+                  Cancel Request
+               </button>
+            </div>
+          </div>
+        </motion.div>
+      </div>
+    );
+  }
+
+  if (error && !isPasswordError) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 p-6 text-white">
         <motion.div 
@@ -130,12 +237,16 @@ const MeetingRoomPage: React.FC = () => {
         onJoin={handlePreJoinSubmit}
         onExit={() => navigate('/')}
         avatarUrl={user?.profilePictureUrl || null}
+        requiresPassword={requiresPassword}
+        password={password}
+        setPassword={setPassword}
+        error={isPasswordError ? error : null} 
       />
     )
   }
 
   return (
-    <div className="h-screen w-screen bg-[#020202] overflow-hidden font-sans lk-premium-theme flex text-white">
+    <div className="h-screen w-screen bg-[#020202] overflow-hidden font-sans lk-premium-theme flex items-center justify-center text-white">
       <LiveKitRoom
         video={preJoinChoices.videoEnabled}
         audio={preJoinChoices.audioEnabled}
@@ -143,22 +254,28 @@ const MeetingRoomPage: React.FC = () => {
         serverUrl={joinData.liveKitUrl}
         onDisconnected={() => navigate('/')}
         data-lk-theme="default"
-        className="flex-1 flex overflow-hidden lg:flex-row flex-col"
+        className="w-full h-full flex overflow-hidden lg:flex-row flex-col justify-center"
       >
         <LayoutContextProvider>
-          <MeetingMainStage 
-            meetingId={id || ''}
-            isSidebarOpen={isSidebarOpen}
-            activeTab={activeTab}
-            onToggleSidebar={handleToggleSidebar}
-            onEndSession={() => navigate('/')}
-          />
+           <div className={`h-full transition-all duration-500 ease-in-out flex flex-col overflow-hidden ${isSidebarOpen ? 'w-full lg:w-[calc(100%-460px)]' : 'w-full lg:w-[calc(100%-460px)]'}`}>
+            <MeetingMainStage 
+              meetingId={id || ''}
+              isSidebarOpen={isSidebarOpen}
+              isOrganizer={isOrganizer}
+              activeTab={activeTab}
+              onToggleSidebar={handleToggleSidebar}
+              onEndSession={handleEndSession}
+              onLeaveSession={handleLeaveSession}
+            />
+          </div>
 
           <MeetingSidebar 
             isOpen={isSidebarOpen}
             onClose={() => setIsSidebarOpen(false)}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
+            organizerId={joinData.organizerId}
+            isOrganizer={isOrganizer}
           />
         </LayoutContextProvider>
       </LiveKitRoom>

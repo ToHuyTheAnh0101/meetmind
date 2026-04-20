@@ -3,9 +3,11 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
+  UnauthorizedException,
 } from '@nestjs/common';
+import * as bcrypt from 'bcrypt';
 import { ConfigService } from '@nestjs/config';
-import { Meeting, MeetingStatus, MeetingPermission } from '../entities';
+import { Meeting, MeetingStatus, Participant, ParticipantStatus, MeetingPermission, MeetingAccessType } from '../entities';
 import {
   LiveKitService,
   LiveKitTokenGrants,
@@ -34,10 +36,25 @@ export class MeetingsService {
   ) {}
 
   async create(dto: CreateMeetingDto, userId: string): Promise<Meeting> {
+    const { password, ...meetingData } = dto;
+    let hashedPassword = password;
+
+    if (password) {
+      const salt = await bcrypt.genSalt();
+      hashedPassword = await bcrypt.hash(password, salt);
+    }
+
     const meeting = this.meetingsRepository.create({
-      ...dto,
+      ...meetingData,
+      password: hashedPassword,
       startTime: new Date(dto.startTime),
       organizerId: userId,
+      // Default configurations if not provided
+      accessType: dto.accessType || MeetingAccessType.PUBLIC,
+      waitingRoomEnabled: dto.waitingRoomEnabled ?? false,
+      muteOnJoin: dto.muteOnJoin ?? false,
+      inviteeEmails: dto.inviteeEmails || [],
+      reminderMinutes: dto.reminderMinutes ?? 10,
     });
 
     const savedMeeting = await this.meetingsRepository.save(meeting);
@@ -70,8 +87,8 @@ export class MeetingsService {
     return savedMeeting;
   }
 
-  async joinMeeting(id: string, userId: string): Promise<JoinResponseDto> {
-    console.log(`[MeetingsService] Attempting to join meeting: ${id} for user: ${userId} (v2-defensive)`);
+  async joinMeeting(id: string, userId: string, password?: string): Promise<JoinResponseDto> {
+    console.log(`[MeetingsService] Attempting to join meeting: ${id} for user: ${userId}`);
     try {
       const meeting = await this.findOne(id);
 
@@ -89,13 +106,48 @@ export class MeetingsService {
         userId,
       );
 
+      const isOrganizer = participant?.isOrganizer || meeting.organizerId === userId;
+
+      // Password Validation
+      if (meeting.password && !isOrganizer) {
+        if (!password) {
+          throw new UnauthorizedException('Password required for this meeting');
+        }
+        
+        const isMatch = await bcrypt.compare(password, meeting.password);
+        if (!isMatch) {
+          throw new UnauthorizedException('Invalid meeting password');
+        }
+      }
+
+      const organizerPermissions = [
+        MeetingPermission.EDIT_SUMMARY,
+        MeetingPermission.CHAT_WITH_AI,
+        MeetingPermission.UPDATE_PERMISSIONS,
+        MeetingPermission.VIEW_TRANSCRIPT,
+        MeetingPermission.DOWNLOAD_RECORDING,
+        MeetingPermission.EDIT_MEETING_INFO,
+      ];
+
       if (!participant) {
+        // If waiting room is enabled and user is not organizer, they start as WAITING
+        const initialStatus = (meeting.waitingRoomEnabled && !isOrganizer) 
+          ? ParticipantStatus.WAITING 
+          : ParticipantStatus.ADMITTED;
+
         participant = await this.participantsRepository.save({
           meetingId: id,
           userId,
-          isOrganizer: false,
-          permissions: [],
+          isOrganizer: isOrganizer,
+          status: initialStatus,
+          permissions: isOrganizer ? organizerPermissions : [],
         });
+      } else if (isOrganizer && !participant.isOrganizer) {
+        // Upgrade existing record to organizer if they are the meeting owner
+        participant.isOrganizer = true;
+        participant.status = ParticipantStatus.ADMITTED;
+        participant.permissions = organizerPermissions;
+        await this.participantsRepository.save(participant);
       }
 
       const user = await this.usersService.findById(userId);
@@ -104,7 +156,17 @@ export class MeetingsService {
       }
       const fullName = `${user.firstName} ${user.lastName}`;
 
-      const isOrganizer = participant.isOrganizer;
+      // If user is WAITING or DENIED, do not generate token
+      if (participant.status !== ParticipantStatus.ADMITTED) {
+         return {
+            meetingId: meeting.id,
+            organizerId: meeting.organizerId,
+            status: participant.status,
+            token: '',
+            liveKitUrl: '',
+            participants: [], // Optional: hide other participants from waiting users
+         };
+      }
       
       // Safety check for livekit room name
       const roomName = meeting.livekitRoomName || meeting.id;
@@ -112,7 +174,7 @@ export class MeetingsService {
       const grants: LiveKitTokenGrants = {
         roomJoin: true,
         room: roomName,
-        canPublish: true, // Allow all for now or check preferences
+        canPublish: true, 
         canSubscribe: true,
         canPublishData: true,
         roomRecord: isOrganizer,
@@ -135,19 +197,22 @@ export class MeetingsService {
 
       const participants = await this.getParticipants(id);
       const participantSummaries: ParticipantSummaryDto[] = participants
-        .filter(p => p && p.user) // Double defensive check
+        .filter(p => p && p.user)
         .map(
           (p) => ({
-            id: p.user?.id || p.userId, // Fallback to userId if user object is partially broken
+            id: p.user?.id || p.userId,
             firstName: p.user?.firstName || 'Unknown',
             lastName: p.user?.lastName || 'Participant',
             isOrganizer: p.isOrganizer,
             permissions: p.permissions,
+            status: p.status,
           }),
         );
 
       return {
         meetingId: meeting.id,
+        organizerId: meeting.organizerId,
+        status: ParticipantStatus.ADMITTED,
         token,
         liveKitUrl: this.configService.get<string>('LIVEKIT_URL') || '',
         participants: participantSummaries,
@@ -158,15 +223,45 @@ export class MeetingsService {
     }
   }
 
+  async admitParticipant(id: string, userId: string, hostId: string): Promise<void> {
+    const meeting = await this.findOne(id);
+    if (meeting.organizerId !== hostId) {
+      throw new ForbiddenException('Only the organizer can admit participants');
+    }
+
+    const participant = await this.participantsRepository.findByMeetingAndUser(id, userId);
+    if (!participant) {
+      throw new NotFoundException('Participant not found');
+    }
+
+    participant.status = ParticipantStatus.ADMITTED;
+    await this.participantsRepository.save(participant);
+  }
+
+  async rejectParticipant(id: string, userId: string, hostId: string): Promise<void> {
+    const meeting = await this.findOne(id);
+    if (meeting.organizerId !== hostId) {
+      throw new ForbiddenException('Only the organizer can reject participants');
+    }
+
+    const participant = await this.participantsRepository.findByMeetingAndUser(id, userId);
+    if (!participant) {
+      throw new NotFoundException('Participant not found');
+    }
+
+    participant.status = ParticipantStatus.DENIED;
+    await this.participantsRepository.save(participant);
+  }
+
   async endMeeting(id: string, userId: string): Promise<Meeting> {
     const meeting = await this.findOne(id);
 
     if (meeting.organizerId !== userId) {
-      throw new ForbiddenException('Only organizer can end the meeting');
+      throw new ForbiddenException('Only the organizer can end the meeting for everyone');
     }
 
     if (meeting.status === MeetingStatus.COMPLETED) {
-      throw new BadRequestException('Meeting already completed');
+      throw new BadRequestException('Meeting is already completed');
     }
 
     const now = new Date();
@@ -174,7 +269,29 @@ export class MeetingsService {
     meeting.status = MeetingStatus.COMPLETED;
     meeting.endTime = now;
 
-    await this.liveKitService.deleteRoom(meeting.livekitRoomName);
+    // Delete the room so all users are booted
+    try {
+      await this.liveKitService.deleteRoom(meeting.livekitRoomName || meeting.id);
+    } catch (e) {
+      console.warn(`Could not delete LiveKit room ${meeting.livekitRoomName}, might already be gone.`);
+    }
+
+    return this.meetingsRepository.save(meeting);
+  }
+
+  /**
+   * Called automatically when the last participant leaves and a grace period expires
+   */
+  async autoComplete(id: string): Promise<Meeting> {
+    const meeting = await this.findOne(id);
+    if (meeting.status === MeetingStatus.COMPLETED) return meeting;
+
+    meeting.status = MeetingStatus.COMPLETED;
+    meeting.endTime = new Date();
+    
+    try {
+      await this.liveKitService.deleteRoom(meeting.livekitRoomName || meeting.id);
+    } catch (e) {}
 
     return this.meetingsRepository.save(meeting);
   }
@@ -215,8 +332,15 @@ export class MeetingsService {
       throw new ForbiddenException('Only organizer can update the meeting');
     }
 
+    const { password, ...updateData } = dto;
+    
+    if (password) {
+      const salt = await bcrypt.genSalt();
+      updateData['password'] = await bcrypt.hash(password, salt);
+    }
+
     Object.assign(meeting, {
-      ...dto,
+      ...updateData,
       startTime: dto.startTime ? new Date(dto.startTime) : meeting.startTime,
     });
 

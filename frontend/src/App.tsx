@@ -11,6 +11,7 @@ import LoginPage from './features/auth/LoginPage.tsx'
 import AuthCallbackPage from './features/auth/AuthCallbackPage.tsx'
 import DashboardPage from './features/dashboard/DashboardPage.tsx'
 import MeetingsPage from './features/meetings/MeetingsPage.tsx'
+import MeetingDetailsPage from './features/meetings/MeetingDetailsPage.tsx'
 import MeetingRoomPage from './features/meetings/MeetingRoomPage.tsx'
 import TemplatesPage from './features/templates/TemplatesPage.tsx'
 import ProfilePage from './features/profile/ProfilePage.tsx'
@@ -30,7 +31,7 @@ function App() {
             
             {/* Full-screen Meeting Room */}
             <Route
-              path="/meetings/:id"
+              path="/room/:id"
               element={
                 <ProtectedRoute>
                   <MeetingRoomPage />
@@ -47,6 +48,8 @@ function App() {
             >
               <Route index element={<DashboardPage />} />
               <Route path="meetings" element={<MeetingsPage />} />
+              <Route path="meetings/new" element={<MeetingDetailsPage />} />
+              <Route path="meetings/:id/manage" element={<MeetingDetailsPage />} />
               <Route path="templates" element={<TemplatesPage />} />
               <Route path="profile" element={<ProfilePage />} />
             </Route>
