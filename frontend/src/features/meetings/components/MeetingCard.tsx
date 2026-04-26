@@ -1,4 +1,5 @@
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
 import { Clock, ChevronRight, Calendar, MoreVertical } from 'lucide-react'
 import type { Meeting, MeetingStatus } from '@/types/api'
@@ -8,38 +9,38 @@ interface MeetingCardProps {
   onClick?: (id: string) => void
 }
 
-const getStatusStyles = (status: MeetingStatus) => {
+const getStatusStyles = (status: MeetingStatus, t: any) => {
   switch (status) {
     case 'ongoing':
       return {
         bg: 'bg-cyan-50',
         text: 'text-cyan-700',
         dot: 'bg-cyan-600',
-        label: 'Ongoing',
+        label: t('meeting.status.ongoing'),
         border: 'border-cyan-200'
       }
     case 'scheduled':
       return {
-        bg: 'bg-emerald-50',
-        text: 'text-emerald-700',
-        dot: 'bg-emerald-600',
-        label: 'Scheduled',
-        border: 'border-emerald-200'
+        bg: 'bg-amber-50',
+        text: 'text-amber-700',
+        dot: 'bg-amber-600',
+        label: t('meeting.status.scheduled'),
+        border: 'border-amber-200'
       }
     case 'completed':
       return {
-        bg: 'bg-slate-100',
-        text: 'text-slate-600',
-        dot: 'bg-slate-500',
-        label: 'Completed',
-        border: 'border-slate-200'
+        bg: 'bg-emerald-50',
+        text: 'text-emerald-700',
+        dot: 'bg-emerald-600',
+        label: t('meeting.status.completed'),
+        border: 'border-emerald-200'
       }
     case 'canceled':
       return {
         bg: 'bg-rose-50',
         text: 'text-rose-700',
         dot: 'bg-rose-600',
-        label: 'Canceled',
+        label: t('meeting.status.canceled'),
         border: 'border-rose-200'
       }
     case 'pending_completion':
@@ -47,7 +48,7 @@ const getStatusStyles = (status: MeetingStatus) => {
         bg: 'bg-amber-50',
         text: 'text-amber-700',
         dot: 'bg-amber-600',
-        label: 'Closing Soon',
+        label: t('meeting.status.closing_soon'),
         border: 'border-amber-200'
       }
     default:
@@ -62,16 +63,17 @@ const getStatusStyles = (status: MeetingStatus) => {
 }
 
 const MeetingCard: React.FC<MeetingCardProps> = ({ meeting, onClick }) => {
-  const styles = getStatusStyles(meeting.status)
+  const { t, i18n } = useTranslation()
+  const styles = getStatusStyles(meeting.status, t)
   const startTime = new Date(meeting.startTime)
   
-  const timeStr = startTime.toLocaleTimeString('en-US', {
+  const timeStr = startTime.toLocaleTimeString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', {
     hour: '2-digit',
     minute: '2-digit',
     hour12: true
   })
 
-  const dateStr = startTime.toLocaleDateString('en-US', {
+  const dateStr = startTime.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', {
     month: 'short',
     day: 'numeric',
     year: startTime.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
@@ -108,7 +110,7 @@ const MeetingCard: React.FC<MeetingCardProps> = ({ meeting, onClick }) => {
             </div>
           </div>
 
-          <div className={`flex items-center gap-1.5 rounded-full ${styles.bg} ${styles.text} ${styles.border} border px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider`}>
+          <div className={`flex items-center gap-1.5 rounded-full ${styles.bg} ${styles.text} ${styles.border} border px-2.5 py-1 text-xs font-bold`}>
             {meeting.status === 'ongoing' && (
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-cyan-400 opacity-75"></span>
@@ -156,7 +158,7 @@ const MeetingCard: React.FC<MeetingCardProps> = ({ meeting, onClick }) => {
               )}
             </div>
             <span className="text-xs font-bold text-slate-500">
-              {(meeting.participants?.length || 0)} participant{(meeting.participants?.length || 0) !== 1 ? 's' : ''}
+              {t('meeting.participant_count', { count: meeting.participants?.length || 0 })}
             </span>
           </div>
 

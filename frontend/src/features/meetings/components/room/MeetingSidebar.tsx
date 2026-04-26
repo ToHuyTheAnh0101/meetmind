@@ -1,7 +1,8 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  X, 
+  ChevronRight, 
   MessageSquare, 
   Users, 
   UserPlus, 
@@ -29,15 +30,16 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   organizerId,
   isOrganizer,
 }) => {
+  const { t } = useTranslation();
   const tabs = [
-    { id: 'chat', icon: MessageSquare, label: 'Chat', color: 'text-cyan-400' },
-    { id: 'roster', icon: Users, label: 'Roster', color: 'text-indigo-400' },
+    { id: 'chat', icon: MessageSquare, label: t('meeting.chat'), color: 'text-cyan-400' },
+    { id: 'roster', icon: Users, label: t('meeting.roster'), color: 'text-indigo-400' },
   ];
 
   if (isOrganizer) {
     tabs.push(
-      { id: 'lobby', icon: UserPlus, label: 'Lobby', color: 'text-emerald-400' },
-      { id: 'settings', icon: Settings, label: 'Settings', color: 'text-amber-400' }
+      { id: 'lobby', icon: UserPlus, label: t('meeting.lobby'), color: 'text-emerald-400' },
+      { id: 'settings', icon: Settings, label: t('common.settings'), color: 'text-amber-400' }
     );
   }
 
@@ -53,11 +55,11 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
         >
           {/* Tab Content Container */}
           <div className="flex-1 overflow-hidden flex flex-col">
-             <div className="p-6 border-b border-slate-400 flex items-center justify-center">
-                <h3 className="text-xl text-slate-950 font-premium-ink font-bold tracking-tight">
-                  {tabs.find(t => t.id === activeTab)?.label || 'Workspace'}
+              <div className="p-6 border-b border-slate-400 flex items-center justify-center bg-white/50 backdrop-blur-sm">
+                <h3 className="text-xl text-slate-950 font-premium-ink tracking-tight">
+                  {tabs.find(t => t.id === activeTab)?.label || t('meeting.workspace')}
                 </h3>
-             </div>
+              </div>
 
              <div className="flex-1 overflow-hidden flex flex-col">
                 {activeTab === 'chat' && <CustomChat />}
@@ -76,7 +78,17 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
           </div>
 
           {/* Vertical Nav Rail (Back on the Right) */}
-          <div className="w-[72px] h-full border-l border-slate-400 flex flex-col items-center py-8 gap-6 bg-slate-200/50">
+          <div className="w-[72px] h-full border-l border-slate-400 flex flex-col items-center py-5 gap-5 bg-slate-200/50">
+             <button 
+                onClick={onClose} 
+                className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/40 text-slate-500 hover:text-slate-950 hover:bg-white transition-all active:scale-95"
+                title={t('common.back')}
+             >
+                <ChevronRight className="h-5 w-5" />
+             </button>
+
+             <div className="w-8 h-px bg-slate-400/30 mb-1" />
+
              {tabs.map((tab) => {
                const Icon = tab.icon;
                const isActive = activeTab === tab.id;
@@ -98,14 +110,6 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                );
              })}
 
-             <div className="mt-auto pt-6 border-t border-slate-400 w-full flex justify-center">
-                <button 
-                  onClick={onClose} 
-                  className="h-12 w-12 flex items-center justify-center rounded-2xl hover:bg-rose-50 text-slate-400 hover:text-rose-500 transition-all font-bold"
-                >
-                  <X className="h-6 w-6" />
-                </button>
-             </div>
           </div>
         </motion.div>
       )}
@@ -113,9 +117,9 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
       <style dangerouslySetInnerHTML={{ __html: `
         @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@100..900&display=swap');
         .font-premium-ink {
-          font-family: 'Outfit', sans-serif !important;
-          letter-spacing: 0.05em !important;
-          font-weight: 700 !important;
+          font-family: 'Be Vietnam Pro', sans-serif !important;
+          letter-spacing: 0.02em !important;
+          font-weight: 600 !important;
         }
       `}} />
     </AnimatePresence>

@@ -1,8 +1,10 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useChat } from '@livekit/components-react';
 import { MessageSquare, Send } from 'lucide-react';
 
 const CustomChat: React.FC = () => {
+  const { t } = useTranslation();
   const { chatMessages, send } = useChat();
   const [input, setInput] = useState('');
   const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -46,7 +48,7 @@ const CustomChat: React.FC = () => {
              <div className="p-5 rounded-full bg-slate-50 mb-2 border border-slate-200">
                 <MessageSquare className="h-8 w-8" />
              </div>
-             <p className="text-[18px] font-bold text-slate-500">No messages yet</p>
+             <p className="text-[18px] font-bold text-slate-500">{t('meeting.no_messages')}</p>
           </div>
         ) : (
           chatMessages.map((msg, idx) => {
@@ -98,7 +100,7 @@ const CustomChat: React.FC = () => {
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Send a message..."
+            placeholder={t('meeting.send_placeholder')}
             rows={1}
             className="flex-1 bg-transparent border-none text-[14px] text-slate-950 placeholder:text-slate-400 focus:outline-none focus:ring-0 resize-none max-h-32 py-1.5 pl-2 custom-scrollbar"
           />

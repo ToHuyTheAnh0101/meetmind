@@ -1,8 +1,10 @@
 import React from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import { motion } from 'framer-motion'
+import { useTranslation } from 'react-i18next'
 import { CalendarDays, LayoutDashboard, LogOut, UserCircle2, FileText, LayoutGrid } from 'lucide-react'
 import { useAuth } from '@/features/auth/AuthContext'
+import LanguageSelector from '@/components/LanguageSelector'
 
 type NavItem = {
   to: string
@@ -10,17 +12,18 @@ type NavItem = {
   icon: React.ElementType
 }
 
-const navItems: NavItem[] = [
-  { to: '/', label: 'Overview', icon: LayoutDashboard },
-  { to: '/meetings', label: 'Meetings', icon: CalendarDays },
-  { to: '/templates', label: 'Templates', icon: FileText },
-  { to: '/profile', label: 'Profile', icon: UserCircle2 },
-]
-
 const AppShell: React.FC = () => {
+  const { t } = useTranslation()
   const { user, logout } = useAuth()
-  const displayName = user ? `${user.firstName} ${user.lastName}`.trim() : 'Guest User'
+  const displayName = user ? `${user.firstName} ${user.lastName}`.trim() : t('common.guest_user')
   const userAvatar = user?.picture || user?.profilePictureUrl || ''
+
+  const navItems: NavItem[] = [
+    { to: '/', label: t('dashboard.overview'), icon: LayoutDashboard },
+    { to: '/meetings', label: t('dashboard.meetings'), icon: CalendarDays },
+    { to: '/templates', label: t('dashboard.templates'), icon: FileText },
+    { to: '/profile', label: t('common.profile'), icon: UserCircle2 },
+  ]
   
   const userInitials = displayName
     .split(' ')
@@ -40,7 +43,7 @@ const AppShell: React.FC = () => {
               <LayoutGrid className="h-5 w-5 text-cyan-400" />
             </div>
             <div className="hidden lg:block">
-              <p className="text-[11px] font-bold uppercase tracking-widest text-cyan-600">Workspace</p>
+              <p className="text-xs font-bold text-cyan-600">{t('dashboard.workspace')}</p>
               <p className="text-base font-black tracking-tight text-slate-900">MeetMind</p>
             </div>
           </div>
@@ -83,7 +86,9 @@ const AppShell: React.FC = () => {
 
           {/* User Profile & Actions */}
           <div className="flex items-center gap-3">
-            <div className="hidden items-center gap-3 rounded-2xl border border-slate-200 bg-white/50 px-4 py-1.5 backdrop-blur-sm sm:flex">
+            <LanguageSelector />
+            
+            <div className="hidden items-center gap-3 rounded-2xl border border-slate-200 bg-white/50 px-4 py-1.5 backdrop-blur-sm shadow-sm sm:flex">
               {userAvatar ? (
                 <img
                   src={userAvatar}
@@ -96,7 +101,7 @@ const AppShell: React.FC = () => {
                 </div>
               )}
               <div className="leading-tight">
-                <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Account</p>
+                <p className="text-xs font-bold text-slate-400">{t('dashboard.account')}</p>
                 <p className="text-sm font-black text-slate-800">{displayName}</p>
               </div>
             </div>
@@ -106,7 +111,7 @@ const AppShell: React.FC = () => {
               className="flex h-11 w-11 items-center justify-center rounded-xl border border-slate-200 bg-white text-slate-400 transition hover:border-rose-200 hover:bg-rose-50 hover:text-rose-600 active:scale-95 lg:h-auto lg:w-auto lg:px-4 lg:py-2.5 lg:text-sm lg:font-bold"
             >
               <LogOut className="h-5 w-5 lg:h-4 lg:w-4" />
-              <span className="ml-2 hidden lg:inline">Logout</span>
+              <span className="ml-2 hidden lg:inline">{t('common.logout')}</span>
             </button>
           </div>
         </div>

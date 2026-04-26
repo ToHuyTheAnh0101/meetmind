@@ -1,4 +1,5 @@
 import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   useTracks, 
   GridLayout, 
@@ -262,6 +263,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   onToggleSidebar,
   onEndSession,
 }) => {
+  const { t } = useTranslation();
   const [isControlsExpanded, setIsControlsExpanded] = useState(true);
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
 
@@ -291,13 +293,13 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                   <LogOut className="h-10 w-10" />
                 </div>
                 
-                <h2 className="text-3xl font-black tracking-tight text-white">End Session?</h2>
+                <h2 className="text-3xl font-black tracking-tight text-white">{t('meeting.end_session_confirm')}</h2>
                 <div className="mt-4 flex flex-col gap-2">
                   <p className="text-slate-400 font-medium leading-relaxed">
-                    You are ending the meeting for <span className="text-white font-bold">everyone</span>. 
+                    {t('meeting.end_session_desc')}
                   </p>
-                  <p className="text-rose-400/80 text-xs font-bold uppercase tracking-widest">
-                    This action is permanent and cannot be undone.
+                  <p className="text-rose-400/80 text-xs font-bold">
+                    {t('meeting.permanent_action')}
                   </p>
                 </div>
 
@@ -306,13 +308,13 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                     onClick={onEndSession}
                     className="flex h-14 w-full items-center justify-center rounded-2xl bg-rose-500 font-bold text-white shadow-xl shadow-rose-500/20 transition hover:bg-rose-600 hover:scale-[1.02] active:scale-95"
                   >
-                    End Meeting for All
+                    {t('meeting.end_for_all')}
                   </button>
                   <button
                     onClick={() => setShowEndConfirmation(false)}
                     className="flex h-14 w-full items-center justify-center rounded-2xl bg-white/5 font-bold text-slate-300 transition hover:bg-white/10"
                   >
-                    Keep Session Active
+                    {t('meeting.keep_active')}
                   </button>
                 </div>
               </div>
@@ -322,22 +324,22 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
       </AnimatePresence>
 
       {/* Top Bar / Header */}
-      <div className="h-16 px-6 flex items-center justify-between border-b border-white/5 relative z-20 bg-black/40 backdrop-blur-md">
+      <div className="h-20 px-8 flex items-center justify-between border-b border-white/5 relative z-20 bg-black/40 backdrop-blur-md">
           <div className="flex items-center gap-4">
-            <div className="h-2.5 w-2.5 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
-            <span className="text-sm font-black uppercase tracking-[0.2em] text-white/90">
-              Live Session: {meetingId?.slice(0, 8)}
+            <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
+            <span className="text-lg font-medium text-white/90">
+              {t('meeting.live_session')}: {meetingId?.slice(0, 8)}
             </span>
           </div>
          
          <div className="flex items-center gap-3">
            {isOrganizer && (
-              <button 
-                onClick={() => setShowEndConfirmation(true)} 
-                className="px-5 py-2.5 rounded-2xl bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-[10px] font-black text-white transition-all uppercase tracking-[0.15em] shadow-lg shadow-rose-500/20 active:scale-95 border border-rose-400/20"
-              >
-                End Session
-              </button>
+               <button 
+                 onClick={() => setShowEndConfirmation(true)} 
+                 className="px-6 py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 active:bg-rose-700 text-base font-medium text-white transition-all shadow-lg shadow-rose-500/20 active:scale-95 border border-rose-400/20"
+               >
+                 {t('meeting.end_session')}
+               </button>
            )}
          </div>
       </div>

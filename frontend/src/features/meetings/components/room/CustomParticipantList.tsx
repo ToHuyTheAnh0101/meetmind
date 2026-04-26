@@ -1,4 +1,5 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   useParticipants, 
   useParticipantContext, 
@@ -56,6 +57,7 @@ const CustomConnectionIndicator = () => {
 };
 
 const ParticipantItem = ({ organizerId }: { organizerId: string }) => {
+  const { t } = useTranslation();
   const p = useParticipantContext();
 
   // Extract avatar from metadata
@@ -72,7 +74,7 @@ const ParticipantItem = ({ organizerId }: { organizerId: string }) => {
   return (
     <div className="flex items-center justify-between py-3.5 border-b border-slate-100 group transition-all">
        <div className="flex items-center gap-4">
-          <div className="h-10 w-10 rounded-xl bg-slate-50 flex items-center justify-center text-xs font-bold text-slate-600 group-hover:text-slate-700 transition-colors overflow-hidden border border-slate-100">
+          <div className="h-12 w-12 rounded-xl bg-slate-50 flex items-center justify-center text-xs font-bold text-slate-600 group-hover:text-slate-700 transition-colors overflow-hidden border border-slate-100">
              {avatarUrl ? (
                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
              ) : (
@@ -80,17 +82,17 @@ const ParticipantItem = ({ organizerId }: { organizerId: string }) => {
              )}
           </div>
           <div className="flex flex-col">
-             <span className="text-sm font-bold text-slate-900 leading-none flex items-center">
-                <ParticipantName />
+              <div className="flex items-center gap-2">
+                <ParticipantName className="text-[16px] font-semibold text-slate-900" />
                 {p.identity === organizerId && (
-                  <span className="ml-2 px-1.5 py-0.5 rounded-md bg-cyan-100 text-cyan-600 text-[11px] font-bold border border-cyan-200">
-                    Host
+                  <span className="px-1.5 py-0.5 rounded-md bg-cyan-100 text-cyan-600 text-[11px] font-bold border border-cyan-200">
+                    {t('meeting.host')}
                   </span>
                 )}
-             </span>
+              </div>
              <div className="flex items-center gap-3 mt-2.5 opacity-100">
                 <CustomConnectionIndicator />
-                <span className="text-[13px] text-slate-700 font-medium tracking-tight">Stable connection</span>
+                 <span className="text-sm text-slate-700 font-medium tracking-tight">{t('meeting.stable_connection')}</span>
              </div>
           </div>
        </div>
@@ -103,12 +105,13 @@ const ParticipantItem = ({ organizerId }: { organizerId: string }) => {
 };
 
 const CustomParticipantList: React.FC<{ organizerId: string }> = ({ organizerId }) => {
+  const { t } = useTranslation();
   const participants = useParticipants();
   
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
-         <span className="text-[18px] font-bold text-slate-800">Participants ({participants.length})</span>
+         <span className="text-[18px] font-bold text-slate-800">{t('meeting.participants', { count: participants.length })}</span>
       </div>
       <ParticipantLoop participants={participants}>
         <ParticipantItem organizerId={organizerId} />

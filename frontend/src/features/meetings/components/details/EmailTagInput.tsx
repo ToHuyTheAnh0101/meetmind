@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { X, Mail, AlertCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -8,6 +9,7 @@ interface EmailTagInputProps {
 }
 
 const EmailTagInput: React.FC<EmailTagInputProps> = ({ emails, onChange }) => {
+  const { t } = useTranslation();
   const [inputValue, setInputValue] = useState('');
   const [error, setError] = useState<string | null>(null);
 
@@ -20,12 +22,12 @@ const EmailTagInput: React.FC<EmailTagInputProps> = ({ emails, onChange }) => {
     if (!trimmed) return;
 
     if (!validateEmail(trimmed)) {
-      setError('Invalid email address');
+      setError(t('meeting.invalid_email'));
       return;
     }
 
     if (emails.includes(trimmed)) {
-      setError('Email already added');
+      setError(t('meeting.email_exists'));
       return;
     }
 
@@ -60,7 +62,7 @@ const EmailTagInput: React.FC<EmailTagInputProps> = ({ emails, onChange }) => {
           }}
           onKeyDown={handleKeyDown}
           onBlur={addEmail}
-          placeholder="Add participants by email..."
+          placeholder={t('meeting.add_participants_placeholder')}
           className="w-full h-12 pl-11 pr-4 rounded-2xl bg-white/40 border border-slate-200 focus:bg-white/60 focus:border-cyan-200 focus:outline-none transition-all text-sm font-bold text-slate-900 placeholder:text-slate-400"
         />
       </div>

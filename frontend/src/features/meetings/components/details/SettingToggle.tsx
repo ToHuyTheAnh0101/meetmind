@@ -7,6 +7,8 @@ interface SettingToggleProps {
   enabled: boolean;
   onChange: (enabled: boolean) => void;
   icon?: React.ReactNode;
+  noBorder?: boolean;
+  className?: string;
 }
 
 const SettingToggle: React.FC<SettingToggleProps> = ({ 
@@ -14,10 +16,12 @@ const SettingToggle: React.FC<SettingToggleProps> = ({
   description, 
   enabled, 
   onChange,
-  icon 
+  icon,
+  noBorder,
+  className
 }) => {
   return (
-    <div className="flex items-center justify-between py-3.5 transition-all border-b border-slate-100 last:border-0">
+    <div className={`flex items-center justify-between py-3.5 transition-all ${!noBorder ? 'border-b border-slate-100 last:border-0' : ''} ${className || ''}`}>
       <div className="flex items-start gap-4">
         {icon && (
           <div className={`mt-0.5 p-2 rounded-xl ${enabled ? 'bg-amber-500/10 text-amber-600' : 'bg-slate-200/50 text-slate-500'} transition-colors`}>
@@ -25,8 +29,8 @@ const SettingToggle: React.FC<SettingToggleProps> = ({
           </div>
         )}
         <div className="flex flex-col">
-          <h4 className="text-[13px] font-bold text-slate-950 tracking-tight">{label}</h4>
-          <p className="text-[11px] font-medium text-slate-600 leading-snug mt-1">{description}</p>
+          <h4 className="text-sm font-bold text-slate-950 tracking-tight">{label}</h4>
+          <p className="text-xs font-medium text-slate-600 leading-snug mt-1">{description}</p>
         </div>
       </div>
 

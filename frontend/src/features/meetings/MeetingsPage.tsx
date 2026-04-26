@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
@@ -11,6 +12,7 @@ import {
 import MeetingList from './components/MeetingList'
 
 const MeetingsPage: React.FC = () => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [isSearchVisible, setIsSearchVisible] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
@@ -29,8 +31,11 @@ const MeetingsPage: React.FC = () => {
         <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
           <div className="max-w-xl">
             <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
-              Meetings <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-indigo-600">Hub</span>
+              {t('dashboard.list_title_prefix')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-indigo-600">{t('dashboard.list_title_highlight')}</span>
             </h1>
+            <p className="mt-1.5 text-sm font-medium text-slate-500 sm:text-base">
+              {t('dashboard.list_subtitle')}
+            </p>
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
@@ -45,16 +50,16 @@ const MeetingsPage: React.FC = () => {
               <Search className="h-5 w-5" />
             </button>
 
-            <button className="hidden h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-xs font-black uppercase tracking-widest text-slate-600 shadow-sm transition hover:bg-slate-50 sm:flex">
-              <Filter className="h-4 w-4" /> Filters
+            <button className="hidden h-12 items-center gap-2 rounded-2xl border border-slate-200 bg-white px-5 text-sm font-black text-slate-600 shadow-sm transition hover:bg-slate-50 sm:flex">
+              <Filter className="h-4 w-4" /> {t('meeting.filters')}
             </button>
 
             <button 
               onClick={() => navigate('/meetings/new')}
-              className="flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-br from-cyan-600 to-indigo-600 px-6 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-indigo-100 transition hover:scale-[1.05] active:scale-95 group"
+              className="flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-br from-cyan-600 to-indigo-600 px-6 text-sm font-black text-white shadow-xl shadow-indigo-100 transition hover:scale-[1.05] active:scale-95 group"
             >
               <Plus className="h-5 w-5 transition-transform group-hover:rotate-90" />
-              <span>New Meeting</span>
+              <span>{t('dashboard.new_meeting')}</span>
             </button>
           </div>
         </div>
@@ -72,7 +77,7 @@ const MeetingsPage: React.FC = () => {
                   <Search className="absolute left-6 top-1/2 h-5 w-5 -translate-y-1/2 text-cyan-500/50" />
                   <input 
                     type="text" 
-                    placeholder="Search by title or description..."
+                    placeholder={t('meeting.search_placeholder')}
                     className="h-14 w-full rounded-2xl border border-slate-200 bg-white/50 pl-14 pr-6 text-base font-bold placeholder:text-slate-400 focus:border-cyan-400 focus:ring-0 focus:bg-white backdrop-blur-sm transition-all outline-none"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}

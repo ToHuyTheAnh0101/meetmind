@@ -9,6 +9,7 @@ import { LocalVideoTrack, createLocalVideoTrack } from 'livekit-client'
 import '@livekit/components-styles'
 import { motion } from 'framer-motion'
 import { AlertCircle, ArrowLeft } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 
 import apiClient from '@/lib/apiClient'
 import { useAuth } from '../auth/AuthContext'
@@ -27,6 +28,7 @@ interface JoinResponse {
 }
 
 const MeetingRoomPage: React.FC = () => {
+  const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { user } = useAuth()
@@ -37,6 +39,7 @@ const MeetingRoomPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [requiresPassword, setRequiresPassword] = useState(false)
   const [password, setPassword] = useState('')
+  const [meetingDetails, setMeetingDetails] = useState<{ title: string; description: string; participantCount: number } | null>(null)
 
   // Custom Lobby State
   const [username, setUsername] = useState(user ? `${user.firstName} ${user.lastName}` : '')
@@ -73,6 +76,19 @@ const MeetingRoomPage: React.FC = () => {
     }
     return () => clearInterval(interval);
   }, [isWaitingInLobby, id, password]);
+
+  // Fetch Meeting Details for Lobby
+  useEffect(() => {
+    if (id) {
+      apiClient.get(`/meetings/${id}`).then(res => {
+        setMeetingDetails({
+          title: res.data.title,
+          description: res.data.description,
+          participantCount: res.data.participants?.length || 0
+        })
+      }).catch(err => console.error("Failed to fetch meeting details", err))
+    }
+  }, [id])
 
   // Initialize camera preview
   useEffect(() => {
@@ -172,24 +188,24 @@ const MeetingRoomPage: React.FC = () => {
                <UsersIcon />
             </div>
             
-            <h1 className="text-4xl font-black tracking-tight text-white mb-4">Permission Pending</h1>
+            <h1 className="text-4xl font-black tracking-tight text-white mb-4">{t('meeting.permission_pending')}</h1>
             <p className="text-slate-400 font-medium leading-relaxed max-w-md mx-auto">
-              The host has been notified that you're waiting. 
+              {t('meeting.host_notified')} 
               <br />
-              <span className="text-white font-bold">Please stay on this page</span> while we secure your entry.
+              <span className="text-white font-bold">{t('meeting.stay_on_page')}</span> {t('meeting.securing_entry')}
             </p>
             
             <div className="mt-12 flex flex-col items-center gap-6">
                <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/5 border border-white/10">
                   <div className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
-                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400">Requesting Admittance...</span>
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400">{t('meeting.requesting_admittance')}</span>
                </div>
                
                <button 
                   onClick={() => setIsWaitingInLobby(false)}
                   className="text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest"
                >
-                  Cancel Request
+                  {t('meeting.cancel_request')}
                </button>
             </div>
           </div>
@@ -209,14 +225,14 @@ const MeetingRoomPage: React.FC = () => {
           <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-rose-500/20 text-rose-500">
             <AlertCircle className="h-10 w-10" />
           </div>
-          <h2 className="mt-8 text-2xl font-black tracking-tight">Access Denied</h2>
+          <h2 className="mt-8 text-2xl font-black tracking-tight">{t('meeting.access_denied')}</h2>
           <p className="mt-4 text-slate-400 font-medium leading-relaxed">{error}</p>
           <button 
             onClick={() => navigate('/')}
             className="mt-10 flex items-center gap-2 rounded-2xl bg-white px-8 py-3.5 text-sm font-bold text-slate-950 transition hover:bg-slate-200 active:scale-95"
           >
             <ArrowLeft className="h-4 w-4" />
-            Back to Dashboard
+            {t('dashboard.back_to_dashboard')}
           </button>
         </motion.div>
       </div>
@@ -241,6 +257,9 @@ const MeetingRoomPage: React.FC = () => {
         password={password}
         setPassword={setPassword}
         error={isPasswordError ? error : null} 
+        meetingTitle={meetingDetails?.title}
+        meetingDescription={meetingDetails?.description}
+        participantCount={meetingDetails?.participantCount}
       />
     )
   }

@@ -1,9 +1,11 @@
 import React, { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import Logo from '@/components/Logo'
 
 const LoginPage: React.FC = () => {
+  const { t } = useTranslation()
   const handleLogin = () => {
     window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`
   }
@@ -103,7 +105,7 @@ const LoginPage: React.FC = () => {
             <div className="text-center">
               <h3 className="text-xl font-black tracking-tighter text-slate-900">MeetMind Sync</h3>
               <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-cyan-600">
-                Premium Collaboration
+                {t('auth.premium_collaboration')}
               </p>
             </div>
           </div>
@@ -116,18 +118,18 @@ const LoginPage: React.FC = () => {
                 V2.0 Intelligent Hub
               </div>
               <h1 className="text-4xl font-black tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-                Chào <br /> 
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-indigo-600">buổi sáng!</span>
+                {t('auth.welcome_back')} <br /> 
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-indigo-600">{t('auth.good_morning')}</span>
               </h1>
               <p className="max-w-sm text-sm font-medium text-slate-500 sm:text-lg">
-                Hệ thống đã sẵn sàng. Hãy đăng nhập để bắt đầu phiên làm việc của bạn.
+                {t('auth.system_ready')}
               </p>
             </header>
 
             <div className="space-y-8">
               <div className="space-y-4">
                 <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
-                  Authentication Required
+                  {t('auth.auth_required')}
                 </label>
                 <Button
                   onClick={handleLogin}
@@ -153,7 +155,7 @@ const LoginPage: React.FC = () => {
                         fill="#EA4335"
                       />
                     </svg>
-                    <span>Tiếp tục với Google</span>
+                    <span>{t('auth.continue_with_google')}</span>
                   </div>
                 </Button>
               </div>
@@ -161,11 +163,11 @@ const LoginPage: React.FC = () => {
               <div className="flex flex-col gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 sm:flex-row sm:items-center sm:justify-between">
                 <span className="flex items-center gap-2">
                   <div className="h-1 w-8 rounded-full bg-slate-200" />
-                  Secured by MeetMind
+                  {t('auth.secured_by')} MeetMind
                 </span>
                 <div className="flex gap-4">
-                  <span className="cursor-pointer transition hover:text-indigo-600">Privacy</span>
-                  <span className="cursor-pointer transition hover:text-indigo-600">Terms</span>
+                  <span className="cursor-pointer transition hover:text-indigo-600">{t('common.privacy')}</span>
+                  <span className="cursor-pointer transition hover:text-indigo-600">{t('common.terms')}</span>
                 </div>
               </div>
             </div>

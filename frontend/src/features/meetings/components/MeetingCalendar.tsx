@@ -1,4 +1,5 @@
 import React, { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
 import { ChevronLeft, ChevronRight, Calendar as CalendarIcon, Clock, Users } from 'lucide-react'
@@ -63,6 +64,7 @@ const MOCK_MEETINGS: Meeting[] = [
 ]
 
 const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onScheduleClick }) => {
+  const { t, i18n } = useTranslation()
   const today = useMemo(() => new Date(), [])
   const [activeMonth, setActiveMonth] = useState(new Date(today.getFullYear(), today.getMonth(), 1))
   const [selectedDate, setSelectedDate] = useState(today)
@@ -135,7 +137,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
                 <ChevronLeft className="h-5 w-5" />
               </button>
               <div className="px-4 text-sm font-black uppercase tracking-widest text-slate-900 min-w-[140px] text-center">
-                {activeMonth.toLocaleString('en-US', { month: 'long', year: 'numeric' })}
+                {activeMonth.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { month: 'long', year: 'numeric' })}
               </div>
               <button 
                 onClick={() => setActiveMonth(new Date(activeMonth.getFullYear(), activeMonth.getMonth() + 1, 1))}
@@ -151,7 +153,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
               }}
               className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-cyan-600 hover:text-cyan-700 transition"
             >
-              Today
+              {t('meeting.today')}
             </button>
           </div>
         </div>
@@ -159,7 +161,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
         <div className="grid grid-cols-7 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-inner">
           {WEEK_DAYS.map(day => (
             <div key={day} className="bg-slate-50 py-3 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400 sm:text-xs">
-              {day}
+              {t(`calendar.days.${day.toLowerCase()}`)}
             </div>
           ))}
           {calendarCells.map(cell => {
@@ -194,7 +196,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
                   ))}
                   {dateMeetings.length > 2 && (
                     <div className="px-2 text-[9px] font-black text-slate-400 sm:text-[10px]">
-                      + {dateMeetings.length - 2} MORE
+                      + {dateMeetings.length - 2} {t('meeting.more')}
                     </div>
                   )}
                 </div>
@@ -212,9 +214,9 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
           className="flex h-full flex-col rounded-3xl border border-white/50 bg-white/70 p-6 shadow-xl backdrop-blur-sm"
         >
           <div className="mb-6">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">Selected Date</p>
+            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">{t('meeting.selected_date')}</p>
             <h4 className="mt-1 text-xl font-black text-slate-900">
-              {selectedDate.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
+              {selectedDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </h4>
           </div>
 
@@ -222,7 +224,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
             {selectedDateMeetings.length === 0 ? (
               <div className="flex h-full flex-col items-center justify-center py-10 text-center opacity-40">
                 <CalendarIcon className="h-10 w-10 text-slate-300" />
-                <p className="mt-3 text-sm font-bold text-slate-500">No events scheduled</p>
+                <p className="mt-3 text-sm font-bold text-slate-500">{t('meeting.no_events')}</p>
               </div>
             ) : (
               selectedDateMeetings.map(meeting => (
@@ -240,7 +242,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
                   <div className="mt-3 flex items-center gap-4 text-[10px] font-bold text-slate-500">
                     <div className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />
-                      {new Date(meeting.startTime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
+                      {new Date(meeting.startTime).toLocaleTimeString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' })}
                     </div>
                     <div className="flex items-center gap-1">
                       <Users className="h-3 w-3" />
@@ -256,7 +258,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
             onClick={onScheduleClick}
             className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 text-xs font-black uppercase tracking-widest text-white transition hover:bg-slate-800 active:scale-95"
           >
-            <Plus className="h-4 w-4" /> Schedule New
+            <Plus className="h-4 w-4" /> {t('meeting.schedule_new')}
           </button>
         </motion.div>
       </div>

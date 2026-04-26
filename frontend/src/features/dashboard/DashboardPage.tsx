@@ -12,6 +12,8 @@ import {
   Zap,
   Loader2
 } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
+import { useAuth } from '@/features/auth/AuthContext'
 
 // Local components & Utilities
 import apiClient from '@/lib/apiClient'
@@ -25,7 +27,7 @@ type CalendarCell = {
 }
 
 // --- Constants & Helpers ---
-const WEEK_DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
+const WEEK_DAYS = ['sun', 'mon', 'tue', 'wed', 'thu', 'fri', 'sat']
 
 const toDateKey = (date: Date) => {
   const y = date.getFullYear()
@@ -183,7 +185,22 @@ const MOCK_MEETINGS: Meeting[] = [
   }
 ]
 
+const getStatusBadgeStyles = (status: string) => {
+  switch (status) {
+    case 'ongoing':
+      return 'bg-cyan-50 text-cyan-700 border-cyan-100'
+    case 'scheduled':
+      return 'bg-amber-50 text-amber-700 border-amber-100'
+    case 'completed':
+      return 'bg-emerald-50 text-emerald-700 border-emerald-100'
+    default:
+      return 'bg-slate-50 text-slate-600 border-slate-100'
+  }
+}
+
 const DashboardPage: React.FC = () => {
+  const { t, i18n } = useTranslation()
+  const { user } = useAuth()
   const navigate = useNavigate()
   const today = useMemo(() => new Date(), [])
   const [activeMonth, setActiveMonth] = useState(
@@ -303,18 +320,20 @@ const DashboardPage: React.FC = () => {
     )
   }, [meetings])
 
-  const monthLabel = activeMonth.toLocaleString('en-US', {
-    month: 'long',
-    year: 'numeric',
-  })
+  const monthLabel = i18n.language === 'vi' 
+    ? `Tháng ${activeMonth.getMonth() + 1}, ${activeMonth.getFullYear()}`
+    : activeMonth.toLocaleString('en-US', {
+        month: 'long',
+        year: 'numeric',
+      })
 
   // Pagination Control Component
   const PaginationControls = ({ current, total, onPageChange }: { current: number, total: number, onPageChange: (p: number) => void }) => {
     if (total <= 1) return null
     return (
       <div className="mt-4 flex items-center justify-between border-t border-slate-100 pt-4">
-        <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
-          Page {current} of {total}
+        <p className="text-sm font-bold text-slate-400">
+          {t('dashboard.page_info', { current, total })}
         </p>
         <div className="flex items-center gap-1">
           <button
@@ -340,7 +359,7 @@ const DashboardPage: React.FC = () => {
     setIsCreatingInstant(true)
     try {
       const res = await apiClient.post('/meetings', {
-        title: `Instant Session - ${new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`,
+        title: `Instant Session - ${new Date().toLocaleTimeString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { hour: '2-digit', minute: '2-digit' })}`,
         description: 'Quick collaboration session initialized from dashboard.',
         startTime: new Date().toISOString()
       })
@@ -365,30 +384,44 @@ const DashboardPage: React.FC = () => {
           <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
             <div className="max-w-xl">
               <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
-                Dashboard <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-indigo-600">Overview</span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-indigo-600">
+                  {t('dashboard.overview')}
+                </span>
               </h1>
+              <p className="mt-1.5 text-sm font-medium text-slate-500 sm:text-base">
+                {t('dashboard.welcome_back', { name: user?.firstName || t('common.guest_user') })}. {' '}
+                <span className="hidden sm:inline">
+                  {t('dashboard.today_is', { 
+                    date: new Date().toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', {
+                      weekday: 'long',
+                      day: 'numeric',
+                      month: 'long'
+                    })
+                  })}
+                </span>
+              </p>
             </div>
 
             <div className="flex items-center gap-3">
               <button 
                 onClick={handleInstantMeeting}
                 disabled={isCreatingInstant}
-                className="flex h-12 items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-6 text-xs font-black uppercase tracking-widest text-cyan-700 transition hover:bg-cyan-100 active:scale-95 disabled:opacity-50"
+                className="flex h-12 items-center gap-2 rounded-2xl border border-cyan-200 bg-cyan-50 px-6 text-sm font-black text-cyan-700 transition hover:bg-cyan-100 active:scale-95 disabled:opacity-50"
               >
                 {isCreatingInstant ? (
                   <Loader2 className="h-5 w-5 animate-spin" />
                 ) : (
                   <Zap className="h-5 w-5 text-cyan-500 fill-cyan-500" />
                 )}
-                <span>Instant Meeting</span>
+                <span>{t('dashboard.instant_meeting')}</span>
               </button>
 
               <button 
                 onClick={() => navigate('/meetings/new')}
-                className="flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-br from-cyan-600 to-indigo-600 px-6 text-xs font-black uppercase tracking-widest text-white shadow-xl shadow-indigo-100 transition hover:scale-[1.05] active:scale-95 group"
+                className="flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-br from-cyan-600 to-indigo-600 px-6 text-sm font-black text-white shadow-xl shadow-indigo-100 transition hover:scale-[1.05] active:scale-95 group"
               >
                 <Plus className="h-5 w-5 transition-transform group-hover:rotate-90" />
-                <span>New Meeting</span>
+                <span>{t('dashboard.new_meeting')}</span>
               </button>
             </div>
           </div>
@@ -402,8 +435,8 @@ const DashboardPage: React.FC = () => {
             className="rounded-[2rem] border border-white/50 bg-white/85 p-3 shadow-xl backdrop-blur sm:rounded-[2.5rem] sm:p-7 xl:col-span-8"
           >
             <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-              <div className="inline-flex items-center gap-2 self-start rounded-full bg-cyan-50 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.15em] text-cyan-700 sm:text-xs">
-                <CalendarDays className="h-4 w-4" /> Calendar View
+              <div className="inline-flex items-center gap-2 self-start rounded-full bg-cyan-50 px-4 py-1.5 text-xs font-bold text-cyan-700 sm:text-sm">
+                <CalendarDays className="h-4 w-4" /> {t('dashboard.calendar_view')}
               </div>
               <div className="flex items-center gap-1.5 sm:gap-2">
                 <button
@@ -432,10 +465,10 @@ const DashboardPage: React.FC = () => {
               </div>
             </div>
 
-            <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold uppercase tracking-[0.12em] text-slate-500 sm:gap-2 sm:text-xs sm:tracking-[0.14em]">
+            <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-500 sm:gap-2 sm:text-xs">
               {WEEK_DAYS.map((day) => (
                 <div key={day} className="py-1.5 sm:py-2">
-                  {day}
+                  {t(`calendar.days.${day}`)}
                 </div>
               ))}
             </div>
@@ -471,7 +504,7 @@ const DashboardPage: React.FC = () => {
                       <>
                         <div className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-cyan-600 sm:hidden" />
                         <div className="absolute bottom-1.5 left-1.5 hidden rounded-full bg-cyan-600 px-2 py-0.5 text-xs font-semibold text-white sm:block">
-                          {meetingsOnDay} meeting{meetingsOnDay > 1 ? 's' : ''}
+                          {t('meeting.participant_count', { count: meetingsOnDay })}
                         </div>
                       </>
                     )}
@@ -482,8 +515,8 @@ const DashboardPage: React.FC = () => {
 
             <div className="mt-4 rounded-2xl border border-slate-200 bg-slate-50 p-3 sm:mt-6 sm:p-4">
               <div className="flex items-center justify-between gap-4">
-                <p className="text-sm font-semibold text-slate-800 sm:text-base lg:text-lg">
-                  {selectedDate.toLocaleDateString('en-US', {
+                <p className="text-sm font-semibold text-slate-800 sm:text-base lg:text-lg capitalize">
+                  {selectedDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', {
                     weekday: 'long',
                     month: 'long',
                     day: 'numeric',
@@ -491,8 +524,8 @@ const DashboardPage: React.FC = () => {
                 </p>
                 {dailyTotalPages > 1 && (
                   <div className="flex items-center gap-3">
-                    <span className="hidden text-[10px] font-bold uppercase tracking-wider text-slate-400 sm:inline-block">
-                      Page {dailyPage} / {dailyTotalPages}
+                    <span className="hidden text-sm font-bold text-slate-400 sm:inline-block">
+                      {t('dashboard.page_info', { current: dailyPage, total: dailyTotalPages })}
                     </span>
                     <div className="flex items-center gap-1">
                       <button
@@ -514,15 +547,15 @@ const DashboardPage: React.FC = () => {
                 )}
               </div>
 
-              {isLoading && <p className="mt-3 text-sm text-slate-500">Loading meetings...</p>}
+              {isLoading && <p className="mt-3 text-sm text-slate-500">{t('dashboard.loading_meetings')}</p>}
               {isError && (
                 <p className="mt-3 text-sm text-rose-600">
-                  Cannot load meetings now. Please refresh and try again.
+                  {t('meeting.load_error')}
                 </p>
               )}
 
               {!isLoading && !isError && allSelectedMeetings.length === 0 && (
-                <p className="mt-4 text-sm text-slate-500">No meetings scheduled for this date.</p>
+                <p className="mt-4 text-sm text-slate-500">{t('dashboard.no_meetings_date')}</p>
               )}
 
               {!isLoading && !isError && allSelectedMeetings.length > 0 && (
@@ -543,8 +576,8 @@ const DashboardPage: React.FC = () => {
                               minute: '2-digit',
                             })}
                           </span>
-                          <span className="rounded-md bg-slate-100 px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider text-slate-500">
-                            {meeting.status}
+                          <span className={`rounded-md border px-2 py-0.5 text-xs font-bold ${getStatusBadgeStyles(meeting.status)}`}>
+                            {t(`meeting.status.${meeting.status}`)}
                           </span>
                         </div>
                       </div>
@@ -567,36 +600,36 @@ const DashboardPage: React.FC = () => {
             className="space-y-4 xl:col-span-4"
           >
             <div className="rounded-3xl border border-white/50 bg-white/85 p-5 shadow-xl backdrop-blur sm:p-6">
-              <p className="text-sm font-semibold uppercase tracking-[0.15em] text-slate-600">
-                Snapshot
+              <p className="text-sm font-semibold text-slate-600">
+                {t('dashboard.snapshot')}
               </p>
               <div className="mt-4 grid grid-cols-2 gap-3">
+                <div className="rounded-xl bg-violet-50 p-3">
+                  <p className="text-xs text-violet-700">{t('dashboard.total')}</p>
+                  <p className="mt-1 text-2xl font-bold text-violet-800">{statusCount.total}</p>
+                </div>
+                <div className="rounded-xl bg-amber-50 p-3">
+                  <p className="text-xs text-amber-700">{t('meeting.status.scheduled')}</p>
+                  <p className="mt-1 text-2xl font-bold text-amber-800">{statusCount.scheduled}</p>
+                </div>
                 <div className="rounded-xl bg-cyan-50 p-3">
-                  <p className="text-xs uppercase tracking-[0.1em] text-cyan-700">Total</p>
-                  <p className="mt-1 text-2xl font-bold text-cyan-800">{statusCount.total}</p>
+                  <p className="text-xs text-cyan-700">{t('meeting.status.ongoing')}</p>
+                  <p className="mt-1 text-2xl font-bold text-cyan-800">{statusCount.ongoing}</p>
                 </div>
                 <div className="rounded-xl bg-emerald-50 p-3">
-                  <p className="text-xs uppercase tracking-[0.1em] text-emerald-700">Scheduled</p>
-                  <p className="mt-1 text-2xl font-bold text-emerald-800">{statusCount.scheduled}</p>
-                </div>
-                <div className="rounded-xl bg-indigo-50 p-3">
-                  <p className="text-xs uppercase tracking-[0.1em] text-indigo-700">Ongoing</p>
-                  <p className="mt-1 text-2xl font-bold text-indigo-800">{statusCount.ongoing}</p>
-                </div>
-                <div className="rounded-xl bg-rose-50 p-3">
-                  <p className="text-xs uppercase tracking-[0.1em] text-rose-700">Completed</p>
-                  <p className="mt-1 text-2xl font-bold text-rose-800">{statusCount.completed}</p>
+                  <p className="text-xs text-emerald-700">{t('meeting.status.completed')}</p>
+                  <p className="mt-1 text-2xl font-bold text-emerald-800">{statusCount.completed}</p>
                 </div>
               </div>
             </div>
 
             <div className="rounded-3xl border border-white/50 bg-white/85 p-5 shadow-xl backdrop-blur sm:p-6">
-              <p className="inline-flex items-center gap-2 text-sm font-semibold uppercase tracking-[0.15em] text-slate-600">
-                <Users className="h-4 w-4" /> Upcoming Meetings
+              <p className="inline-flex items-center gap-2 text-sm font-semibold text-slate-600">
+                <Users className="h-4 w-4" /> {t('dashboard.upcoming_meetings')}
               </p>
 
               {allUpcomingMeetings.length === 0 && (
-                <p className="mt-4 text-sm text-slate-500">No upcoming meetings in your timeline.</p>
+                <p className="mt-4 text-sm text-slate-500">{t('dashboard.no_upcoming')}</p>
               )}
 
               {allUpcomingMeetings.length > 0 && (
@@ -611,7 +644,7 @@ const DashboardPage: React.FC = () => {
                         >
                           <p className="truncate font-bold text-slate-900">{meeting.title}</p>
                           <p className="mt-1 text-xs font-semibold text-slate-500">
-                            {new Date(meeting.startTime).toLocaleDateString('en-US', {
+                            {new Date(meeting.startTime).toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', {
                               month: 'short',
                               day: 'numeric',
                               hour: '2-digit',

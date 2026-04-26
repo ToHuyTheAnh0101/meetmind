@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { useQuery } from '@tanstack/react-query'
@@ -135,6 +136,7 @@ const MOCK_MEETINGS: Meeting[] = [
 
 // --- Component ---
 const MeetingList: React.FC<MeetingListProps> = ({ searchQuery }) => {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const LIMIT = 8
@@ -173,8 +175,8 @@ const MeetingList: React.FC<MeetingListProps> = ({ searchQuery }) => {
     return (
       <div className="flex min-h-[400px] flex-col items-center justify-center rounded-3xl border border-white/50 bg-white/50 py-20 backdrop-blur-sm">
         <Loader2 className="h-10 w-10 animate-spin text-cyan-600" />
-        <p className="mt-4 font-bold text-slate-900">Fetching your meetings...</p>
-        <p className="mt-1 text-sm text-slate-500">Just a moment while we synchronize with the hub.</p>
+        <p className="mt-4 font-bold text-slate-900">{t('meeting.fetching_meetings')}</p>
+        <p className="mt-1 text-sm text-slate-500">{t('meeting.sync_hub')}</p>
       </div>
     )
   }
@@ -185,15 +187,15 @@ const MeetingList: React.FC<MeetingListProps> = ({ searchQuery }) => {
         <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-rose-100 text-rose-600">
           <AlertCircle className="h-8 w-8" />
         </div>
-        <h3 className="mt-4 text-lg font-bold text-slate-900">Couldn't load meetings</h3>
+        <h3 className="mt-4 text-lg font-bold text-slate-900">{t('meeting.load_error')}</h3>
         <p className="mt-1 text-center text-sm text-slate-500">
-          There was a problem connecting to the server.<br />Please check your connection and try again.
+          {t('meeting.server_problem')}
         </p>
         <button 
           onClick={() => refetch()}
           className="mt-6 rounded-xl bg-rose-600 px-6 py-2.5 text-sm font-bold text-white shadow-lg shadow-rose-200 transition hover:bg-rose-700 active:scale-95"
         >
-          Retry Connection
+          {t('meeting.retry')}
         </button>
       </div>
     )
@@ -206,12 +208,12 @@ const MeetingList: React.FC<MeetingListProps> = ({ searchQuery }) => {
           <Inbox className="h-10 w-10" />
         </div>
         <h3 className="mt-6 text-xl font-bold text-slate-900">
-          {searchQuery ? 'No matches found' : 'Your hub is empty'}
+          {searchQuery ? t('meeting.no_matches') : t('meeting.empty_hub')}
         </h3>
         <p className="mt-2 text-center text-sm text-slate-500 max-w-xs">
           {searchQuery 
-            ? `We couldn't find anything matching "${searchQuery}". Maybe try a different search term?`
-            : "You haven't scheduled any meetings yet. Start by creating your first session."}
+            ? t('meeting.no_matches_desc', { query: searchQuery })
+            : t('meeting.empty_hub_desc')}
         </p>
       </div>
     )
@@ -223,8 +225,8 @@ const MeetingList: React.FC<MeetingListProps> = ({ searchQuery }) => {
         <div className="flex items-center justify-between rounded-2xl border border-white/50 bg-white/30 px-5 py-3 backdrop-blur-md">
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
-            <p className="text-[11px] font-bold uppercase tracking-widest text-cyan-700">
-              Meetings Page {page} <span className="text-slate-400">/ {totalPages}</span>
+            <p className="text-sm font-bold text-cyan-700">
+              {t('dashboard.meetings')} {t('meeting.page')} {page} <span className="text-slate-400">/ {totalPages}</span>
             </p>
           </div>
           
