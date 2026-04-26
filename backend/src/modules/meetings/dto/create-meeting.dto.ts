@@ -44,6 +44,10 @@ export class CreateMeetingDto {
   @IsOptional()
   muteOnJoin?: boolean;
 
+  @IsBoolean()
+  @IsOptional()
+  allowDisplayNameEdit?: boolean;
+
   @IsArray()
   @IsEmail({}, { each: true })
   @IsOptional()

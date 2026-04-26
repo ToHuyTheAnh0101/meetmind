@@ -37,6 +37,7 @@ interface MeetingLobbyProps {
   meetingTitle?: string;
   meetingDescription?: string;
   participantCount?: number;
+  allowDisplayNameEdit?: boolean;
 }
 
 const AudioVisualizer = ({ isActive }: { isActive: boolean }) => {
@@ -87,7 +88,8 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
   error,
   meetingTitle = "Chiến lược lộ trình Q3",
   meetingDescription = "Thảo luận về kế hoạch phát triển sản phẩm cho quý tới và thống nhất các mục tiêu quan trọng.",
-  participantCount = 3
+  participantCount = 3,
+  allowDisplayNameEdit = true
 }) => {
   const { t } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
@@ -253,9 +255,15 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                         <input 
                           value={username} 
                           onChange={e => setUsername(e.target.value)} 
-                          className="w-full glass-input rounded-2xl py-5 px-8 text-xl text-white font-semibold placeholder:text-white/10" 
-                          placeholder="Nhập tên của bạn..." 
+                          readOnly={!allowDisplayNameEdit}
+                          className={`w-full glass-input rounded-2xl py-5 px-8 text-xl text-white font-semibold placeholder:text-white/10 transition-all ${!allowDisplayNameEdit ? 'opacity-70 cursor-not-allowed bg-white/5 border-white/5' : ''}`} 
+                          placeholder={allowDisplayNameEdit ? "Nhập tên của bạn..." : "Tên đã được cố định"} 
                         />
+                        {!allowDisplayNameEdit && (
+                          <p className="text-sm font-bold text-slate-500 mt-3 px-2 italic">
+                            Chủ phòng đã khóa tính năng đổi tên cho cuộc họp này.
+                          </p>
+                        )}
                       </div>
 
                       {requiresPassword && setPassword && (

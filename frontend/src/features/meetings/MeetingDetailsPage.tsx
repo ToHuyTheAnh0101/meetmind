@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import { 
   ChevronLeft, 
   Calendar, 
@@ -19,9 +19,17 @@ import {
   ArrowRight,
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Search,
+  User,
+  MicOff
 } from 'lucide-react'
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
+import { 
+  useQuery, 
+  useMutation, 
+  useQueryClient, 
+  useInfiniteQuery 
+} from '@tanstack/react-query'
 import apiClient from '@/lib/apiClient'
 import type { Meeting } from '@/types/api'
 import SettingToggle from './components/details/SettingToggle'
@@ -45,6 +53,7 @@ const MeetingDetailsPage: React.FC = () => {
     accessType: 'public',
     waitingRoomEnabled: false,
     muteOnJoin: false,
+    allowDisplayNameEdit: true,
     inviteeEmails: [
       'alex.rivera@company.com', 'beatrice.smith@tech.io', 'charlie.davis@venture.net',
       'diana.prince@global.org', 'ethan.hunt@mission.com', 'fiona.gallagher@innovate.co',
@@ -59,8 +68,10 @@ const MeetingDetailsPage: React.FC = () => {
   })
   
   const [showPassword, setShowPassword] = useState(false)
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
+  const [searchTerm, setSearchTerm] = useState('')
 
-  // 1. Fetch Meeting Details (if not new)
+  // 1. Fetch Meeting Details
   const { data: meeting, isLoading, isError } = useQuery({
     queryKey: ['meeting', id],
     queryFn: async () => {
@@ -68,6 +79,37 @@ const MeetingDetailsPage: React.FC = () => {
       return response.data as Meeting
     },
     enabled: !!id && !isNew
+  })
+
+  // 2. Fetch Paginated Participants (Infinite Scroll)
+  const {
+    data: participantsData,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage
+  } = useInfiniteQuery<any>({
+    queryKey: ['participants', id],
+    queryFn: async ({ pageParam = 1 }) => {
+      const response = await apiClient.get(`/meetings/${id}/participants`, {
+        params: { page: pageParam, limit: 10 }
+      })
+      return response.data
+    },
+    initialPageParam: 1,
+    getNextPageParam: (lastPage) => {
+      if (lastPage.meta.page < lastPage.meta.totalPages) {
+        return lastPage.meta.page + 1
+      }
+      return undefined
+    },
+    enabled: !!id && !isNew
+  })
+
+  const allParticipants = participantsData?.pages.flatMap((page: any) => page.items) || []
+  
+  const filteredParticipants = allParticipants.filter(p => {
+    const fullName = `${p.user?.firstName} ${p.user?.lastName}`.toLowerCase()
+    return fullName.includes(searchTerm.toLowerCase())
   })
 
   // 2. Initialize form data when meeting is loaded
@@ -83,6 +125,7 @@ const MeetingDetailsPage: React.FC = () => {
         accessType: meeting.accessType || 'public',
         waitingRoomEnabled: !!meeting.waitingRoomEnabled,
         muteOnJoin: !!meeting.muteOnJoin,
+        allowDisplayNameEdit: meeting.allowDisplayNameEdit ?? true,
         inviteeEmails: meeting.inviteeEmails || [],
         reminderMinutes: meeting.reminderMinutes || 10,
         password: '' // Keep empty as hashed password won't be sent from server
@@ -102,6 +145,7 @@ const MeetingDetailsPage: React.FC = () => {
         accessType: data.accessType,
         waitingRoomEnabled: data.waitingRoomEnabled,
         muteOnJoin: data.muteOnJoin,
+        allowDisplayNameEdit: data.allowDisplayNameEdit,
         inviteeEmails: data.inviteeEmails,
         reminderMinutes: data.reminderMinutes,
         password: data.password
@@ -119,7 +163,7 @@ const MeetingDetailsPage: React.FC = () => {
       
       if (isInstant && isNew) {
         navigate(`/room/${res.data.id}`)
-      } else {
+      } else if (isNew) {
         navigate('/meetings')
       }
     }
@@ -139,6 +183,18 @@ const MeetingDetailsPage: React.FC = () => {
     navigator.clipboard.writeText(link)
     setCopied(true)
     setTimeout(() => setCopied(false), 2000)
+  }
+
+  const handleDeleteConfirm = () => {
+    deleteMutation.mutate()
+    setShowDeleteConfirm(false)
+  }
+
+  const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
+    if (scrollHeight - scrollTop <= clientHeight + 50 && hasNextPage && !isFetchingNextPage) {
+      fetchNextPage()
+    }
   }
 
   if (isLoading && !isNew) {
@@ -162,6 +218,57 @@ const MeetingDetailsPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 pb-20">
+      {/* 1. CUSTOM DELETE CONFIRMATION MODAL */}
+      <AnimatePresence>
+        {showDeleteConfirm && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6 sm:p-12">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowDeleteConfirm(false)}
+              className="absolute inset-0 bg-slate-900/40 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg overflow-hidden rounded-[3rem] border border-white/40 bg-white/90 shadow-2xl backdrop-blur-2xl"
+            >
+              <div className="absolute -left-10 -top-10 h-40 w-40 rounded-full bg-rose-500/10 blur-[80px]" />
+              
+              <div className="relative z-10 flex flex-col items-center text-center p-10 sm:p-14">
+                <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-[2.5rem] bg-rose-500/10 text-rose-500 shadow-inner">
+                  <Trash2 className="h-10 w-10" />
+                </div>
+                
+                <h2 className="text-3xl font-black tracking-tight text-slate-900">{t('meeting.destroy_workspace')}?</h2>
+                <div className="mt-5 flex flex-col gap-3">
+                  <p className="text-slate-500 font-bold leading-relaxed">
+                    {t('meeting.delete_confirm')}
+                  </p>
+                </div>
+
+                <div className="mt-12 flex flex-col w-full gap-4">
+                  <button
+                    onClick={handleDeleteConfirm}
+                    disabled={deleteMutation.isPending}
+                    className="flex h-16 w-full items-center justify-center rounded-2xl bg-rose-500 font-black text-white shadow-xl shadow-rose-200 transition hover:bg-rose-600 hover:scale-[1.02] active:scale-95 disabled:opacity-50"
+                  >
+                    {deleteMutation.isPending ? <Loader2 className="h-6 w-6 animate-spin" /> : t('common.save') === 'Lưu' ? 'Xác Nhận Xóa' : 'Confirm Delete'}
+                  </button>
+                  <button
+                    onClick={() => setShowDeleteConfirm(false)}
+                    className="flex h-16 w-full items-center justify-center rounded-2xl bg-slate-100 font-black text-slate-500 transition hover:bg-slate-200"
+                  >
+                    {t('common.cancel')}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
       <button 
         onClick={() => navigate('/meetings')}
         className="group flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors"
@@ -351,21 +458,38 @@ const MeetingDetailsPage: React.FC = () => {
                         description={t('meeting.mute_on_entry_desc')}
                         enabled={formData.muteOnJoin}
                         onChange={(val) => setFormData({ ...formData, muteOnJoin: val })}
-                        icon={<Bell className="h-4 w-4" />}
+                        icon={<MicOff className="h-4 w-4" />}
+                        noBorder
+                        className="w-full py-0"
+                     />
+                   </div>
+
+                   <div className="p-4 rounded-2xl bg-white/40 border border-slate-200 flex items-center justify-between">
+                     <SettingToggle 
+                        label={t('meeting.allow_display_name_edit')}
+                        description={t('meeting.allow_display_name_edit_desc')}
+                        enabled={formData.allowDisplayNameEdit}
+                        onChange={(val) => setFormData({ ...formData, allowDisplayNameEdit: val })}
+                        icon={<User className="h-4 w-4" />}
                         noBorder
                         className="w-full py-0"
                      />
                    </div>
 
                   <div className="p-4 rounded-2xl bg-white/40 border border-slate-200 flex items-center justify-between">
-                     <div>
-                        <h4 className="text-sm font-black text-slate-900 tracking-tight">{t('meeting.reminders')}</h4>
-                        <p className="text-xs font-medium text-slate-500 leading-tight mt-0.5">{t('meeting.notify_before')}</p>
+                     <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                           <Bell className="h-4 w-4" />
+                        </div>
+                        <div>
+                           <h4 className="text-sm font-black text-slate-900 tracking-tight">{t('meeting.reminders')}</h4>
+                           <p className="text-xs font-medium text-slate-500 leading-tight mt-1">{t('meeting.notify_before')}</p>
+                        </div>
                      </div>
                      <select 
                         value={formData.reminderMinutes}
                         onChange={(e) => setFormData({ ...formData, reminderMinutes: parseInt(e.target.value) })}
-                        className="bg-white px-3 py-2 rounded-xl text-xs font-black border border-slate-300 focus:outline-none"
+                        className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl text-xs font-black border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/5 transition-all cursor-pointer hover:bg-white ml-8"
                      >
                         <option value="0">{t('meeting.none')}</option>
                         <option value="5">5m</option>
@@ -401,13 +525,21 @@ const MeetingDetailsPage: React.FC = () => {
              
              <div className="space-y-4">
                 {!isNew && (
-                  <button 
-                    onClick={() => navigate(`/room/${id}`)}
-                    className="flex w-full items-center justify-center gap-3 rounded-2xl bg-slate-900 py-4 text-sm font-black text-white shadow-xl transition hover:scale-[1.05] active:scale-95 group"
-                  >
-                    <Video className="h-5 w-5 transition-transform group-hover:rotate-12" />
-                    {t('meeting.join_workspace')}
-                  </button>
+                  <>
+                    <button 
+                      disabled={meeting?.status === 'completed'}
+                      onClick={() => navigate(`/room/${id}`)}
+                      className={`flex w-full items-center justify-center gap-3 rounded-2xl py-4 text-sm font-black text-white shadow-xl transition group ${meeting?.status === 'completed' ? 'bg-slate-400 cursor-not-allowed opacity-70' : 'bg-slate-900 hover:scale-[1.05] active:scale-95'}`}
+                    >
+                      <Video className="h-5 w-5 transition-transform group-hover:rotate-12" />
+                      {meeting?.status === 'completed' ? t('meeting.status.completed') : t('meeting.join_workspace')}
+                    </button>
+                    {meeting?.status === 'completed' && (
+                       <p className="text-xs font-bold text-rose-500 text-center mt-2 px-4 leading-relaxed">
+                          {t('meeting.meeting_ended_note')}
+                       </p>
+                    )}
+                  </>
                 )}
 
                 <button 
@@ -441,11 +573,7 @@ const MeetingDetailsPage: React.FC = () => {
                     </div>
 
                     <button 
-                      onClick={() => {
-                        if (confirm(t('meeting.delete_confirm'))) {
-                          deleteMutation.mutate()
-                        }
-                      }}
+                      onClick={() => setShowDeleteConfirm(true)}
                       className="flex w-full items-center justify-center gap-2 pt-2 text-sm font-bold text-rose-400 hover:text-rose-600 transition"
                     >
                        <Trash2 className="h-4 w-4" />
@@ -457,35 +585,70 @@ const MeetingDetailsPage: React.FC = () => {
           </motion.div>
 
           {!isNew && meeting?.participants && (
-             <motion.div 
-               initial={{ opacity: 0, x: 20 }}
-               animate={{ opacity: 1, x: 0 }}
-               transition={{ delay: 0.1 }}
-               className="rounded-[2.5rem] border border-white/40 bg-white/30 p-8 shadow-xl backdrop-blur-md"
-             >
-                <div className="flex items-center justify-between mb-8">
-                   <h3 className="text-sm font-black text-slate-500">{t('meeting.team_presence')}</h3>
-                   <span className="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-xs font-black">{meeting.participants.length}</span>
-                </div>
-                
-                <div className="space-y-5 max-h-[320px] overflow-y-auto pr-2 custom-scrollbar">
-                   {meeting.participants.map((p, idx) => (
-                      <div key={p.id || idx} className="flex items-center gap-4 group">
-                         <div className="relative h-10 w-10 rounded-full border-2 border-white/80 overflow-hidden shadow-md group-hover:border-cyan-200 transition-colors">
-                            <img 
-                              src={p.user?.profilePictureUrl || `https://ui-avatars.com/api/?name=${p.user?.firstName}+${p.user?.lastName}&background=random`} 
-                              className="h-full w-full object-cover" 
-                              alt="" 
-                            />
-                         </div>
-                         <div>
-                            <p className="text-sm font-black text-slate-900">{p.user?.firstName} {p.user?.lastName}</p>
-                            <p className="text-[10px] font-black text-slate-400">{p.isOrganizer ? t('meeting.host') : t('meeting.member')}</p>
-                         </div>
+            <motion.div 
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              className="glass-card p-8 rounded-[2.5rem] relative overflow-hidden bg-white/70 backdrop-blur-xl border border-white/80"
+            >
+               <div className="absolute top-0 right-0 p-6 opacity-[0.03] rotate-12">
+                  <Users className="h-32 w-32" />
+               </div>
+
+               <div className="relative z-10">
+                  <div className="flex items-center justify-between mb-6">
+                     <h3 className="text-xl font-black text-slate-900 tracking-tight">{t('meeting.team_presence')}</h3>
+                     <span className="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-xs font-black">{filteredParticipants.length}</span>
+                  </div>
+                  
+                  {/* Search Bar */}
+                  <div className="relative mb-6">
+                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <input 
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      placeholder="Tìm kiếm thành viên..."
+                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:border-slate-200 focus:bg-white transition-all outline-none"
+                    />
+                  </div>
+
+                  <div className="space-y-6 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar" onScroll={handleScroll}>
+                    {filteredParticipants.length > 0 ? (
+                      <>
+                        {filteredParticipants.map((p, idx) => (
+                          <div key={p.id || idx} className="flex items-center justify-between group">
+                             <div className="flex items-center gap-4">
+                                <div className="relative h-12 w-12 rounded-2xl border-2 border-white/80 overflow-hidden shadow-sm group-hover:border-slate-200 transition-colors bg-slate-100">
+                                   <img 
+                                     src={p.user?.picture || p.user?.profilePictureUrl || `https://ui-avatars.com/api/?name=${p.user?.firstName}+${p.user?.lastName}&background=random`} 
+                                     className="h-full w-full object-cover"
+                                     alt=""
+                                   />
+                                </div>
+                                <div>
+                                   <p className="text-sm font-black text-slate-900">{p.user?.firstName} {p.user?.lastName}</p>
+                                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                     {p.isOrganizer ? 'Chủ phòng' : 'Thành viên'}
+                                  </p>
+                                </div>
+                             </div>
+                             <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]" />
+                          </div>
+                        ))}
+                        {isFetchingNextPage && (
+                           <div className="flex justify-center py-4">
+                              <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                           </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="py-10 text-center">
+                        <p className="text-sm font-bold text-slate-400">Không tìm thấy thành viên</p>
                       </div>
-                   ))}
-                </div>
-             </motion.div>
+                    )}
+                  </div>
+               </div>
+            </motion.div>
           )}
         </div>
       </div>

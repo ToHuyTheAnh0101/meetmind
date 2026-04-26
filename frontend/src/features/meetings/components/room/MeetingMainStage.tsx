@@ -295,10 +295,10 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                 
                 <h2 className="text-3xl font-black tracking-tight text-white">{t('meeting.end_session_confirm')}</h2>
                 <div className="mt-4 flex flex-col gap-2">
-                  <p className="text-slate-400 font-medium leading-relaxed">
+                  <p className="text-slate-400 text-lg font-medium leading-relaxed">
                     {t('meeting.end_session_desc')}
                   </p>
-                  <p className="text-rose-400/80 text-xs font-bold">
+                  <p className="text-rose-400/80 text-lg font-bold">
                     {t('meeting.permanent_action')}
                   </p>
                 </div>

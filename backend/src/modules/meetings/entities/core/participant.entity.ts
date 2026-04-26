@@ -32,7 +32,6 @@ export class Participant {
   @ManyToOne(() => Meeting, (meeting) => meeting.participants, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'meeting_id' })
   meeting: Meeting;
 
   @Column('uuid')
@@ -41,7 +40,6 @@ export class Participant {
   @ManyToOne(() => User, (user) => user.meetingParticipations, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'user_id' })
   user: User;
 
   @Column('uuid')

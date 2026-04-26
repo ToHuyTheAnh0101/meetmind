@@ -96,7 +96,7 @@ export class MeetingsController {
     @Body() dto: JoinMeetingDto,
     @Request() req: { user: { id: string } },
   ): Promise<JoinResponseDto> {
-    return this.meetingsService.joinMeeting(id, req.user.id, dto.password);
+    return this.meetingsService.joinMeeting(id, req.user.id, dto.password, dto.displayName);
   }
 
   @Post(':id/end')
@@ -132,7 +132,11 @@ export class MeetingsController {
 
   @Get(':id/participants')
   @UseGuards(JwtAuthGuard)
-  async getParticipants(@Param('id') id: string): Promise<Participant[]> {
-    return this.meetingsService.getParticipants(id);
+  async getParticipants(
+    @Param('id') id: string,
+    @Query('page') page: number = 1,
+    @Query('limit') limit: number = 10,
+  ): Promise<any> {
+    return this.meetingsService.getParticipants(id, page, limit);
   }
 }

@@ -126,6 +126,8 @@
     "waiting_room_desc": "Người tham gia phải được chủ phòng duyệt trước khi tham gia.",
     "mute_on_entry": "Tắt tiếng khi vào",
     "mute_on_entry_desc": "Vào phòng với micro bị tắt.",
+    "allow_display_name_edit": "Cho phép sửa tên hiển thị",
+    "allow_display_name_edit_desc": "Người tham gia có thể tự thay đổi tên của mình khi vào phòng.",
     "none": "Không có",
     "hub": "Trung tâm",
     "filters": "Bộ lọc",
@@ -145,7 +147,7 @@
     "no_matches_desc": "Không có kết quả nào phù hợp với \"{{query}}\". Vui lòng thử từ khóa khác.",
     "empty_hub_desc": "Bạn chưa có cuộc họp nào được lên lịch. Hãy bắt đầu bằng cách tạo cuộc họp đầu tiên.",
     "page": "Trang",
-    "exit_hub": "Thoát Trung Tâm",
+    "exit_hub": "Thoát phòng họp",
     "ready_to_collaborate": "Sẵn Sàng Làm Việc?",
     "display_name": "Tên Hiển Thị Của Bạn",
     "enter_space": "Tham Gia Ngay",
@@ -180,6 +182,7 @@
     "end_for_all": "Kết Thúc Cho Tất Cả",
     "keep_active": "Duy Trì Cuộc Họp",
     "live_session": "Cuộc Họp Đang Diễn Ra",
-    "already_joined": "Những người đang tham gia"
+    "already_joined": "Những người đang tham gia",
+    "meeting_ended_note": "Phiên họp này đã kết thúc và không thể tham gia lại."
   }
 }

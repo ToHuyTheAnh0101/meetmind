@@ -11,10 +11,13 @@ export class MeetingRepository {
   ) {}
 
   async findById(id: string): Promise<Meeting | null> {
-    return this.repo.findOne({
-      where: { id },
-      relations: ['participants', 'participants.user', 'organizer'],
-    });
+    return this.repo
+      .createQueryBuilder('meeting')
+      .leftJoinAndSelect('meeting.participants', 'participant')
+      .leftJoinAndSelect('participant.user', 'participantUser')
+      .leftJoinAndSelect('meeting.organizer', 'organizer')
+      .where('meeting.id = :id', { id })
+      .getOne();
   }
 
   async findAllForUser(

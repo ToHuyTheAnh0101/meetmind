@@ -10,6 +10,10 @@ export class ParticipantRepository {
     private readonly repo: Repository<Participant>,
   ) {}
 
+  create(data: Partial<Participant>): Participant {
+    return this.repo.create(data);
+  }
+
   async findByMeetingId(meetingId: string): Promise<Participant[]> {
     return this.repo.find({
       where: { meetingId },

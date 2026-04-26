@@ -44,6 +44,15 @@ export class MeetingsService {
       hashedPassword = await bcrypt.hash(password, salt);
     }
 
+    const organizerPermissions = [
+      MeetingPermission.EDIT_SUMMARY,
+      MeetingPermission.CHAT_WITH_AI,
+      MeetingPermission.UPDATE_PERMISSIONS,
+      MeetingPermission.VIEW_TRANSCRIPT,
+      MeetingPermission.DOWNLOAD_RECORDING,
+      MeetingPermission.EDIT_MEETING_INFO,
+    ];
+
     const meeting = this.meetingsRepository.create({
       ...meetingData,
       password: hashedPassword,
@@ -55,6 +64,14 @@ export class MeetingsService {
       muteOnJoin: dto.muteOnJoin ?? false,
       inviteeEmails: dto.inviteeEmails || [],
       reminderMinutes: dto.reminderMinutes ?? 10,
+      participants: [
+        this.participantsRepository.create({
+          userId,
+          isOrganizer: true,
+          permissions: organizerPermissions,
+          status: ParticipantStatus.ADMITTED,
+        })
+      ]
     });
 
     const savedMeeting = await this.meetingsRepository.save(meeting);
@@ -68,26 +85,10 @@ export class MeetingsService {
       throw error;
     }
 
-    const organizerPermissions = [
-      MeetingPermission.EDIT_SUMMARY,
-      MeetingPermission.CHAT_WITH_AI,
-      MeetingPermission.UPDATE_PERMISSIONS,
-      MeetingPermission.VIEW_TRANSCRIPT,
-      MeetingPermission.DOWNLOAD_RECORDING,
-      MeetingPermission.EDIT_MEETING_INFO,
-    ];
-
-    await this.participantsRepository.save({
-      meetingId: savedMeeting.id,
-      userId,
-      isOrganizer: true,
-      permissions: organizerPermissions,
-    });
-
-    return savedMeeting;
+    return this.findOne(savedMeeting.id);
   }
 
-  async joinMeeting(id: string, userId: string, password?: string): Promise<JoinResponseDto> {
+  async joinMeeting(id: string, userId: string, password?: string, displayName?: string): Promise<JoinResponseDto> {
     console.log(`[MeetingsService] Attempting to join meeting: ${id} for user: ${userId}`);
     try {
       const meeting = await this.findOne(id);
@@ -154,7 +155,7 @@ export class MeetingsService {
       if (!user) {
         throw new NotFoundException('User not found');
       }
-      const fullName = `${user.firstName} ${user.lastName}`;
+      const fullName = displayName || `${user.firstName} ${user.lastName}`;
 
       // If user is WAITING or DENIED, do not generate token
       if (participant.status !== ParticipantStatus.ADMITTED) {
@@ -195,8 +196,8 @@ export class MeetingsService {
         await this.meetingsRepository.save(meeting);
       }
 
-      const participants = await this.getParticipants(id);
-      const participantSummaries: ParticipantSummaryDto[] = participants
+      const participantsData = await this.getParticipants(id, 1, 100);
+      const participantSummaries: ParticipantSummaryDto[] = participantsData.items
         .filter(p => p && p.user)
         .map(
           (p) => ({
@@ -358,7 +359,50 @@ export class MeetingsService {
     await this.meetingsRepository.remove(meeting);
   }
 
-  async getParticipants(id: string) {
-    return this.participantsRepository.findByMeetingId(id);
+  async getParticipants(id: string, page: number = 1, limit: number = 10) {
+    const realParticipants = await this.participantsRepository.findByMeetingId(id);
+    
+    // Add 19 mock participants for demonstration (as requested: "mock 20 people")
+    const mockNames = [
+      { f: 'Nguyễn', l: 'An' }, { f: 'Trần', l: 'Bình' }, { f: 'Lê', l: 'Chi' },
+      { f: 'Phạm', l: 'Dũng' }, { f: 'Hoàng', l: 'Em' }, { f: 'Vũ', l: 'Giang' },
+      { f: 'Đặng', l: 'Hải' }, { f: 'Bùi', l: 'Hoa' }, { f: 'Đỗ', l: 'Khánh' },
+      { f: 'Hồ', l: 'Lan' }, { f: 'Ngô', l: 'Minh' }, { f: 'Dương', l: 'Nam' },
+      { f: 'Lý', l: 'Oanh' }, { f: 'Phan', l: 'Phúc' }, { f: 'Trương', l: 'Quân' },
+      { f: 'Lê', l: 'Thắng' }, { f: 'Phạm', l: 'Tú' }, { f: 'Nguyễn', l: 'Vân' }, { f: 'Đỗ', l: 'Yến' }
+    ];
+
+    const mocks = mockNames.map((n, i) => ({
+      id: `mock-${i}`,
+      meetingId: id,
+      userId: `user-mock-${i}`,
+      isOrganizer: false,
+      permissions: [],
+      status: ParticipantStatus.ADMITTED,
+      user: {
+        id: `user-mock-${i}`,
+        firstName: n.f,
+        lastName: n.l,
+        picture: `https://i.pravatar.cc/150?u=mock${i}`,
+        email: `mock${i}@example.com`
+      }
+    }));
+
+    const allParticipants = [...realParticipants, ...mocks];
+    
+    // Manual pagination for the demo
+    const total = allParticipants.length;
+    const startIndex = (page - 1) * limit;
+    const items = allParticipants.slice(startIndex, startIndex + limit);
+
+    return {
+      items,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      }
+    };
   }
 }

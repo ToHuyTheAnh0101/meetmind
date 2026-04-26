@@ -67,6 +67,9 @@ export class Meeting {
   @Column({ default: false })
   muteOnJoin: boolean;
 
+  @Column({ default: true })
+  allowDisplayNameEdit: boolean;
+
   @Column('jsonb', { default: [] })
   inviteeEmails: string[];
 

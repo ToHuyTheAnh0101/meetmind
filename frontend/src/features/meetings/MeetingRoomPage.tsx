@@ -39,7 +39,12 @@ const MeetingRoomPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
   const [requiresPassword, setRequiresPassword] = useState(false)
   const [password, setPassword] = useState('')
-  const [meetingDetails, setMeetingDetails] = useState<{ title: string; description: string; participantCount: number } | null>(null)
+  const [meetingDetails, setMeetingDetails] = useState<{ 
+    title: string; 
+    description: string; 
+    participantCount: number;
+    allowDisplayNameEdit: boolean;
+  } | null>(null)
 
   // Custom Lobby State
   const [username, setUsername] = useState(user ? `${user.firstName} ${user.lastName}` : '')
@@ -84,7 +89,8 @@ const MeetingRoomPage: React.FC = () => {
         setMeetingDetails({
           title: res.data.title,
           description: res.data.description,
-          participantCount: res.data.participants?.length || 0
+          participantCount: res.data.participants?.length || 0,
+          allowDisplayNameEdit: res.data.allowDisplayNameEdit ?? true
         })
       }).catch(err => console.error("Failed to fetch meeting details", err))
     }
@@ -117,7 +123,10 @@ const MeetingRoomPage: React.FC = () => {
   const handlePreJoinSubmit = async (choices: LocalUserChoices) => {
     setIsLoading(true)
     try {
-      const response = await apiClient.post<any>(`/meetings/${id}/join`, { password })
+      const response = await apiClient.post<any>(`/meetings/${id}/join`, { 
+        password,
+        displayName: choices.username 
+      })
       
       if (response.data.status === 'waiting') {
         setIsWaitingInLobby(true);
@@ -252,7 +261,7 @@ const MeetingRoomPage: React.FC = () => {
         isLoading={isLoading}
         onJoin={handlePreJoinSubmit}
         onExit={() => navigate('/')}
-        avatarUrl={user?.profilePictureUrl || null}
+        avatarUrl={user?.picture || user?.profilePictureUrl || null}
         requiresPassword={requiresPassword}
         password={password}
         setPassword={setPassword}
@@ -260,6 +269,7 @@ const MeetingRoomPage: React.FC = () => {
         meetingTitle={meetingDetails?.title}
         meetingDescription={meetingDetails?.description}
         participantCount={meetingDetails?.participantCount}
+        allowDisplayNameEdit={meetingDetails?.allowDisplayNameEdit}
       />
     )
   }

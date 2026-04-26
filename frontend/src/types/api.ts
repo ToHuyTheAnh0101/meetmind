@@ -36,6 +36,7 @@ export interface Meeting {
   accessType?: MeetingAccessType
   waitingRoomEnabled?: boolean
   muteOnJoin?: boolean
+  allowDisplayNameEdit?: boolean
   inviteeEmails?: string[]
   reminderMinutes?: number
 }
