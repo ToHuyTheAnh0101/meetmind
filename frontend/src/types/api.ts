@@ -39,6 +39,7 @@ export interface Meeting {
   allowDisplayNameEdit?: boolean
   inviteeEmails?: string[]
   reminderMinutes?: number
+  password?: string
 }
 
 export interface Participant {

@@ -25,8 +25,12 @@
   },
   "auth": {
     "login": "Đăng nhập",
-    "welcome_back": "Chào mừng trở lại",
-    "good_morning": "buổi sáng!",
+    "welcome_morning_prefix": "Bắt đầu ngày mới",
+    "welcome_morning_suffix": "Thật năng lượng!",
+    "welcome_afternoon_prefix": "Chào buổi chiều,",
+    "welcome_afternoon_suffix": "Tiếp thêm cảm hứng!",
+    "welcome_evening_prefix": "Chào buổi tối,",
+    "welcome_evening_suffix": "Kết thúc ngày thật đẹp!",
     "system_ready": "Hệ thống đã sẵn sàng. Hãy đăng nhập để bắt đầu phiên làm việc của bạn.",
     "auth_required": "Yêu cầu xác thực",
     "continue_with_google": "Tiếp tục với Google",
@@ -162,7 +166,7 @@
     "manage_params": "Quản Lý Tham Số Phòng Thời Gian Thực",
     "manual_approval": "Duyệt Khách Thủ Công",
     "silence_guests": "Tắt Tiếng Khách Khi Vào",
-    "security_code": "Mã Bảo Mật",
+    "security_code": "Mật khẩu phòng họp",
     "update_password": "Cập nhật mật khẩu phiên họp...",
     "destructive_actions": "Hành Động Nguy Hiểm",
     "reset_tokens": "Đặt Lại Token Cuộc Họp",
@@ -183,6 +187,8 @@
     "keep_active": "Duy Trì Cuộc Họp",
     "live_session": "Cuộc Họp Đang Diễn Ra",
     "already_joined": "Những người đang tham gia",
-    "meeting_ended_note": "Phiên họp này đã kết thúc và không thể tham gia lại."
+    "meeting_ended_note": "Phiên họp này đã kết thúc và không thể tham gia lại.",
+    "invalid_password": "Mật khẩu phòng họp không chính xác",
+    "password_required": "Cuộc họp này yêu cầu mật khẩu"
   }
 }

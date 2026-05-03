@@ -25,6 +25,7 @@ interface JoinResponse {
   token: string
   liveKitUrl: string
   participants: any[]
+  status?: string
 }
 
 const MeetingRoomPage: React.FC = () => {
@@ -44,6 +45,7 @@ const MeetingRoomPage: React.FC = () => {
     description: string; 
     participantCount: number;
     allowDisplayNameEdit: boolean;
+    organizerId: string;
   } | null>(null)
 
   // Custom Lobby State
@@ -68,11 +70,10 @@ const MeetingRoomPage: React.FC = () => {
     if (isWaitingInLobby && id) {
       interval = setInterval(async () => {
         try {
-          const response = await apiClient.post<JoinResponse>(`/meetings/${id}/join`, { password });
-          // @ts-ignore - status exists in runtime but might be missing in older TS definitions
+          const response = await apiClient.post<JoinResponse>(`/meetings/${id}/join`, { password }, { _skipLogout: true } as any);
           if (response.data.status === 'admitted') {
             setIsWaitingInLobby(false);
-            setJoinData(response.data);
+            setJoinData(response.data as JoinResponse);
           }
         } catch (error) {
           console.error("Polling for admittance failed", error);
@@ -85,26 +86,30 @@ const MeetingRoomPage: React.FC = () => {
   // Fetch Meeting Details for Lobby
   useEffect(() => {
     if (id) {
-      apiClient.get(`/meetings/${id}`).then(res => {
+      apiClient.get(`/meetings/${id}/public`).then(res => {
         setMeetingDetails({
           title: res.data.title,
           description: res.data.description,
-          participantCount: res.data.participants?.length || 0,
-          allowDisplayNameEdit: res.data.allowDisplayNameEdit ?? true
+          participantCount: res.data.participantCount || 0,
+          allowDisplayNameEdit: res.data.allowDisplayNameEdit ?? true,
+          organizerId: res.data.organizerId
         })
+        if (res.data.hasPassword) {
+          setRequiresPassword(true)
+        }
       }).catch(err => console.error("Failed to fetch meeting details", err))
     }
   }, [id])
 
   // Initialize camera preview
   useEffect(() => {
-    let track: LocalVideoTrack | null = null
-    
-    if (isCamOn) {
+    let activeTrack: LocalVideoTrack | null = null
+
+    if (isCamOn && !joinData) {
       const startPreview = async () => {
         try {
-          track = await createLocalVideoTrack()
-          setLocalVideoTrack(track)
+          activeTrack = await createLocalVideoTrack()
+          setLocalVideoTrack(activeTrack)
         } catch (e) {
           console.error("Failed to start preview", e)
         }
@@ -113,12 +118,12 @@ const MeetingRoomPage: React.FC = () => {
     }
 
     return () => {
-      if (track) {
-        track.stop()
+      if (activeTrack) {
+        activeTrack.stop()
       }
       setLocalVideoTrack(null)
     }
-  }, [isCamOn])
+  }, [isCamOn, !!joinData])
 
   const handlePreJoinSubmit = async (choices: LocalUserChoices) => {
     setIsLoading(true)
@@ -126,7 +131,7 @@ const MeetingRoomPage: React.FC = () => {
       const response = await apiClient.post<any>(`/meetings/${id}/join`, { 
         password,
         displayName: choices.username 
-      })
+      }, { _skipLogout: true } as any)
       
       if (response.data.status === 'waiting') {
         setIsWaitingInLobby(true);
@@ -140,9 +145,9 @@ const MeetingRoomPage: React.FC = () => {
     } catch (err: any) {
       if (err.response?.status === 401 || err.response?.data?.message?.includes('password')) {
         setRequiresPassword(true)
-        setError(err.response?.data?.message || 'Password required')
+        setError(t('meeting.invalid_password'))
       } else {
-        setError(err.response?.data?.message || 'Failed to join')
+        setError(err.response?.data?.message || t('meeting.load_error'))
       }
     } finally {
       setIsLoading(false)
@@ -158,12 +163,16 @@ const MeetingRoomPage: React.FC = () => {
     }
   }
 
-  const isPasswordError = requiresPassword && error?.toLowerCase().includes('password')
+  const isPasswordError = requiresPassword && (
+    error?.toLowerCase().includes('password') || 
+    error === t('meeting.invalid_password')
+  )
 
   const isOrganizer = useMemo(() => {
-    if (!joinData || !user) return false
-    return joinData.organizerId === user.id
-  }, [joinData, user])
+    if (joinData && user) return joinData.organizerId === user.id
+    if (meetingDetails && user) return meetingDetails.organizerId === user.id
+    return false
+  }, [joinData, meetingDetails, user])
 
   const handleEndSession = async () => {
     try {
@@ -175,9 +184,30 @@ const MeetingRoomPage: React.FC = () => {
     }
   }
 
-  const handleLeaveSession = () => {
+  const handleLeaveSession = async () => {
+    try {
+      await apiClient.post(`/meetings/${id}/leave`)
+    } catch (err) {
+      console.error("Failed to call leave API", err)
+    }
     navigate('/')
   }
+
+  // Handle explicit tab close or navigation
+  useEffect(() => {
+    if (joinData && id) {
+      const handleUnload = () => {
+        // Use sendBeacon for more reliability on close if needed, but simple fetch might work for navigation
+        apiClient.post(`/meetings/${id}/leave`).catch(() => {});
+      }
+      
+      window.addEventListener('beforeunload', handleUnload);
+      return () => {
+        handleUnload(); // Call on unmount
+        window.removeEventListener('beforeunload', handleUnload);
+      }
+    }
+  }, [joinData, id]);
 
   if (isWaitingInLobby) {
     return (
@@ -207,12 +237,12 @@ const MeetingRoomPage: React.FC = () => {
             <div className="mt-12 flex flex-col items-center gap-6">
                <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/5 border border-white/10">
                   <div className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
-                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-cyan-400">{t('meeting.requesting_admittance')}</span>
+                  <span className="text-[14px] font-black text-cyan-400">{t('meeting.requesting_admittance')}</span>
                </div>
                
                <button 
                   onClick={() => setIsWaitingInLobby(false)}
-                  className="text-xs font-bold text-slate-500 hover:text-white transition-colors uppercase tracking-widest"
+                  className="text-sm font-bold text-slate-500 hover:text-white transition-colors"
                >
                   {t('meeting.cancel_request')}
                </button>
@@ -262,7 +292,7 @@ const MeetingRoomPage: React.FC = () => {
         onJoin={handlePreJoinSubmit}
         onExit={() => navigate('/')}
         avatarUrl={user?.picture || user?.profilePictureUrl || null}
-        requiresPassword={requiresPassword}
+        requiresPassword={requiresPassword && !isOrganizer}
         password={password}
         setPassword={setPassword}
         error={isPasswordError ? error : null} 
@@ -283,10 +313,10 @@ const MeetingRoomPage: React.FC = () => {
         serverUrl={joinData.liveKitUrl}
         onDisconnected={() => navigate('/')}
         data-lk-theme="default"
-        className="w-full h-full flex overflow-hidden lg:flex-row flex-col justify-center"
+        className="w-full h-full flex overflow-hidden lg:flex-row flex-col"
       >
         <LayoutContextProvider>
-           <div className={`h-full transition-all duration-500 ease-in-out flex flex-col overflow-hidden ${isSidebarOpen ? 'w-full lg:w-[calc(100%-460px)]' : 'w-full lg:w-[calc(100%-460px)]'}`}>
+           <div className="flex-1 h-full min-w-0 overflow-hidden flex flex-col relative transition-all duration-500 ease-in-out">
             <MeetingMainStage 
               meetingId={id || ''}
               isSidebarOpen={isSidebarOpen}
@@ -303,6 +333,7 @@ const MeetingRoomPage: React.FC = () => {
             onClose={() => setIsSidebarOpen(false)}
             activeTab={activeTab}
             setActiveTab={setActiveTab}
+            meetingId={joinData.meetingId}
             organizerId={joinData.organizerId}
             isOrganizer={isOrganizer}
           />

@@ -34,9 +34,11 @@ import apiClient from '@/lib/apiClient'
 import type { Meeting } from '@/types/api'
 import SettingToggle from './components/details/SettingToggle'
 import EmailTagInput from './components/details/EmailTagInput'
+import { useTimeTheme } from '@/hooks/useTimeTheme'
 
 const MeetingDetailsPage: React.FC = () => {
   const { t } = useTranslation()
+  const theme = useTimeTheme()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const location = useLocation()
@@ -44,7 +46,7 @@ const MeetingDetailsPage: React.FC = () => {
   
   const isNew = location.pathname === '/meetings/new'
   const [copied, setCopied] = useState(false)
-  const [isInstant, setIsInstant] = useState(false)
+  const [isInstant, setIsInstant] = useState(true)
   
   const [formData, setFormData] = useState({
     title: '',
@@ -67,9 +69,33 @@ const MeetingDetailsPage: React.FC = () => {
     password: ''
   })
   
+  const [initialData, setInitialData] = useState<string>('')
+  const [isDirty, setIsDirty] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
+
+  // Track if data has changed
+  useEffect(() => {
+    if (initialData) {
+      const currentData = JSON.stringify({
+        ...formData
+      })
+      setIsDirty(currentData !== initialData)
+    }
+  }, [formData, initialData])
+
+  // Browser Warning on Unsaved Changes
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (isDirty) {
+        e.preventDefault()
+        e.returnValue = ''
+      }
+    }
+    window.addEventListener('beforeunload', handleBeforeUnload)
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload)
+  }, [isDirty])
 
   // 1. Fetch Meeting Details
   const { data: meeting, isLoading, isError } = useQuery({
@@ -118,7 +144,7 @@ const MeetingDetailsPage: React.FC = () => {
       const start = new Date(meeting.startTime)
       const localISO = new Date(start.getTime() - start.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
       
-      setFormData({
+      const loadedData = {
         title: meeting.title,
         description: meeting.description || '',
         startTime: localISO,
@@ -128,8 +154,15 @@ const MeetingDetailsPage: React.FC = () => {
         allowDisplayNameEdit: meeting.allowDisplayNameEdit ?? true,
         inviteeEmails: meeting.inviteeEmails || [],
         reminderMinutes: meeting.reminderMinutes || 10,
-        password: '' // Keep empty as hashed password won't be sent from server
-      })
+        password: meeting.password || ''
+      }
+      
+      setFormData(loadedData)
+      setInitialData(JSON.stringify(loadedData))
+      setIsInstant(false)
+    } else if (isNew) {
+      setInitialData(JSON.stringify(formData))
+      setIsInstant(true)
     }
   }, [meeting, isNew])
 
@@ -161,6 +194,12 @@ const MeetingDetailsPage: React.FC = () => {
       queryClient.invalidateQueries({ queryKey: ['meetings'] })
       queryClient.invalidateQueries({ queryKey: ['meeting', id] })
       
+      // Update initialData with current formData to clear isDirty
+      const updatedFormData = { ...formData }
+      setFormData(updatedFormData)
+      setInitialData(JSON.stringify(updatedFormData))
+      setIsDirty(false)
+
       if (isInstant && isNew) {
         navigate(`/room/${res.data.id}`)
       } else if (isNew) {
@@ -200,7 +239,7 @@ const MeetingDetailsPage: React.FC = () => {
   if (isLoading && !isNew) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-cyan-600" />
+        <Loader2 className={`h-10 w-10 animate-spin ${theme.colors.primary}`} />
       </div>
     )
   }
@@ -315,7 +354,7 @@ const MeetingDetailsPage: React.FC = () => {
                   <input
                     type="text"
                     placeholder={t('meeting.title_example')}
-                    className="w-full border-b-2 border-slate-200 bg-transparent py-2 text-xl font-black placeholder:text-slate-300 focus:border-cyan-500 focus:outline-none transition-all"
+                    className={`w-full border-b-2 border-slate-200 bg-transparent py-2 text-xl font-black placeholder:text-slate-300 focus:outline-none transition-all focus:border-${theme.colors.primary.split('-')[1]}-500`}
                     value={formData.title}
                     onChange={e => setFormData({ ...formData, title: e.target.value })}
                   />
@@ -518,8 +557,8 @@ const MeetingDetailsPage: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             className="rounded-[2.5rem] border border-white/80 bg-white/70 p-8 shadow-2xl backdrop-blur-xl"
           >
-             <h3 className="text-lg font-black text-cyan-700 mb-8 flex items-center gap-3">
-                <div className="h-1.5 w-1.5 rounded-full bg-cyan-500 animate-pulse" />
+             <h3 className={`text-lg font-black mb-8 flex items-center gap-3 transition-colors duration-1000 ${theme.colors.primary}`}>
+                <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${theme.colors.primary.replace('text-', 'bg-')}`} />
                 {t('meeting.control_center')}
              </h3>
              
@@ -545,13 +584,14 @@ const MeetingDetailsPage: React.FC = () => {
                 <button 
                   disabled={mutation.isPending || !formData.title || (!formData.startTime && !isInstant)}
                   onClick={() => mutation.mutate(formData)}
-                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-br from-cyan-600 to-indigo-600 py-4 text-sm font-black text-white shadow-xl shadow-cyan-100 transition hover:scale-[1.05] active:scale-95 disabled:opacity-50 disabled:grayscale disabled:hover:scale-100"
+                  className={`flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-br transition-all duration-500 py-4 text-sm font-black text-white shadow-xl hover:scale-[1.05] active:scale-95 disabled:opacity-50 disabled:grayscale disabled:hover:scale-100 ${theme.colors.textGradient.replace('from-', 'from-').replace('to-', 'to-')} ${isDirty ? 'animate-pulse shadow-[0_0_20px_rgba(34,211,238,0.4)]' : theme.period === 'morning' ? 'shadow-cyan-100' : theme.period === 'afternoon' ? 'shadow-orange-100' : 'shadow-indigo-100'}`}
                 >
                   {mutation.isPending ? (
                     <Loader2 className="h-5 w-5 animate-spin" />
                   ) : (
                     <>
                       {isNew ? (isInstant ? t('meeting.launch_now') : t('meeting.schedule_session')) : t('meeting.save_changes')}
+                      {isDirty && !isNew && <div className="h-2 w-2 rounded-full bg-white animate-bounce" />}
                       <ArrowRight className="h-4 w-4" />
                     </>
                   )}
@@ -627,7 +667,7 @@ const MeetingDetailsPage: React.FC = () => {
                                 </div>
                                 <div>
                                    <p className="text-sm font-black text-slate-900">{p.user?.firstName} {p.user?.lastName}</p>
-                                   <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                                   <p className="text-[10px] font-black text-slate-400">
                                      {p.isOrganizer ? 'Chủ phòng' : 'Thành viên'}
                                   </p>
                                 </div>

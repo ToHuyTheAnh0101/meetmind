@@ -41,6 +41,8 @@ export class MeetingsController {
         ? `${meeting.organizer.firstName} ${meeting.organizer.lastName}`
         : 'Unknown',
       participantCount: meeting.participants?.length || 0,
+      hasPassword: !!meeting.password,
+      organizerId: meeting.organizerId,
       createdAt: meeting.createdAt,
     };
   }
@@ -128,6 +130,16 @@ export class MeetingsController {
     @Request() req: { user: { id: string } },
   ): Promise<void> {
     return this.meetingsService.rejectParticipant(id, userId, req.user.id);
+  }
+
+  @Post(':id/leave')
+  @UseGuards(JwtAuthGuard)
+  @HttpCode(HttpStatus.NO_CONTENT)
+  async leaveMeeting(
+    @Param('id') id: string,
+    @Request() req: { user: { id: string } },
+  ): Promise<void> {
+    return this.meetingsService.leaveMeeting(id, req.user.id);
   }
 
   @Get(':id/participants')

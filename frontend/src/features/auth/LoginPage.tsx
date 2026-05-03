@@ -4,8 +4,12 @@ import { motion, useMotionValue, useSpring, useTransform } from 'framer-motion'
 import { Button } from '@/components/ui/button'
 import Logo from '@/components/Logo'
 
+import { useTimeTheme } from '@/hooks/useTimeTheme'
+
 const LoginPage: React.FC = () => {
   const { t } = useTranslation()
+  const theme = useTimeTheme()
+  
   const handleLogin = () => {
     window.location.href = `${import.meta.env.VITE_API_URL}/auth/google`
   }
@@ -30,20 +34,20 @@ const LoginPage: React.FC = () => {
   }, [mouseX, mouseY])
 
   return (
-    <div className="relative min-h-screen w-full flex items-center justify-center p-4 overflow-hidden bg-[#f8fafc]">
+    <div className={`relative min-h-screen w-full flex items-center justify-center p-4 overflow-hidden transition-colors duration-1000 ${theme.period === 'evening' ? 'bg-[#f1f5f9]' : 'bg-[#f8fafc]'}`}>
       {/* 1. IMMERSIVE BACKGROUND LAYER */}
       <div className="absolute inset-0 z-0">
         {/* Animated Mesh Gradients */}
-        <div className="mesh-gradient-light opacity-60" />
+        <div className={`mesh-gradient-light opacity-60 transition-opacity duration-1000 ${theme.period === 'evening' ? 'opacity-40' : 'opacity-60'}`} />
         
         {/* Floating Blobs */}
         <motion.div 
           style={{ x: moveX, y: moveY }}
-          className="absolute top-1/4 left-1/4 h-[400px] w-[400px] rounded-full bg-cyan-200/30 blur-[100px]" 
+          className={`absolute top-1/4 left-1/4 h-[400px] w-[400px] rounded-full blur-[100px] transition-colors duration-1000 ${theme.colors.blob1}`} 
         />
         <motion.div 
           style={{ x: useTransform(moveX, (v) => -v), y: useTransform(moveY, (v) => -v) }}
-          className="absolute bottom-1/4 right-1/4 h-[500px] w-[500px] rounded-full bg-indigo-200/30 blur-[120px]" 
+          className={`absolute bottom-1/4 right-1/4 h-[500px] w-[500px] rounded-full blur-[120px] transition-colors duration-1000 ${theme.colors.blob2}`} 
         />
 
         {/* MOCK DASHBOARD PREVIEW (Blurred) */}
@@ -104,7 +108,7 @@ const LoginPage: React.FC = () => {
             </motion.div>
             <div className="text-center">
               <h3 className="text-xl font-black tracking-tighter text-slate-900">MeetMind Sync</h3>
-              <p className="mt-1 text-[11px] font-bold uppercase tracking-widest text-cyan-600">
+              <p className={`mt-1 text-[11px] font-bold transition-colors duration-1000 ${theme.colors.primary}`}>
                 {t('auth.premium_collaboration')}
               </p>
             </div>
@@ -112,23 +116,30 @@ const LoginPage: React.FC = () => {
 
           {/* Right Side: Form */}
           <div className="flex-1 space-y-8 sm:space-y-10">
-            <header className="space-y-4">
-              <div className="inline-flex items-center gap-2 rounded-full bg-cyan-50 px-3 py-1 text-[10px] font-bold uppercase tracking-widest text-cyan-700 sm:text-xs">
-                <span className="flex h-1.5 w-1.5 rounded-full bg-cyan-600 animate-pulse" />
-                V2.0 Intelligent Hub
+            <header className="space-y-6">
+              <div className="flex">
+                <div className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-[10px] font-bold transition-colors duration-1000 sm:text-xs ${theme.colors.accent}`}>
+                  <span className={`flex h-1.5 w-1.5 rounded-full animate-pulse ${theme.colors.primary.replace('text-', 'bg-')}`} />
+                  V2.0 Intelligent Hub
+                </div>
               </div>
-              <h1 className="text-4xl font-black tracking-tight text-slate-900 sm:text-5xl lg:text-6xl">
-                {t('auth.welcome_back')} <br /> 
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-indigo-600">{t('auth.good_morning')}</span>
+              <h1 className="text-4xl font-black tracking-tighter text-slate-900 sm:text-5xl lg:text-5xl leading-[1.2]">
+                <span className="block whitespace-nowrap">
+                  {t(theme.greetingPrefixKey)}
+                </span>
+                <span className={`block whitespace-nowrap text-transparent bg-clip-text bg-gradient-to-r transition-all duration-1000 pb-2 ${theme.colors.textGradient}`}>
+                  {t(theme.greetingSuffixKey)}
+                </span>
               </h1>
-              <p className="max-w-sm text-sm font-medium text-slate-500 sm:text-lg">
+              <p className="max-w-md text-sm font-medium text-slate-500 sm:text-lg leading-relaxed">
                 {t('auth.system_ready')}
               </p>
             </header>
 
+
             <div className="space-y-8">
               <div className="space-y-4">
-                <label className="text-[11px] font-bold uppercase tracking-widest text-slate-400">
+                <label className="text-[11px] font-bold text-slate-400">
                   {t('auth.auth_required')}
                 </label>
                 <Button
@@ -160,7 +171,7 @@ const LoginPage: React.FC = () => {
                 </Button>
               </div>
 
-              <div className="flex flex-col gap-4 text-[10px] font-bold uppercase tracking-widest text-slate-400 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-4 text-[10px] font-bold text-slate-400 sm:flex-row sm:items-center sm:justify-between">
                 <span className="flex items-center gap-2">
                   <div className="h-1 w-8 rounded-full bg-slate-200" />
                   {t('auth.secured_by')} MeetMind

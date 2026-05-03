@@ -54,10 +54,12 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
 
   const updateMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
+      console.log('InRoomSettings: Updating meeting with data:', data);
       setSaveStatus('saving');
       return apiClient.put(`/meetings/${meetingId}`, data);
     },
     onSuccess: () => {
+      console.log('InRoomSettings: Update successful');
       setSaveStatus('saved');
       queryClient.invalidateQueries({ queryKey: ['meeting', meetingId] });
       setTimeout(() => setSaveStatus('idle'), 2000);

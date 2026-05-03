@@ -11,8 +11,7 @@ import {
   VideoTrack,
   useConnectionQualityIndicator,
   TrackToggle,
-  DisconnectButton,
-  useVisualStableUpdate
+  DisconnectButton
 } from '@livekit/components-react';
 import { Track, ConnectionQuality } from 'livekit-client';
 import { 
@@ -72,7 +71,7 @@ const ParticipantAvatarOverlay = () => {
       </div>
       
       <div className="relative z-10 mt-3 px-6 py-2 rounded-full bg-black/60 border border-white/30 backdrop-blur-xl shadow-2xl">
-         <span className="text-sm font-black text-white tracking-[0.2em] uppercase"><ParticipantName /></span>
+         <span className="text-sm font-bold text-white tracking-tight"><ParticipantName /></span>
       </div>
     </div>
   );
@@ -87,7 +86,7 @@ const ParticipantStatusOverlay = () => {
        <div className="flex items-center gap-2">
          <TrackMutedIndicator trackRef={{ participant: p, source: Track.Source.Microphone }} className="scale-110" />
          {isCameraOn && (
-           <span className="text-xs font-bold text-white tracking-wider uppercase truncate max-w-[120px]">
+           <span className="text-xs font-bold text-white truncate max-w-[120px]">
              <ParticipantName />
            </span>
          )}
@@ -167,17 +166,17 @@ const CustomVideoGrid = React.memo(() => {
   const cameraTracks = useTracks([{ source: Track.Source.Camera, withPlaceholder: true }]);
   const screenShareTracks = useTracks([{ source: Track.Source.ScreenShare, withPlaceholder: false }]);
   const [page, setPage] = useState(0);
-  const itemsPerPage = 12;
+  const itemsPerPage = 6;
 
-  const stabilizedTracks = useVisualStableUpdate(cameraTracks, 48);
+
 
   const activeScreenShare = useMemo(() => 
     screenShareTracks.length > 0 ? screenShareTracks[0] : null
   , [screenShareTracks]);
 
   const totalPages = useMemo(() => 
-    Math.ceil(stabilizedTracks.length / itemsPerPage)
-  , [stabilizedTracks.length]);
+    Math.ceil(cameraTracks.length / itemsPerPage)
+  , [cameraTracks.length]);
 
   useEffect(() => {
     if (page >= totalPages && totalPages > 0) {
@@ -186,8 +185,8 @@ const CustomVideoGrid = React.memo(() => {
   }, [totalPages, page]);
 
   const currentTracks = useMemo(() => 
-    stabilizedTracks.slice(page * itemsPerPage, (page + 1) * itemsPerPage)
-  , [stabilizedTracks, page]);
+    cameraTracks.slice(page * itemsPerPage, (page + 1) * itemsPerPage)
+  , [cameraTracks, page]);
 
   const handlePrevPage = useCallback(() => setPage(p => Math.max(0, p - 1)), []);
   const handleNextPage = useCallback(() => setPage(p => Math.min(totalPages - 1, p + 1)), [totalPages]);
@@ -201,7 +200,7 @@ const CustomVideoGrid = React.memo(() => {
         
         <div className="flex-1 h-full overflow-y-auto custom-scrollbar pr-2">
            <div className="flex flex-col gap-4">
-              {stabilizedTracks.map((track) => (
+              {cameraTracks.map((track) => (
                 <div key={`${track.participant.identity}-${track.source}`} className="w-full flex-shrink-0 aspect-video">
                   <CustomParticipantTile trackRef={track} />
                 </div>

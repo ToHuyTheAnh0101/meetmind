@@ -73,7 +73,7 @@ const EmailTagInput: React.FC<EmailTagInputProps> = ({ emails, onChange }) => {
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-[11px] font-bold uppercase tracking-widest"
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-[11px] font-bold"
           >
             <AlertCircle className="h-3 w-3" />
             {error}

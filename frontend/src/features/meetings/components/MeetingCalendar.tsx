@@ -136,7 +136,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
               >
                 <ChevronLeft className="h-5 w-5" />
               </button>
-              <div className="px-4 text-sm font-black uppercase tracking-widest text-slate-900 min-w-[140px] text-center">
+              <div className="px-4 text-sm font-black text-slate-900 min-w-[140px] text-center">
                 {activeMonth.toLocaleString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { month: 'long', year: 'numeric' })}
               </div>
               <button 
@@ -151,7 +151,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
                 setActiveMonth(new Date(today.getFullYear(), today.getMonth(), 1))
                 setSelectedDate(today)
               }}
-              className="px-4 py-2 text-xs font-bold uppercase tracking-widest text-cyan-600 hover:text-cyan-700 transition"
+              className="px-4 py-2 text-xs font-bold text-cyan-600 hover:text-cyan-700 transition"
             >
               {t('meeting.today')}
             </button>
@@ -160,7 +160,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
 
         <div className="grid grid-cols-7 gap-px overflow-hidden rounded-2xl border border-slate-200 bg-slate-200 shadow-inner">
           {WEEK_DAYS.map(day => (
-            <div key={day} className="bg-slate-50 py-3 text-center text-[11px] font-bold uppercase tracking-widest text-slate-400 sm:text-xs">
+            <div key={day} className="bg-slate-50 py-3 text-center text-[11px] font-bold text-slate-400 sm:text-xs">
               {t(`calendar.days.${day.toLowerCase()}`)}
             </div>
           ))}
@@ -214,7 +214,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
           className="flex h-full flex-col rounded-3xl border border-white/50 bg-white/70 p-6 shadow-xl backdrop-blur-sm"
         >
           <div className="mb-6">
-            <p className="text-[11px] font-bold uppercase tracking-widest text-slate-400">{t('meeting.selected_date')}</p>
+            <p className="text-[11px] font-bold text-slate-400">{t('meeting.selected_date')}</p>
             <h4 className="mt-1 text-xl font-black text-slate-900">
               {selectedDate.toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', { weekday: 'long', month: 'long', day: 'numeric' })}
             </h4>
@@ -256,7 +256,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
 
           <button 
             onClick={onScheduleClick}
-            className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 text-xs font-black uppercase tracking-widest text-white transition hover:bg-slate-800 active:scale-95"
+            className="mt-8 flex w-full items-center justify-center gap-2 rounded-2xl bg-slate-900 py-4 text-xs font-black text-white transition hover:bg-slate-800 active:scale-95"
           >
             <Plus className="h-4 w-4" /> {t('meeting.schedule_new')}
           </button>

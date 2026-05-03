@@ -23,7 +23,7 @@ apiClient.interceptors.request.use(
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
+    if (error.response?.status === 401 && !error.config?._skipLogout) {
       clearToken()
       // Dispatch event for AuthContext to handle redirect
       window.dispatchEvent(new Event('auth:logout'))

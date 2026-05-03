@@ -83,7 +83,7 @@ const ParticipantItem = ({ organizerId }: { organizerId: string }) => {
           </div>
           <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <ParticipantName className="text-[16px] font-semibold text-slate-900" />
+                <ParticipantName className="text-[15px] font-semibold text-slate-900" />
                 {p.identity === organizerId && (
                   <span className="px-1.5 py-0.5 rounded-md bg-cyan-100 text-cyan-600 text-[11px] font-bold border border-cyan-200">
                     {t('meeting.host')}
@@ -111,7 +111,7 @@ const CustomParticipantList: React.FC<{ organizerId: string }> = ({ organizerId 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-2">
-         <span className="text-[18px] font-bold text-slate-800">{t('meeting.participants', { count: participants.length })}</span>
+         <span className="text-base font-bold text-slate-800">{t('meeting.participants', { count: participants.length })}</span>
       </div>
       <ParticipantLoop participants={participants}>
         <ParticipantItem organizerId={organizerId} />

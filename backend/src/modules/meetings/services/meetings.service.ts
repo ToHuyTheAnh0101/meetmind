@@ -37,12 +37,7 @@ export class MeetingsService {
 
   async create(dto: CreateMeetingDto, userId: string): Promise<Meeting> {
     const { password, ...meetingData } = dto;
-    let hashedPassword = password;
-
-    if (password) {
-      const salt = await bcrypt.genSalt();
-      hashedPassword = await bcrypt.hash(password, salt);
-    }
+    const hashedPassword = password; // Raw text
 
     const organizerPermissions = [
       MeetingPermission.EDIT_SUMMARY,
@@ -115,8 +110,7 @@ export class MeetingsService {
           throw new UnauthorizedException('Password required for this meeting');
         }
         
-        const isMatch = await bcrypt.compare(password, meeting.password);
-        if (!isMatch) {
+        if (password !== meeting.password) {
           throw new UnauthorizedException('Invalid meeting password');
         }
       }
@@ -141,13 +135,34 @@ export class MeetingsService {
           userId,
           isOrganizer: isOrganizer,
           status: initialStatus,
+          isInMeeting: initialStatus === ParticipantStatus.ADMITTED,
           permissions: isOrganizer ? organizerPermissions : [],
         });
-      } else if (isOrganizer && !participant.isOrganizer) {
-        // Upgrade existing record to organizer if they are the meeting owner
-        participant.isOrganizer = true;
-        participant.status = ParticipantStatus.ADMITTED;
-        participant.permissions = organizerPermissions;
+      } else {
+        // If participant already exists
+        if (isOrganizer && !participant.isOrganizer) {
+          // Upgrade existing record to organizer if they are the meeting owner
+          participant.isOrganizer = true;
+          participant.status = ParticipantStatus.ADMITTED;
+          participant.permissions = organizerPermissions;
+        }
+
+        // Refined Waiting Room Logic: 
+        // If room is protected, and user is not in the meeting (new join, re-join, or was denied)
+        // Put them back to WAITING to be admitted again
+        if (
+          meeting.waitingRoomEnabled && 
+          !isOrganizer && 
+          (!participant.isInMeeting || participant.status === ParticipantStatus.DENIED)
+        ) {
+          participant.status = ParticipantStatus.WAITING;
+        }
+
+        // If they are ADMITTED (or just became admitted), mark as in meeting
+        if (participant.status === ParticipantStatus.ADMITTED) {
+          participant.isInMeeting = true;
+        }
+        
         await this.participantsRepository.save(participant);
       }
 
@@ -165,7 +180,7 @@ export class MeetingsService {
             status: participant.status,
             token: '',
             liveKitUrl: '',
-            participants: [], // Optional: hide other participants from waiting users
+            participants: [],
          };
       }
       
@@ -225,6 +240,7 @@ export class MeetingsService {
   }
 
   async admitParticipant(id: string, userId: string, hostId: string): Promise<void> {
+    console.log(`[MeetingsService] Admitting user ${userId} to meeting ${id} by host ${hostId}`);
     const meeting = await this.findOne(id);
     if (meeting.organizerId !== hostId) {
       throw new ForbiddenException('Only the organizer can admit participants');
@@ -236,6 +252,7 @@ export class MeetingsService {
     }
 
     participant.status = ParticipantStatus.ADMITTED;
+    participant.isInMeeting = true;
     await this.participantsRepository.save(participant);
   }
 
@@ -252,6 +269,14 @@ export class MeetingsService {
 
     participant.status = ParticipantStatus.DENIED;
     await this.participantsRepository.save(participant);
+  }
+
+  async leaveMeeting(id: string, userId: string): Promise<void> {
+    const participant = await this.participantsRepository.findByMeetingAndUser(id, userId);
+    if (participant) {
+      participant.isInMeeting = false;
+      await this.participantsRepository.save(participant);
+    }
   }
 
   async endMeeting(id: string, userId: string): Promise<Meeting> {
@@ -335,9 +360,8 @@ export class MeetingsService {
 
     const { password, ...updateData } = dto;
     
-    if (password) {
-      const salt = await bcrypt.genSalt();
-      updateData['password'] = await bcrypt.hash(password, salt);
+    if (password !== undefined) {
+      updateData['password'] = password;
     }
 
     Object.assign(meeting, {

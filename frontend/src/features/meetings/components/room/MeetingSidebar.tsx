@@ -18,6 +18,7 @@ interface MeetingSidebarProps {
   onClose: () => void;
   activeTab: 'chat' | 'roster' | 'lobby' | 'settings';
   setActiveTab: (tab: 'chat' | 'roster' | 'lobby' | 'settings') => void;
+  meetingId: string;
   organizerId: string;
   isOrganizer: boolean;
 }
@@ -27,6 +28,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   onClose,
   activeTab,
   setActiveTab,
+  meetingId,
   organizerId,
   isOrganizer,
 }) => {
@@ -51,12 +53,12 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
           animate={{ x: 0 }}
           exit={{ x: 400 }}
           transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-          className="w-full lg:w-[460px] h-full bg-slate-100 border-l border-slate-400 flex relative z-40 shadow-[-20px_0_50px_rgba(0,0,0,0.05)]"
+          className="w-full lg:w-[320px] xl:w-[380px] 2xl:w-[420px] h-full bg-slate-100 border-l border-slate-400 flex relative z-40 shadow-[-20px_0_50px_rgba(0,0,0,0.05)]"
         >
           {/* Tab Content Container */}
           <div className="flex-1 overflow-hidden flex flex-col">
               <div className="p-6 border-b border-slate-400 flex items-center justify-center bg-white/50 backdrop-blur-sm">
-                <h3 className="text-xl text-slate-950 font-premium-ink tracking-tight">
+                <h3 className="text-lg text-slate-950 font-premium-ink tracking-tight">
                   {tabs.find(t => t.id === activeTab)?.label || t('meeting.workspace')}
                 </h3>
               </div>
@@ -69,10 +71,10 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                   </div>
                 )}
                 {activeTab === 'lobby' && (
-                   <LobbyManagement meetingId={organizerId} />
+                   <LobbyManagement meetingId={meetingId} />
                 )}
                 {activeTab === 'settings' && (
-                   <InRoomSettings meetingId={organizerId} />
+                   <InRoomSettings meetingId={meetingId} />
                 )}
              </div>
           </div>
