@@ -186,6 +186,7 @@
     "permanent_action": "This action is permanent and cannot be undone.",
     "end_for_all": "End Meeting for All",
     "keep_active": "Keep Active",
-    "live_session": "Live Session Ongoing"
+    "live_session": "Live Session Ongoing",
+    "transcript": "Transcript"
   }
 }

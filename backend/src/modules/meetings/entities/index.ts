@@ -30,6 +30,7 @@ export type { TemplateSectionDef } from './content/summary-template.entity';
 export { TranscriptChunk } from './content/transcript-chunk.entity';
 export { Summary } from './content/summary.entity';
 export { Attachment, AttachmentType } from './content/attachment.entity';
+export { MeetingRecording } from './content/meeting-recording.entity';
 
 // AI Features
 export { ChatHistory, ChatMessageType } from './ai/chat-history.entity';

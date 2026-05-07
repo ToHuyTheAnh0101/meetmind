@@ -5,6 +5,7 @@ import {
   RoomServiceClient,
   Room,
   ParticipantInfo,
+  WebhookReceiver,
 } from 'livekit-server-sdk';
 
 export interface LiveKitTokenGrants {
@@ -104,5 +105,13 @@ export class LiveKitService {
         `Room ${roomName} might already be deleted: ${(error as Error).message}`,
       );
     }
+  }
+
+  /**
+   * Xác thực và nhận dữ liệu từ Webhook LiveKit
+   */
+  async receiveWebhook(body: string, authHeader: string) {
+    const receiver = new WebhookReceiver(this.apiKey, this.apiSecret);
+    return receiver.receive(body, authHeader);
   }
 }

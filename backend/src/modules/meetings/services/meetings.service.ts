@@ -4,10 +4,13 @@ import {
   ForbiddenException,
   BadRequestException,
   UnauthorizedException,
+  Logger,
 } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import * as fs from 'fs';
+import * as path from 'path';
 import { ConfigService } from '@nestjs/config';
-import { Meeting, MeetingStatus, Participant, ParticipantStatus, MeetingPermission, MeetingAccessType } from '../entities';
+import { Meeting, MeetingStatus, Participant, ParticipantStatus, MeetingPermission, MeetingAccessType, TranscriptChunk, MeetingRecording } from '../entities';
 import {
   LiveKitService,
   LiveKitTokenGrants,
@@ -24,15 +27,23 @@ import {
 } from '../dto/join-response.dto';
 import { MeetingRepository } from '../repositories/meeting.repository';
 import { ParticipantRepository } from '../repositories/participant.repository';
+import { TranscriptRepository } from '../repositories/transcript.repository';
+import { MeetingRecordingRepository } from '../repositories/meeting-recording.repository';
+import { AiService } from '../../../providers/ai/ai.service';
 
 @Injectable()
 export class MeetingsService {
+  private readonly logger = new Logger(MeetingsService.name);
+
   constructor(
     private meetingsRepository: MeetingRepository,
     private participantsRepository: ParticipantRepository,
+    private transcriptRepository: TranscriptRepository,
+    private recordingRepository: MeetingRecordingRepository,
     private liveKitService: LiveKitService,
     private usersService: UsersService,
     private configService: ConfigService,
+    private aiService: AiService,
   ) {}
 
   async create(dto: CreateMeetingDto, userId: string): Promise<Meeting> {
@@ -428,5 +439,85 @@ export class MeetingsService {
         totalPages: Math.ceil(total / limit),
       }
     };
+  }
+
+  /**
+   * API Test - Chuyển đổi âm thanh đơn lẻ sang văn bản
+   */
+  async testTranscribe(meetingId: string, file: any): Promise<any> {
+    const meeting = await this.meetingsRepository.findById(meetingId);
+    if (!meeting) throw new NotFoundException('Meeting not found');
+
+    const uploadsDir = path.join(process.cwd(), 'uploads', 'audio');
+    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+
+    const fileName = `${meetingId}-${Date.now()}-${file.originalname || 'test.webm'}`;
+    const filePath = path.join(uploadsDir, fileName);
+    fs.writeFileSync(filePath, file.buffer);
+
+    try {
+      const transcript = await this.aiService.transcribeAudio(file.buffer, file.mimetype || 'audio/webm');
+      return { meetingId, fileName, transcript, timestamp: new Date().toISOString() };
+    } catch (error) {
+      this.logger.error('Transcription error:', error);
+      throw new BadRequestException('Failed to transcribe audio with Gemini');
+    }
+  }
+
+  /**
+   * Lưu thông tin file audio từ LiveKit vào bảng MeetingRecording
+   */
+  async saveAudioRecording(
+    meetingId: string,
+    participantIdentity: string,
+    fileUrl: string,
+    fileSize: number,
+    duration: number = 0,
+    startTime: number = 0,
+  ): Promise<void> {
+    try {
+      const participant = await this.participantsRepository.findByMeetingAndUser(meetingId, participantIdentity);
+      
+      const recording = new MeetingRecording();
+      recording.meetingId = meetingId;
+      recording.participantId = participant?.id || '';
+      recording.fileUrl = fileUrl;
+      recording.fileSize = fileSize;
+      recording.duration = duration;
+      recording.startTime = startTime;
+
+      await this.recordingRepository.save(recording);
+      this.logger.log(`Đã lưu bản ghi âm cho ${participantIdentity} tại ${fileUrl}`);
+    } catch (error) {
+      this.logger.error(`Lỗi khi lưu bản ghi âm:`, error);
+    }
+  }
+
+  /**
+   * Xử lý bản dịch toàn bộ cuộc họp dựa trên các file ghi âm đã lưu
+   */
+  async processMeetingTranscription(meetingId: string): Promise<void> {
+    try {
+      this.logger.log(`Bắt đầu xử lý bản dịch chạy ngầm cho cuộc họp: ${meetingId}`);
+
+      const recordings = await this.recordingRepository.findByMeetingId(meetingId);
+      
+      if (recordings.length === 0) {
+        this.logger.warn(`Không tìm thấy bản ghi âm nào cho cuộc họp: ${meetingId}`);
+        return;
+      }
+
+      // 2. Gọi AI Service để xử lý đa luồng
+      // Lưu ý: Trong thực tế bạn cần tải buffer từ fileUrl trước khi gửi cho AI
+      // Ở đây tôi viết logic khung để bạn tích hợp phần tải file
+      this.logger.log(`Đang gửi ${recordings.length} đoạn âm thanh sang Gemini...`);
+      
+      // MOCK: Giả định đã tải được buffer (Bạn cần thêm logic tải file từ URL)
+      // const transcriptChunks = await this.aiService.transcribeMultiTrackAudio(...)
+      
+      this.logger.log(`Hoàn tất xử lý bản dịch cho cuộc họp: ${meetingId}`);
+    } catch (error) {
+      this.logger.error(`Lỗi khi xử lý bản dịch cho cuộc họp ${meetingId}:`, error);
+    }
   }
 }

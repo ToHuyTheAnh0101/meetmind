@@ -11,8 +11,16 @@ import {
   HttpCode,
   HttpStatus,
   Query,
+  Headers,
+  Req,
+  UseInterceptors,
+  UploadedFile,
+  BadRequestException,
 } from '@nestjs/common';
+import { Request as ExpressRequest } from 'express';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { MeetingsService } from '../services/meetings.service';
+import { LiveKitService } from '../../../providers/livekit/livekit.service';
 import { Meeting, Participant } from '../entities';
 import { CreateMeetingDto } from '../dto/create-meeting.dto';
 import { UpdateMeetingDto } from '../dto/update-meeting.dto';
@@ -24,7 +32,10 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @Controller('meetings')
 export class MeetingsController {
-  constructor(private meetingsService: MeetingsService) {}
+  constructor(
+    private readonly meetingsService: MeetingsService,
+    private readonly liveKitService: LiveKitService,
+  ) {}
 
   @Get(':id/public')
   async getMeetingPublicInfo(@Param('id') id: string): Promise<any> {
@@ -150,5 +161,51 @@ export class MeetingsController {
     @Query('limit') limit: number = 10,
   ): Promise<any> {
     return this.meetingsService.getParticipants(id, page, limit);
+  }
+
+  @Post('webhooks/livekit')
+  async handleLiveKitWebhook(
+    @Headers('authorization') authHeader: string,
+    @Req() req: any,
+  ) {
+    const event = await this.liveKitService.receiveWebhook(
+      req.rawBody || JSON.stringify(req.body),
+      authHeader,
+    );
+
+    if (event.event === 'egress_ended') {
+      const egressInfo = event.egressInfo as any;
+      if (egressInfo && egressInfo.fileResults?.[0]) {
+        const meetingId = egressInfo.roomName;
+        const fileResult = egressInfo.fileResults[0];
+        const participantIdentity = egressInfo.participantIdentity;
+        
+        // Lưu thông tin bản ghi âm vào DB
+        await this.meetingsService.saveAudioRecording(
+          meetingId,
+          participantIdentity,
+          fileResult.location,
+          Number(fileResult.size),
+          Number(fileResult.duration) / 1000000000, // Chuyển từ nano giây sang giây
+          egressInfo.startedAt ? Number(egressInfo.startedAt) / 1000000000 : 0
+        );
+        
+        console.log(`LiveKit Egress Ended for room ${meetingId}. Audio saved at: ${fileResult.location}`);
+      }
+    }
+
+    return { status: 'ok' };
+  }
+
+  @Post(':id/test-transcribe')
+  @UseInterceptors(FileInterceptor('audio'))
+  async testTranscribe(
+    @Param('id') id: string,
+    @UploadedFile() file: any,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No audio file provided');
+    }
+    return this.meetingsService.testTranscribe(id, file);
   }
 }

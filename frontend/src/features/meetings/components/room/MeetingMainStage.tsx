@@ -23,16 +23,17 @@ import {
   ChevronLeft, 
   ChevronRight, 
   Settings, 
-  LogOut
+  LogOut,
+  FileText
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface MeetingMainStageProps {
   meetingId: string;
   isSidebarOpen: boolean;
-  activeTab: 'chat' | 'roster' | 'lobby' | 'settings';
+  activeTab: 'chat' | 'roster' | 'lobby' | 'settings' | 'transcript';
   isOrganizer: boolean;
-  onToggleSidebar: (tab: 'chat' | 'roster' | 'lobby' | 'settings') => void;
+  onToggleSidebar: (tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'transcript') => void;
   onEndSession: () => void;
   onLeaveSession?: () => void;
 }
@@ -408,6 +409,12 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                   </button>
                 </>
               )}
+              <button 
+                 onClick={() => onToggleSidebar('transcript')}
+                 className={`h-10 w-10 flex items-center justify-center rounded-xl transition-all ${isSidebarOpen && activeTab === 'transcript' ? 'bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.4)]' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}
+              >
+                 <FileText className="h-4 w-4" />
+              </button>
               <div className="w-px h-6 bg-white/10 mx-1" />
            </>
          )}

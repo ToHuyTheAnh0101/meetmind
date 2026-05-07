@@ -9,6 +9,7 @@ import {
   MeetingPoll,
   Summary,
   Attachment,
+  MeetingRecording,
   SummaryTemplate,
   Notification,
   AccessRequest,
@@ -38,8 +39,12 @@ import { PollRepository } from './repositories/poll.repository';
 import { SummaryRepository } from './repositories/summary.repository';
 import { SummaryTemplateRepository } from './repositories/summary-template.repository';
 import { AttachmentRepository } from './repositories/attachment.repository';
+import { TranscriptRepository } from './repositories/transcript.repository';
+import { MeetingRecordingRepository } from './repositories/meeting-recording.repository';
 import { LiveKitModule } from '../../providers/livekit/livekit.module';
 import { UsersModule } from '../users/users.module';
+
+import { AiModule } from '../../providers/ai/ai.module';
 
 @Module({
   imports: [
@@ -61,11 +66,14 @@ import { UsersModule } from '../users/users.module';
     ]),
     LiveKitModule,
     UsersModule,
+    AiModule,
   ],
   providers: [
     // Repositories
     MeetingRepository,
     ParticipantRepository,
+    TranscriptRepository,
+    MeetingRecordingRepository,
     EventRepository,
     QuestionRepository,
     PollRepository,

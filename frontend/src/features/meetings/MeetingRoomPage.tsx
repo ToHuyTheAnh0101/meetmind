@@ -57,7 +57,7 @@ const MeetingRoomPage: React.FC = () => {
 
   // Room UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [activeTab, setActiveTab] = useState<'chat' | 'roster' | 'lobby' | 'settings'>('roster')
+  const [activeTab, setActiveTab] = useState<'chat' | 'roster' | 'lobby' | 'settings' | 'transcript'>('roster')
 
   // Icons used in Lobby
   const UsersIcon = () => (
@@ -154,7 +154,7 @@ const MeetingRoomPage: React.FC = () => {
     }
   }
 
-  const handleToggleSidebar = (tab: 'chat' | 'roster' | 'lobby' | 'settings') => {
+  const handleToggleSidebar = (tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'transcript') => {
     if (isSidebarOpen && activeTab === tab) {
       setIsSidebarOpen(false)
     } else {

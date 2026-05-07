@@ -6,7 +6,7 @@ import {
   MessageSquare, 
   Users, 
   UserPlus, 
-  Settings 
+  Settings
 } from 'lucide-react';
 import CustomChat from './CustomChat';
 import CustomParticipantList from './CustomParticipantList';
