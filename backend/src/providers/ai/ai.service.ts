@@ -1,6 +1,10 @@
 import { Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { GoogleGenerativeAI, GenerativeModel, Part } from '@google/generative-ai';
+import {
+  GoogleGenerativeAI,
+  GenerativeModel,
+  Part,
+} from '@google/generative-ai';
 
 @Injectable()
 export class AiService {
@@ -58,7 +62,7 @@ export class AiService {
         audioPart,
         'Hãy dịch đoạn âm thanh này sang tiếng Việt một cách chính xác. Trả về văn bản thuần túy.',
       ]);
-      
+
       const response = await result.response;
       return response.text().trim();
     } catch (error) {
@@ -71,7 +75,12 @@ export class AiService {
    * Xử lý đa luồng âm thanh (Multi-track) để giữ ngữ cảnh cuộc họp
    */
   async transcribeMultiTrackAudio(
-    tracks: { buffer: Buffer; mimeType: string; speaker: string; startTime: number }[],
+    tracks: {
+      buffer: Buffer;
+      mimeType: string;
+      speaker: string;
+      startTime: number;
+    }[],
   ): Promise<any[]> {
     try {
       const parts: Part[] = [];
@@ -116,7 +125,7 @@ export class AiService {
       // Trích xuất JSON từ phản hồi của AI
       const jsonMatch = responseText.match(/\[[\s\S]*\]/);
       const cleanJson = jsonMatch ? jsonMatch[0] : responseText;
-      
+
       return JSON.parse(cleanJson);
     } catch (error) {
       console.error('Error in multi-track transcription:', error);

@@ -29,12 +29,14 @@ import { PaginatedResult } from '../../../common/interfaces/paginated-result.int
 import { JoinResponseDto } from '../dto/join-response.dto';
 import { JoinMeetingDto } from '../dto/join-meeting.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { MailService } from '../../../providers/mail/mail.service';
 
 @Controller('meetings')
 export class MeetingsController {
   constructor(
     private readonly meetingsService: MeetingsService,
     private readonly liveKitService: LiveKitService,
+    private readonly mailService: MailService,
   ) {}
 
   @Get(':id/public')
@@ -109,7 +111,12 @@ export class MeetingsController {
     @Body() dto: JoinMeetingDto,
     @Request() req: { user: { id: string } },
   ): Promise<JoinResponseDto> {
-    return this.meetingsService.joinMeeting(id, req.user.id, dto.password, dto.displayName);
+    return this.meetingsService.joinMeeting(
+      id,
+      req.user.id,
+      dto.password,
+      dto.displayName,
+    );
   }
 
   @Post(':id/end')
@@ -179,7 +186,7 @@ export class MeetingsController {
         const meetingId = egressInfo.roomName;
         const fileResult = egressInfo.fileResults[0];
         const participantIdentity = egressInfo.participantIdentity;
-        
+
         // Lưu thông tin bản ghi âm vào DB
         await this.meetingsService.saveAudioRecording(
           meetingId,
@@ -187,10 +194,12 @@ export class MeetingsController {
           fileResult.location,
           Number(fileResult.size),
           Number(fileResult.duration) / 1000000000, // Chuyển từ nano giây sang giây
-          egressInfo.startedAt ? Number(egressInfo.startedAt) / 1000000000 : 0
+          egressInfo.startedAt ? Number(egressInfo.startedAt) / 1000000000 : 0,
         );
-        
-        console.log(`LiveKit Egress Ended for room ${meetingId}. Audio saved at: ${fileResult.location}`);
+
+        console.log(
+          `LiveKit Egress Ended for room ${meetingId}. Audio saved at: ${fileResult.location}`,
+        );
       }
     }
 
@@ -199,13 +208,38 @@ export class MeetingsController {
 
   @Post(':id/test-transcribe')
   @UseInterceptors(FileInterceptor('audio'))
-  async testTranscribe(
-    @Param('id') id: string,
-    @UploadedFile() file: any,
-  ) {
+  async testTranscribe(@Param('id') id: string, @UploadedFile() file: any) {
     if (!file) {
       throw new BadRequestException('No audio file provided');
     }
     return this.meetingsService.testTranscribe(id, file);
+  }
+
+  @Post('test-mail')
+  async testMail(@Body('email') email: string) {
+    const mockDate = new Date();
+    mockDate.setMinutes(mockDate.getMinutes() + 30);
+
+    await this.mailService.sendMeetingInvitation(
+      email,
+      'Thành viên Demo',
+      '[Demo] Cuộc họp tổng kết Q2 - MeetMind',
+      mockDate,
+      'http://localhost:3001/meetings/demo-id-123',
+      'meetmind2024',
+    );
+
+    await this.mailService.sendMeetingReminder(
+      email,
+      'Thành viên Demo',
+      '[Demo] Cuộc họp tổng kết Q2 - MeetMind',
+      mockDate,
+      'http://localhost:3001/meetings/demo-id-123',
+      'meetmind2024',
+    );
+
+    return {
+      message: `Đã gửi 2 email mẫu (Invitation + Reminder) tới ${email}`,
+    };
   }
 }

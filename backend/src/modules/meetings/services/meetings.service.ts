@@ -10,7 +10,16 @@ import * as bcrypt from 'bcrypt';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ConfigService } from '@nestjs/config';
-import { Meeting, MeetingStatus, Participant, ParticipantStatus, MeetingPermission, MeetingAccessType, TranscriptChunk, MeetingRecording } from '../entities';
+import {
+  Meeting,
+  MeetingStatus,
+  Participant,
+  ParticipantStatus,
+  MeetingPermission,
+  MeetingAccessType,
+  TranscriptChunk,
+  MeetingRecording,
+} from '../entities';
 import {
   LiveKitService,
   LiveKitTokenGrants,
@@ -29,6 +38,7 @@ import { MeetingRepository } from '../repositories/meeting.repository';
 import { ParticipantRepository } from '../repositories/participant.repository';
 import { TranscriptRepository } from '../repositories/transcript.repository';
 import { MeetingRecordingRepository } from '../repositories/meeting-recording.repository';
+import { MailService } from '../../../providers/mail/mail.service';
 import { AiService } from '../../../providers/ai/ai.service';
 
 @Injectable()
@@ -44,6 +54,7 @@ export class MeetingsService {
     private usersService: UsersService,
     private configService: ConfigService,
     private aiService: AiService,
+    private mailService: MailService,
   ) {}
 
   async create(dto: CreateMeetingDto, userId: string): Promise<Meeting> {
@@ -76,8 +87,8 @@ export class MeetingsService {
           isOrganizer: true,
           permissions: organizerPermissions,
           status: ParticipantStatus.ADMITTED,
-        })
-      ]
+        }),
+      ],
     });
 
     const savedMeeting = await this.meetingsRepository.save(meeting);
@@ -86,6 +97,29 @@ export class MeetingsService {
       await this.liveKitService.createRoom(savedMeeting.id);
       savedMeeting.livekitRoomName = savedMeeting.id;
       await this.meetingsRepository.save(savedMeeting);
+
+      // Gửi email mời họp cho danh sách khách mời
+      if (savedMeeting.inviteeEmails && savedMeeting.inviteeEmails.length > 0) {
+        const frontendUrl =
+          this.configService.get('FRONTEND_URL') || 'http://localhost:3001';
+        const joinUrl = `${frontendUrl}/meetings/${savedMeeting.id}`;
+
+        for (const email of savedMeeting.inviteeEmails) {
+          // Gửi mail bất đồng bộ để không làm chậm quá trình tạo phòng
+          this.mailService
+            .sendMeetingInvitation(
+              email,
+              'Quý khách', // Có thể cải tiến bằng cách lấy tên từ User nếu có
+              savedMeeting.title,
+              savedMeeting.startTime,
+              joinUrl,
+              savedMeeting.password,
+            )
+            .catch((err) =>
+              this.logger.error(`Không thể gửi mail cho ${email}:`, err),
+            );
+        }
+      }
     } catch (error) {
       await this.meetingsRepository.remove(savedMeeting);
       throw error;
@@ -94,8 +128,15 @@ export class MeetingsService {
     return this.findOne(savedMeeting.id);
   }
 
-  async joinMeeting(id: string, userId: string, password?: string, displayName?: string): Promise<JoinResponseDto> {
-    console.log(`[MeetingsService] Attempting to join meeting: ${id} for user: ${userId}`);
+  async joinMeeting(
+    id: string,
+    userId: string,
+    password?: string,
+    displayName?: string,
+  ): Promise<JoinResponseDto> {
+    console.log(
+      `[MeetingsService] Attempting to join meeting: ${id} for user: ${userId}`,
+    );
     try {
       const meeting = await this.findOne(id);
 
@@ -113,14 +154,15 @@ export class MeetingsService {
         userId,
       );
 
-      const isOrganizer = participant?.isOrganizer || meeting.organizerId === userId;
+      const isOrganizer =
+        participant?.isOrganizer || meeting.organizerId === userId;
 
       // Password Validation
       if (meeting.password && !isOrganizer) {
         if (!password) {
           throw new UnauthorizedException('Password required for this meeting');
         }
-        
+
         if (password !== meeting.password) {
           throw new UnauthorizedException('Invalid meeting password');
         }
@@ -137,9 +179,10 @@ export class MeetingsService {
 
       if (!participant) {
         // If waiting room is enabled and user is not organizer, they start as WAITING
-        const initialStatus = (meeting.waitingRoomEnabled && !isOrganizer) 
-          ? ParticipantStatus.WAITING 
-          : ParticipantStatus.ADMITTED;
+        const initialStatus =
+          meeting.waitingRoomEnabled && !isOrganizer
+            ? ParticipantStatus.WAITING
+            : ParticipantStatus.ADMITTED;
 
         participant = await this.participantsRepository.save({
           meetingId: id,
@@ -158,13 +201,14 @@ export class MeetingsService {
           participant.permissions = organizerPermissions;
         }
 
-        // Refined Waiting Room Logic: 
+        // Refined Waiting Room Logic:
         // If room is protected, and user is not in the meeting (new join, re-join, or was denied)
         // Put them back to WAITING to be admitted again
         if (
-          meeting.waitingRoomEnabled && 
-          !isOrganizer && 
-          (!participant.isInMeeting || participant.status === ParticipantStatus.DENIED)
+          meeting.waitingRoomEnabled &&
+          !isOrganizer &&
+          (!participant.isInMeeting ||
+            participant.status === ParticipantStatus.DENIED)
         ) {
           participant.status = ParticipantStatus.WAITING;
         }
@@ -173,7 +217,7 @@ export class MeetingsService {
         if (participant.status === ParticipantStatus.ADMITTED) {
           participant.isInMeeting = true;
         }
-        
+
         await this.participantsRepository.save(participant);
       }
 
@@ -185,23 +229,23 @@ export class MeetingsService {
 
       // If user is WAITING or DENIED, do not generate token
       if (participant.status !== ParticipantStatus.ADMITTED) {
-         return {
-            meetingId: meeting.id,
-            organizerId: meeting.organizerId,
-            status: participant.status,
-            token: '',
-            liveKitUrl: '',
-            participants: [],
-         };
+        return {
+          meetingId: meeting.id,
+          organizerId: meeting.organizerId,
+          status: participant.status,
+          token: '',
+          liveKitUrl: '',
+          participants: [],
+        };
       }
-      
+
       // Safety check for livekit room name
       const roomName = meeting.livekitRoomName || meeting.id;
-      
+
       const grants: LiveKitTokenGrants = {
         roomJoin: true,
         room: roomName,
-        canPublish: true, 
+        canPublish: true,
         canSubscribe: true,
         canPublishData: true,
         roomRecord: isOrganizer,
@@ -223,18 +267,17 @@ export class MeetingsService {
       }
 
       const participantsData = await this.getParticipants(id, 1, 100);
-      const participantSummaries: ParticipantSummaryDto[] = participantsData.items
-        .filter(p => p && p.user)
-        .map(
-          (p) => ({
+      const participantSummaries: ParticipantSummaryDto[] =
+        participantsData.items
+          .filter((p) => p && p.user)
+          .map((p) => ({
             id: p.user?.id || p.userId,
             firstName: p.user?.firstName || 'Unknown',
             lastName: p.user?.lastName || 'Participant',
             isOrganizer: p.isOrganizer,
             permissions: p.permissions,
             status: p.status,
-          }),
-        );
+          }));
 
       return {
         meetingId: meeting.id,
@@ -250,14 +293,23 @@ export class MeetingsService {
     }
   }
 
-  async admitParticipant(id: string, userId: string, hostId: string): Promise<void> {
-    console.log(`[MeetingsService] Admitting user ${userId} to meeting ${id} by host ${hostId}`);
+  async admitParticipant(
+    id: string,
+    userId: string,
+    hostId: string,
+  ): Promise<void> {
+    console.log(
+      `[MeetingsService] Admitting user ${userId} to meeting ${id} by host ${hostId}`,
+    );
     const meeting = await this.findOne(id);
     if (meeting.organizerId !== hostId) {
       throw new ForbiddenException('Only the organizer can admit participants');
     }
 
-    const participant = await this.participantsRepository.findByMeetingAndUser(id, userId);
+    const participant = await this.participantsRepository.findByMeetingAndUser(
+      id,
+      userId,
+    );
     if (!participant) {
       throw new NotFoundException('Participant not found');
     }
@@ -267,13 +319,22 @@ export class MeetingsService {
     await this.participantsRepository.save(participant);
   }
 
-  async rejectParticipant(id: string, userId: string, hostId: string): Promise<void> {
+  async rejectParticipant(
+    id: string,
+    userId: string,
+    hostId: string,
+  ): Promise<void> {
     const meeting = await this.findOne(id);
     if (meeting.organizerId !== hostId) {
-      throw new ForbiddenException('Only the organizer can reject participants');
+      throw new ForbiddenException(
+        'Only the organizer can reject participants',
+      );
     }
 
-    const participant = await this.participantsRepository.findByMeetingAndUser(id, userId);
+    const participant = await this.participantsRepository.findByMeetingAndUser(
+      id,
+      userId,
+    );
     if (!participant) {
       throw new NotFoundException('Participant not found');
     }
@@ -283,7 +344,10 @@ export class MeetingsService {
   }
 
   async leaveMeeting(id: string, userId: string): Promise<void> {
-    const participant = await this.participantsRepository.findByMeetingAndUser(id, userId);
+    const participant = await this.participantsRepository.findByMeetingAndUser(
+      id,
+      userId,
+    );
     if (participant) {
       participant.isInMeeting = false;
       await this.participantsRepository.save(participant);
@@ -294,7 +358,9 @@ export class MeetingsService {
     const meeting = await this.findOne(id);
 
     if (meeting.organizerId !== userId) {
-      throw new ForbiddenException('Only the organizer can end the meeting for everyone');
+      throw new ForbiddenException(
+        'Only the organizer can end the meeting for everyone',
+      );
     }
 
     if (meeting.status === MeetingStatus.COMPLETED) {
@@ -308,9 +374,13 @@ export class MeetingsService {
 
     // Delete the room so all users are booted
     try {
-      await this.liveKitService.deleteRoom(meeting.livekitRoomName || meeting.id);
+      await this.liveKitService.deleteRoom(
+        meeting.livekitRoomName || meeting.id,
+      );
     } catch (e) {
-      console.warn(`Could not delete LiveKit room ${meeting.livekitRoomName}, might already be gone.`);
+      console.warn(
+        `Could not delete LiveKit room ${meeting.livekitRoomName}, might already be gone.`,
+      );
     }
 
     return this.meetingsRepository.save(meeting);
@@ -325,9 +395,11 @@ export class MeetingsService {
 
     meeting.status = MeetingStatus.COMPLETED;
     meeting.endTime = new Date();
-    
+
     try {
-      await this.liveKitService.deleteRoom(meeting.livekitRoomName || meeting.id);
+      await this.liveKitService.deleteRoom(
+        meeting.livekitRoomName || meeting.id,
+      );
     } catch (e) {}
 
     return this.meetingsRepository.save(meeting);
@@ -337,7 +409,9 @@ export class MeetingsService {
     userId: string,
     queryDto?: ListMeetingsDto,
   ): Promise<PaginatedResult<Meeting>> {
-    const { skip, take } = PaginationHelper.getSkipTake(queryDto || new ListMeetingsDto());
+    const { skip, take } = PaginationHelper.getSkipTake(
+      queryDto || new ListMeetingsDto(),
+    );
 
     const [items, total] = await this.meetingsRepository.findAllForUser(
       userId,
@@ -345,7 +419,11 @@ export class MeetingsService {
       take,
     );
 
-    return PaginationHelper.createPaginatedResult(items, total, queryDto || new ListMeetingsDto());
+    return PaginationHelper.createPaginatedResult(
+      items,
+      total,
+      queryDto || new ListMeetingsDto(),
+    );
   }
 
   async findOne(id: string): Promise<Meeting> {
@@ -370,7 +448,7 @@ export class MeetingsService {
     }
 
     const { password, ...updateData } = dto;
-    
+
     if (password !== undefined) {
       updateData['password'] = password;
     }
@@ -395,16 +473,30 @@ export class MeetingsService {
   }
 
   async getParticipants(id: string, page: number = 1, limit: number = 10) {
-    const realParticipants = await this.participantsRepository.findByMeetingId(id);
-    
+    const realParticipants =
+      await this.participantsRepository.findByMeetingId(id);
+
     // Add 19 mock participants for demonstration (as requested: "mock 20 people")
     const mockNames = [
-      { f: 'Nguyễn', l: 'An' }, { f: 'Trần', l: 'Bình' }, { f: 'Lê', l: 'Chi' },
-      { f: 'Phạm', l: 'Dũng' }, { f: 'Hoàng', l: 'Em' }, { f: 'Vũ', l: 'Giang' },
-      { f: 'Đặng', l: 'Hải' }, { f: 'Bùi', l: 'Hoa' }, { f: 'Đỗ', l: 'Khánh' },
-      { f: 'Hồ', l: 'Lan' }, { f: 'Ngô', l: 'Minh' }, { f: 'Dương', l: 'Nam' },
-      { f: 'Lý', l: 'Oanh' }, { f: 'Phan', l: 'Phúc' }, { f: 'Trương', l: 'Quân' },
-      { f: 'Lê', l: 'Thắng' }, { f: 'Phạm', l: 'Tú' }, { f: 'Nguyễn', l: 'Vân' }, { f: 'Đỗ', l: 'Yến' }
+      { f: 'Nguyễn', l: 'An' },
+      { f: 'Trần', l: 'Bình' },
+      { f: 'Lê', l: 'Chi' },
+      { f: 'Phạm', l: 'Dũng' },
+      { f: 'Hoàng', l: 'Em' },
+      { f: 'Vũ', l: 'Giang' },
+      { f: 'Đặng', l: 'Hải' },
+      { f: 'Bùi', l: 'Hoa' },
+      { f: 'Đỗ', l: 'Khánh' },
+      { f: 'Hồ', l: 'Lan' },
+      { f: 'Ngô', l: 'Minh' },
+      { f: 'Dương', l: 'Nam' },
+      { f: 'Lý', l: 'Oanh' },
+      { f: 'Phan', l: 'Phúc' },
+      { f: 'Trương', l: 'Quân' },
+      { f: 'Lê', l: 'Thắng' },
+      { f: 'Phạm', l: 'Tú' },
+      { f: 'Nguyễn', l: 'Vân' },
+      { f: 'Đỗ', l: 'Yến' },
     ];
 
     const mocks = mockNames.map((n, i) => ({
@@ -419,12 +511,12 @@ export class MeetingsService {
         firstName: n.f,
         lastName: n.l,
         picture: `https://i.pravatar.cc/150?u=mock${i}`,
-        email: `mock${i}@example.com`
-      }
+        email: `mock${i}@example.com`,
+      },
     }));
 
     const allParticipants = [...realParticipants, ...mocks];
-    
+
     // Manual pagination for the demo
     const total = allParticipants.length;
     const startIndex = (page - 1) * limit;
@@ -437,7 +529,7 @@ export class MeetingsService {
         page,
         limit,
         totalPages: Math.ceil(total / limit),
-      }
+      },
     };
   }
 
@@ -449,15 +541,24 @@ export class MeetingsService {
     if (!meeting) throw new NotFoundException('Meeting not found');
 
     const uploadsDir = path.join(process.cwd(), 'uploads', 'audio');
-    if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
+    if (!fs.existsSync(uploadsDir))
+      fs.mkdirSync(uploadsDir, { recursive: true });
 
     const fileName = `${meetingId}-${Date.now()}-${file.originalname || 'test.webm'}`;
     const filePath = path.join(uploadsDir, fileName);
     fs.writeFileSync(filePath, file.buffer);
 
     try {
-      const transcript = await this.aiService.transcribeAudio(file.buffer, file.mimetype || 'audio/webm');
-      return { meetingId, fileName, transcript, timestamp: new Date().toISOString() };
+      const transcript = await this.aiService.transcribeAudio(
+        file.buffer,
+        file.mimetype || 'audio/webm',
+      );
+      return {
+        meetingId,
+        fileName,
+        transcript,
+        timestamp: new Date().toISOString(),
+      };
     } catch (error) {
       this.logger.error('Transcription error:', error);
       throw new BadRequestException('Failed to transcribe audio with Gemini');
@@ -476,8 +577,12 @@ export class MeetingsService {
     startTime: number = 0,
   ): Promise<void> {
     try {
-      const participant = await this.participantsRepository.findByMeetingAndUser(meetingId, participantIdentity);
-      
+      const participant =
+        await this.participantsRepository.findByMeetingAndUser(
+          meetingId,
+          participantIdentity,
+        );
+
       const recording = new MeetingRecording();
       recording.meetingId = meetingId;
       recording.participantId = participant?.id || '';
@@ -487,7 +592,9 @@ export class MeetingsService {
       recording.startTime = startTime;
 
       await this.recordingRepository.save(recording);
-      this.logger.log(`Đã lưu bản ghi âm cho ${participantIdentity} tại ${fileUrl}`);
+      this.logger.log(
+        `Đã lưu bản ghi âm cho ${participantIdentity} tại ${fileUrl}`,
+      );
     } catch (error) {
       this.logger.error(`Lỗi khi lưu bản ghi âm:`, error);
     }
@@ -498,26 +605,36 @@ export class MeetingsService {
    */
   async processMeetingTranscription(meetingId: string): Promise<void> {
     try {
-      this.logger.log(`Bắt đầu xử lý bản dịch chạy ngầm cho cuộc họp: ${meetingId}`);
+      this.logger.log(
+        `Bắt đầu xử lý bản dịch chạy ngầm cho cuộc họp: ${meetingId}`,
+      );
 
-      const recordings = await this.recordingRepository.findByMeetingId(meetingId);
-      
+      const recordings =
+        await this.recordingRepository.findByMeetingId(meetingId);
+
       if (recordings.length === 0) {
-        this.logger.warn(`Không tìm thấy bản ghi âm nào cho cuộc họp: ${meetingId}`);
+        this.logger.warn(
+          `Không tìm thấy bản ghi âm nào cho cuộc họp: ${meetingId}`,
+        );
         return;
       }
 
       // 2. Gọi AI Service để xử lý đa luồng
       // Lưu ý: Trong thực tế bạn cần tải buffer từ fileUrl trước khi gửi cho AI
       // Ở đây tôi viết logic khung để bạn tích hợp phần tải file
-      this.logger.log(`Đang gửi ${recordings.length} đoạn âm thanh sang Gemini...`);
-      
+      this.logger.log(
+        `Đang gửi ${recordings.length} đoạn âm thanh sang Gemini...`,
+      );
+
       // MOCK: Giả định đã tải được buffer (Bạn cần thêm logic tải file từ URL)
       // const transcriptChunks = await this.aiService.transcribeMultiTrackAudio(...)
-      
+
       this.logger.log(`Hoàn tất xử lý bản dịch cho cuộc họp: ${meetingId}`);
     } catch (error) {
-      this.logger.error(`Lỗi khi xử lý bản dịch cho cuộc họp ${meetingId}:`, error);
+      this.logger.error(
+        `Lỗi khi xử lý bản dịch cho cuộc họp ${meetingId}:`,
+        error,
+      );
     }
   }
 }

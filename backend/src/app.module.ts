@@ -8,6 +8,8 @@ import { AuthModule } from './modules/auth/auth.module';
 import { LiveKitModule } from './providers/livekit/livekit.module';
 import { MeetingsModule } from './modules/meetings/meetings.module';
 import { AiModule } from './providers/ai/ai.module';
+import { MailModule } from './providers/mail/mail.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [
@@ -15,6 +17,7 @@ import { AiModule } from './providers/ai/ai.module';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    ScheduleModule.forRoot(),
     TypeOrmModule.forRootAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
@@ -34,6 +37,7 @@ import { AiModule } from './providers/ai/ai.module';
     LiveKitModule,
     MeetingsModule,
     AiModule,
+    MailModule,
   ],
   controllers: [AppController],
   providers: [AppService],

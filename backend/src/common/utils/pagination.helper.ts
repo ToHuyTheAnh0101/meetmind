@@ -1,12 +1,18 @@
 import { PaginationQueryDto } from '../dto/pagination-query.dto';
-import { PaginatedResult, PaginationMeta } from '../interfaces/paginated-result.interface';
+import {
+  PaginatedResult,
+  PaginationMeta,
+} from '../interfaces/paginated-result.interface';
 
 export class PaginationHelper {
-  static getSkipTake(queryDto: PaginationQueryDto): { skip: number; take: number } {
+  static getSkipTake(queryDto: PaginationQueryDto): {
+    skip: number;
+    take: number;
+  } {
     const page = queryDto.page || 1;
     const limit = queryDto.limit || 10;
     const skip = (page - 1) * limit;
-    
+
     return { skip, take: limit };
   }
 
