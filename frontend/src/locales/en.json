@@ -187,6 +187,23 @@
     "end_for_all": "End Meeting for All",
     "keep_active": "Keep Active",
     "live_session": "Live Session Ongoing",
-    "transcript": "Transcript"
+    "transcript": "Transcript",
+    "polls": "Polls",
+    "create_poll": "Create new poll",
+    "active_polls": "Active polls",
+    "no_active_polls": "No active polls",
+    "closed_polls": "Closed polls",
+    "votes": "votes",
+    "new_poll": "New poll",
+    "poll_subtitle": "Quickly collect feedback from everyone in the room",
+    "question": "Question",
+    "poll_question_placeholder": "What do you want to ask?",
+    "poll_type": "Poll Type",
+    "poll_type_single": "Single choice",
+    "poll_type_multiple": "Multiple choice",
+    "options": "Options",
+    "option": "Option",
+    "add_option": "Add option",
+    "publish_poll": "Publish"
   }
 }

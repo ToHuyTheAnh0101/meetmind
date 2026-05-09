@@ -51,27 +51,27 @@ const LobbyManagement: React.FC<LobbyManagementProps> = ({ meetingId }) => {
 
   return (
     <div className="flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
-      <div className="mb-4">
-        <h4 className="text-[15px] text-emerald-600 flex items-center gap-2 font-premium-ink">
-           <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
+      <div className="mb-6 flex justify-start">
+        <h4 className="text-[14px] text-emerald-400 flex items-center gap-2 font-premium-ink">
+           <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981] animate-pulse" />
            {t('meeting.waiting_room_count', { count: waitingUsers.length })}
         </h4>
       </div>
 
       {waitingUsers.length === 0 ? (
         <div className="flex-1 flex flex-col items-center justify-center text-center mt-[-10%]">
-            <div className="h-20 w-20 rounded-[2rem] bg-slate-50 border border-slate-100 flex items-center justify-center mb-6">
-               <UserPlus className="h-8 w-8 text-slate-300" />
+            <div className="h-24 w-24 rounded-[2.5rem] bg-white/5 border border-white/10 flex items-center justify-center mb-8">
+               <UserPlus className="h-10 w-10 text-slate-600" />
             </div>
-            <p className="text-[15px] font-bold text-slate-800 tracking-wide">{t('meeting.no_pending_requests')}</p>
-            <p className="text-[13px] font-medium text-slate-400 mt-2">{t('meeting.wait_for_join')}</p>
+            <p className="text-[17px] font-bold text-white tracking-wide">{t('meeting.no_pending_requests')}</p>
+            <p className="text-[13px] font-medium text-slate-500 mt-3 max-w-[200px] leading-relaxed">{t('meeting.wait_for_join')}</p>
          </div>
       ) : (
         <div className="space-y-4">
            {waitingUsers.map((p) => (
-              <div key={p.userId} className="p-3.5 rounded-[1.25rem] hover:bg-slate-50 border border-transparent hover:border-slate-100 flex items-center justify-between group transition-all duration-300">
+              <div key={p.userId} className="p-4 rounded-[1.5rem] hover:bg-white/5 border border-transparent hover:border-white/10 flex items-center justify-between group transition-all duration-300">
                  <div className="flex items-center gap-3.5 min-w-0">
-                   <div className="h-11 w-11 rounded-xl bg-white shadow-sm flex items-center justify-center overflow-hidden border border-slate-100 group-hover:border-emerald-200 transition-colors flex-shrink-0">
+                   <div className="h-12 w-12 rounded-2xl bg-white/10 shadow-sm flex items-center justify-center overflow-hidden border border-white/5 group-hover:border-emerald-500/30 transition-colors flex-shrink-0">
                       <img 
                         src={p.user?.picture || p.user?.profilePictureUrl || `https://ui-avatars.com/api/?name=${p.user?.firstName}+${p.user?.lastName}&background=random`} 
                         className="h-full w-full object-cover" 
@@ -79,8 +79,8 @@ const LobbyManagement: React.FC<LobbyManagementProps> = ({ meetingId }) => {
                       />
                    </div>
                     <div className="min-w-0">
-                       <p className="text-sm font-bold text-slate-900 group-hover:text-emerald-700 transition-colors truncate">{p.user?.firstName} {p.user?.lastName}</p>
-                       <p className="text-[11px] font-bold text-slate-400 mt-0.5">{t('meeting.requesting_access')}</p>
+                       <p className="text-sm font-bold text-white group-hover:text-emerald-400 transition-colors truncate">{p.user?.firstName} {p.user?.lastName}</p>
+                       <p className="text-[11px] font-bold text-slate-500 mt-1">{t('meeting.requesting_access')}</p>
                     </div>
                  </div>
                  
@@ -89,7 +89,7 @@ const LobbyManagement: React.FC<LobbyManagementProps> = ({ meetingId }) => {
                       onClick={() => admitMutation.mutate(p.userId)}
                       disabled={admitMutation.isPending}
                       title="Chấp nhận"
-                      className="h-9 w-9 flex items-center justify-center rounded-xl bg-emerald-500 text-white shadow-lg shadow-emerald-200/50 hover:bg-emerald-600 hover:-translate-y-0.5 transition-all active:scale-95 disabled:opacity-50"
+                      className="h-10 w-10 flex items-center justify-center rounded-[1.25rem] bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 hover:-translate-y-0.5 transition-all active:scale-95 disabled:opacity-50"
                     >
                        {admitMutation.isPending ? (
                          <Loader2 className="h-5 w-5 animate-spin" />

@@ -190,6 +190,23 @@
     "already_joined": "Những người đang tham gia",
     "meeting_ended_note": "Phiên họp này đã kết thúc và không thể tham gia lại.",
     "invalid_password": "Mật khẩu phòng họp không chính xác",
-    "password_required": "Cuộc họp này yêu cầu mật khẩu"
+    "password_required": "Cuộc họp này yêu cầu mật khẩu",
+    "polls": "Bình chọn",
+    "create_poll": "Tạo bình chọn mới",
+    "active_polls": "Đang diễn ra",
+    "no_active_polls": "Không có bình chọn nào",
+    "closed_polls": "Đã kết thúc",
+    "votes": "lượt bình chọn",
+    "new_poll": "Tạo bình chọn",
+    "poll_subtitle": "Thu thập ý kiến nhanh chóng từ mọi người trong phòng",
+    "question": "Câu hỏi",
+    "poll_question_placeholder": "Bạn muốn đặt câu hỏi gì?",
+    "poll_type": "Loại bình chọn",
+    "poll_type_single": "Lựa chọn duy nhất",
+    "poll_type_multiple": "Nhiều lựa chọn",
+    "options": "Các lựa chọn",
+    "option": "Lựa chọn",
+    "add_option": "Thêm lựa chọn",
+    "publish_poll": "Phát hành"
   }
 }

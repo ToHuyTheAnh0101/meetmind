@@ -68,6 +68,7 @@ export class MeetingsService {
       MeetingPermission.VIEW_TRANSCRIPT,
       MeetingPermission.DOWNLOAD_RECORDING,
       MeetingPermission.EDIT_MEETING_INFO,
+      MeetingPermission.MANAGE_POLLS,
     ];
 
     const meeting = this.meetingsRepository.create({
@@ -175,6 +176,7 @@ export class MeetingsService {
         MeetingPermission.VIEW_TRANSCRIPT,
         MeetingPermission.DOWNLOAD_RECORDING,
         MeetingPermission.EDIT_MEETING_INFO,
+        MeetingPermission.MANAGE_POLLS,
       ];
 
       if (!participant) {

@@ -72,33 +72,33 @@ const ParticipantItem = ({ organizerId }: { organizerId: string }) => {
   }
 
   return (
-    <div className="flex items-center justify-between py-3.5 border-b border-slate-100 group transition-all">
+    <div className="flex items-center justify-between py-4 border-b border-white/5 group transition-all">
        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 rounded-xl bg-slate-50 flex items-center justify-center text-xs font-bold text-slate-600 group-hover:text-slate-700 transition-colors overflow-hidden border border-slate-100">
+          <div className="h-12 w-12 rounded-xl bg-white/5 flex items-center justify-center text-xs font-bold text-slate-300 group-hover:text-white transition-colors overflow-hidden border border-white/10">
              {avatarUrl ? (
                <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
              ) : (
-               <User className="h-5 w-5 opacity-60" />
+               <User className="h-5 w-5 opacity-40" />
              )}
           </div>
           <div className="flex flex-col">
               <div className="flex items-center gap-2">
-                <ParticipantName className="text-[15px] font-semibold text-slate-900" />
+                <ParticipantName className="text-[15px] font-semibold text-white" />
                 {p.identity === organizerId && (
-                  <span className="px-1.5 py-0.5 rounded-md bg-cyan-100 text-cyan-600 text-[11px] font-bold border border-cyan-200">
+                  <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-400 text-[10px] font-bold border border-cyan-500/20">
                     {t('meeting.host')}
                   </span>
                 )}
               </div>
-             <div className="flex items-center gap-3 mt-2.5 opacity-100">
+             <div className="flex items-center gap-3 mt-2 opacity-100">
                 <CustomConnectionIndicator />
-                 <span className="text-sm text-slate-700 font-medium tracking-tight">{t('meeting.stable_connection')}</span>
+                 <span className="text-[13px] text-slate-500 font-medium tracking-tight">{t('meeting.stable_connection')}</span>
              </div>
           </div>
        </div>
        <div className="flex items-center gap-3">
-          <TrackMutedIndicator trackRef={{ participant: p, source: Track.Source.Microphone }} className="text-slate-900 h-4.5 w-4.5 opacity-80" />
-          <TrackMutedIndicator trackRef={{ participant: p, source: Track.Source.Camera }} className="text-slate-900 h-4.5 w-4.5 opacity-80" />
+          <TrackMutedIndicator trackRef={{ participant: p, source: Track.Source.Microphone }} className="text-slate-300 h-5 w-5 opacity-100" />
+          <TrackMutedIndicator trackRef={{ participant: p, source: Track.Source.Camera }} className="text-slate-300 h-5 w-5 opacity-100" />
        </div>
     </div>
   );
@@ -110,8 +110,8 @@ const CustomParticipantList: React.FC<{ organizerId: string }> = ({ organizerId 
   
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between mb-2">
-         <span className="text-base font-bold text-slate-800">{t('meeting.participants', { count: participants.length })}</span>
+      <div className="flex items-center justify-between mb-4">
+         <span className="text-[13px] font-bold text-slate-500 tracking-[0.05em]">{t('meeting.participants')} — {participants.length}</span>
       </div>
       <ParticipantLoop participants={participants}>
         <ParticipantItem organizerId={organizerId} />

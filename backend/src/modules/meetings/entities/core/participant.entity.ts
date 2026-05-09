@@ -16,6 +16,7 @@ export enum MeetingPermission {
   VIEW_TRANSCRIPT = 'view_transcript',
   DOWNLOAD_RECORDING = 'download_recording',
   EDIT_MEETING_INFO = 'edit_meeting_info',
+  MANAGE_POLLS = 'manage_polls',
 }
 
 export enum ParticipantStatus {

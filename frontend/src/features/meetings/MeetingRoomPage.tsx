@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react'
+import React, { useState, useEffect, useMemo, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { 
   LiveKitRoom, 
@@ -18,6 +18,8 @@ import { useAuth } from '../auth/AuthContext'
 import MeetingLobby from './components/room/MeetingLobby'
 import MeetingMainStage from './components/room/MeetingMainStage'
 import MeetingSidebar from './components/room/MeetingSidebar'
+import PollModal from './components/room/PollModal'
+import { useDataChannel } from '@livekit/components-react'
 
 interface JoinResponse {
   meetingId: string
@@ -27,6 +29,23 @@ interface JoinResponse {
   participants: any[]
   status?: string
 }
+
+const DataHandler: React.FC<{ meetingId: string; onNewPoll: () => void }> = ({ meetingId, onNewPoll }) => {
+  useDataChannel((msg) => {
+    try {
+      const data = JSON.parse(msg.payload instanceof Uint8Array ? new TextDecoder().decode(msg.payload) : msg.payload as string);
+      if (data.type === 'POLL_CREATED' || data.type === 'POLL_UPDATED') {
+        window.dispatchEvent(new CustomEvent('refresh-polls', { detail: { meetingId } }));
+        if (data.type === 'POLL_CREATED') {
+          onNewPoll();
+        }
+      }
+    } catch (e) {
+      console.error("Failed to parse data message", e);
+    }
+  });
+  return null;
+};
 
 const MeetingRoomPage: React.FC = () => {
   const { t } = useTranslation()
@@ -57,7 +76,14 @@ const MeetingRoomPage: React.FC = () => {
 
   // Room UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [activeTab, setActiveTab] = useState<'chat' | 'roster' | 'lobby' | 'settings' | 'transcript'>('roster')
+  const [activeTab, setActiveTab] = useState<'chat' | 'roster' | 'lobby' | 'settings' | 'polls'>('roster')
+  const [isPollModalOpen, setIsPollModalOpen] = useState(false)
+
+  const canManagePolls = useMemo(() => {
+    if (!joinData || !user) return false;
+    const p = joinData.participants.find(part => part.id === user.id || part.userId === user.id);
+    return p?.isOrganizer || p?.permissions?.includes('manage_polls');
+  }, [joinData, user]);
 
   // Icons used in Lobby
   const UsersIcon = () => (
@@ -154,14 +180,14 @@ const MeetingRoomPage: React.FC = () => {
     }
   }
 
-  const handleToggleSidebar = (tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'transcript') => {
+  const handleToggleSidebar = useCallback((tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls') => {
     if (isSidebarOpen && activeTab === tab) {
       setIsSidebarOpen(false)
     } else {
       setIsSidebarOpen(true)
       setActiveTab(tab)
     }
-  }
+  }, [isSidebarOpen, activeTab]);
 
   const isPasswordError = requiresPassword && (
     error?.toLowerCase().includes('password') || 
@@ -173,6 +199,10 @@ const MeetingRoomPage: React.FC = () => {
     if (meetingDetails && user) return meetingDetails.organizerId === user.id
     return false
   }, [joinData, meetingDetails, user])
+
+  const handleCloseSidebar = useCallback(() => setIsSidebarOpen(false), []);
+  const handleOpenPollModal = useCallback(() => setIsPollModalOpen(true), []);
+  const handleClosePollModal = useCallback(() => setIsPollModalOpen(false), []);
 
   const handleEndSession = async () => {
     try {
@@ -315,13 +345,14 @@ const MeetingRoomPage: React.FC = () => {
         data-lk-theme="default"
         className="w-full h-full flex overflow-hidden lg:flex-row flex-col"
       >
+        <DataHandler meetingId={id!} onNewPoll={handleOpenPollModal} />
         <LayoutContextProvider>
            <div className="flex-1 h-full min-w-0 overflow-hidden flex flex-col relative transition-all duration-500 ease-in-out">
             <MeetingMainStage 
               meetingId={id || ''}
               isSidebarOpen={isSidebarOpen}
               isOrganizer={isOrganizer}
-              activeTab={activeTab}
+              activeTab={activeTab as any}
               onToggleSidebar={handleToggleSidebar}
               onEndSession={handleEndSession}
               onLeaveSession={handleLeaveSession}
@@ -330,14 +361,23 @@ const MeetingRoomPage: React.FC = () => {
 
           <MeetingSidebar 
             isOpen={isSidebarOpen}
-            onClose={() => setIsSidebarOpen(false)}
+            onClose={handleCloseSidebar}
             activeTab={activeTab}
-            setActiveTab={setActiveTab}
+            setActiveTab={setActiveTab as any}
             meetingId={joinData.meetingId}
+            userId={user?.id || ''}
             organizerId={joinData.organizerId}
             isOrganizer={isOrganizer}
+            canManagePolls={canManagePolls}
+            onOpenCreateModal={handleOpenPollModal}
           />
         </LayoutContextProvider>
+
+        <PollModal 
+          isOpen={isPollModalOpen}
+          onClose={handleClosePollModal}
+          meetingId={joinData.meetingId}
+        />
       </LiveKitRoom>
 
       {/* Global CSS Overrides */}

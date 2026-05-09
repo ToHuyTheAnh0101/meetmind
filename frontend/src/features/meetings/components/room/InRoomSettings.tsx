@@ -107,25 +107,25 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
         {/* Basic Info */}
          <div className="space-y-7">
             <div className="space-y-2">
-               <label className="text-[13px] font-bold text-slate-800 font-premium-ink px-0.5">{t('meeting.title')}</label>
+               <label className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.title')}</label>
                <input 
                  type="text"
                  value={formData.title}
                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
                  onBlur={() => updateMutation.mutate(formData)}
-                 className="w-full bg-slate-50/50 border-b border-slate-200 px-3 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-amber-500/50 transition-all placeholder:text-slate-300 rounded-t-lg"
+                 className="w-full bg-white/5 border-b border-white/10 px-3 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-amber-500/30 transition-all placeholder:text-slate-300 rounded-t-lg"
                  placeholder={t('meeting.enter_meeting_title')}
                />
             </div>
 
             <div className="space-y-2">
-               <label className="text-[13px] font-bold text-slate-800 font-premium-ink px-0.5">{t('meeting.description')}</label>
+               <label className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.description')}</label>
                <textarea 
                  rows={2}
                  value={formData.description}
                  onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                  onBlur={() => updateMutation.mutate(formData)}
-                 className="w-full bg-slate-50/50 border-b border-slate-200 px-3 py-2.5 text-sm font-medium text-slate-600 focus:outline-none focus:border-amber-500/50 transition-all resize-none placeholder:text-slate-300 rounded-t-lg"
+                 className="w-full bg-white/5 border-b border-white/10 px-3 py-2.5 text-sm font-medium text-slate-300 focus:outline-none focus:border-amber-500/30 transition-all resize-none placeholder:text-slate-300 rounded-t-lg"
                  placeholder={t('meeting.add_description')}
                />
             </div>
@@ -135,7 +135,7 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
         <div className="space-y-8">
             <div className="space-y-2">
                <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[13px] font-bold text-slate-800 font-premium-ink px-0.5">{t('meeting.access_control')}</span>
+                  <span className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.access_control')}</span>
                </div>
                
                <div className="space-y-1">
@@ -154,9 +154,9 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
                </div>
             </div>
 
-            <div className="space-y-5 pt-6 border-t border-slate-100">
+            <div className="space-y-5 pt-6 border-t border-white/5">
                <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-bold text-slate-800 font-premium-ink px-0.5">{t('meeting.security_code')}</span>
+                  <span className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.security_code')}</span>
                </div>
                <div className="relative group">
                   <input 
@@ -165,7 +165,7 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
                     value={formData.password}
                     onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                     onBlur={() => formData.password && updateMutation.mutate(formData)}
-                    className="w-full bg-slate-50/50 border-b border-slate-200 px-3 py-2.5 text-sm font-bold text-slate-900 focus:outline-none focus:border-amber-500/50 transition-all placeholder:text-slate-300 rounded-t-lg"
+                    className="w-full bg-white/5 border-b border-white/10 px-3 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-amber-500/30 transition-all placeholder:text-slate-300 rounded-t-lg"
                   />
                  <button 
                    onClick={() => setShowPassword(!showPassword)}
@@ -178,13 +178,13 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
         </div>
 
         {/* Advanced Actions (Minimalist) */}
-         <div className="pt-10 border-t border-slate-100">
+         <div className="pt-10 border-t border-white/5">
             <p className="text-[11px] font-bold text-rose-500/80 mb-4 font-premium-ink px-0.5">{t('meeting.destructive_actions')}</p>
             <button className="text-[12px] font-bold text-rose-500 hover:text-rose-600 transition-colors flex items-center gap-2.5 px-0.5">
                <UserX className="h-4.5 w-4.5" />
                {t('meeting.reset_tokens')}
             </button>
-            <p className="text-[10px] text-slate-400 mt-3 leading-relaxed px-0.5 max-w-[240px]">
+            <p className="text-[10px] text-slate-500 mt-3 leading-relaxed px-0.5 max-w-[240px]">
               {t('meeting.reset_tokens_desc')}
             </p>
          </div>

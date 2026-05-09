@@ -1,7 +1,8 @@
-import { Controller, Post, Get, Param, Body, UseGuards } from '@nestjs/common';
+import { Controller, Post, Get, Param, Body, UseGuards, Request } from '@nestjs/common';
 import { PollService } from '../services/poll.service';
 import { MeetingPoll } from '../entities';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+import { CreatePollDto } from '../dto/create-poll.dto';
 
 @Controller('meetings/:meetingId/polls')
 export class PollController {
@@ -19,34 +20,32 @@ export class PollController {
     return this.pollService.findById(id);
   }
 
-  // @Post()
-  // @UseGuards(JwtAuthGuard)
-  // async create(
-  //   @Param('meetingId') meetingId: string,
-  //   @Body() dto: CreatePollDto,
-  //   @Request() req,
-  // ): Promise<MeetingPoll> {
-  //   return this.pollService.create(meetingId, {
-  //     ...dto,
-  //     createdByUserId: req.user.id,
-  //     options: dto.options.map((opt) => ({
-  //       ...opt,
-  //     })),
-  //   });
-  // }
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  async create(
+    @Param('meetingId') meetingId: string,
+    @Body() dto: CreatePollDto,
+    @Request() req: { user: { id: string } },
+  ): Promise<MeetingPoll> {
+    return this.pollService.create(meetingId, req.user.id, dto as any);
+  }
 
   @Post(':id/vote')
   @UseGuards(JwtAuthGuard)
   async vote(
     @Param('id') id: string,
     @Body() { optionId }: { optionId: string },
+    @Request() req: { user: { id: string } },
   ): Promise<MeetingPoll> {
-    return this.pollService.vote(id, optionId);
+    return this.pollService.vote(id, req.user.id, optionId);
   }
 
   @Post(':id/close')
   @UseGuards(JwtAuthGuard)
-  async close(@Param('id') id: string): Promise<MeetingPoll> {
-    return this.pollService.close(id);
+  async close(
+    @Param('id') id: string,
+    @Request() req: { user: { id: string } },
+  ): Promise<MeetingPoll> {
+    return this.pollService.close(id, req.user.id);
   }
 }
