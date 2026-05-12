@@ -38,14 +38,14 @@ const PollModal: React.FC<PollModalProps> = ({ isOpen, onClose, meetingId }) => 
             className="relative w-full max-w-lg bg-white rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden border border-white/20"
           >
             {/* Header */}
-            <div className="p-8 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-white to-slate-50/50">
+            <div className="px-8 py-6 border-b border-slate-100 flex items-center justify-between bg-gradient-to-r from-white to-slate-50/50">
               <div className="flex items-center gap-4">
-                <div className="p-3.5 rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-500/20">
-                  <BarChart3 className="h-6 w-6" />
+                <div className="p-3 rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-500/20">
+                  <BarChart3 className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-slate-900">{t('meeting.new_poll') || 'Tạo bình chọn'}</h3>
-                  <p className="text-[13px] font-bold text-slate-400">{t('meeting.poll_subtitle') || 'Thu thập ý kiến nhanh chóng từ mọi người'}</p>
+                  <h3 className="text-xl font-bold text-slate-900">{t('meeting.new_poll') || 'Tạo bình chọn'}</h3>
+                  <p className="text-[12px] font-medium text-slate-500">{t('meeting.poll_subtitle') || 'Thu thập ý kiến nhanh chóng từ mọi người'}</p>
                 </div>
               </div>
               <button 
@@ -57,7 +57,7 @@ const PollModal: React.FC<PollModalProps> = ({ isOpen, onClose, meetingId }) => 
             </div>
 
             {/* Content */}
-            <div className="p-8 overflow-y-auto max-h-[70vh] custom-scrollbar bg-white">
+            <div className="px-8 py-6 overflow-y-auto max-h-[70vh] custom-scrollbar bg-white">
               <CreatePollForm 
                 meetingId={meetingId} 
                 onClose={onClose}
@@ -114,33 +114,34 @@ const CreatePollForm: React.FC<{
   const isValid = question.trim() && options.filter(o => o.trim()).length >= 2;
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       {/* Question Input */}
-      <div className="space-y-3">
-        <label className="text-[12px] font-black text-slate-500 px-1">{t('meeting.question')}</label>
+      <div className="space-y-2">
+        <label className="text-[13px] font-medium text-slate-700 px-1">{t('meeting.question')}</label>
         <textarea 
           autoFocus
           value={question}
           onChange={e => setQuestion(e.target.value)}
+          maxLength={200}
           placeholder={t('meeting.poll_question_placeholder')}
-          className="w-full p-5 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-rose-500 focus:bg-white focus:shadow-xl focus:shadow-rose-500/5 transition-all text-[15px] font-bold outline-none text-slate-900 resize-none"
+          className="w-full p-4 rounded-2xl bg-slate-50 border-2 border-slate-100 focus:border-rose-500 focus:bg-white focus:shadow-xl focus:shadow-rose-500/5 transition-all text-[14px] font-medium outline-none text-slate-900 resize-none custom-scrollbar"
           rows={2}
         />
       </div>
 
       {/* Type Toggle */}
-      <div className="space-y-3">
-        <label className="text-[12px] font-black text-slate-500 px-1">{t('meeting.poll_type')}</label>
-        <div className="flex gap-2 p-1.5 bg-slate-100 rounded-2xl">
+      <div className="space-y-2">
+        <label className="text-[13px] font-medium text-slate-700 px-1">{t('meeting.poll_type')}</label>
+        <div className="flex gap-2 p-1 bg-slate-100 rounded-2xl">
            <button 
              onClick={() => setType('single')}
-             className={`flex-1 py-3 rounded-xl text-[13px] font-black transition-all ${type === 'single' ? 'bg-white text-rose-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+             className={`flex-1 py-2.5 rounded-xl text-[13px] font-medium transition-all ${type === 'single' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
            >
               {t('meeting.poll_type_single')}
            </button>
            <button 
              onClick={() => setType('multiple')}
-             className={`flex-1 py-3 rounded-xl text-[13px] font-black transition-all ${type === 'multiple' ? 'bg-white text-rose-600 shadow-md' : 'text-slate-400 hover:text-slate-600'}`}
+             className={`flex-1 py-2.5 rounded-xl text-[13px] font-medium transition-all ${type === 'multiple' ? 'bg-white text-rose-600 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
            >
               {t('meeting.poll_type_multiple')}
            </button>
@@ -148,8 +149,8 @@ const CreatePollForm: React.FC<{
       </div>
 
       {/* Options List */}
-      <div className="space-y-4">
-        <label className="text-[12px] font-black text-slate-500 px-1">{t('meeting.options')}</label>
+      <div className="space-y-3">
+        <label className="text-[13px] font-medium text-slate-700 px-1">{t('meeting.options')}</label>
         <div className="space-y-3">
           {options.map((opt, idx) => (
             <div key={idx} className="flex gap-3 items-center group">
@@ -163,6 +164,7 @@ const CreatePollForm: React.FC<{
                   newOpts[idx] = e.target.value;
                   setOptions(newOpts);
                 }}
+                maxLength={100}
                 placeholder={`${t('meeting.option')} ${idx + 1}`}
                 className="flex-1 p-4 rounded-xl bg-slate-50 border-2 border-slate-100 focus:border-rose-500 focus:bg-white transition-all text-sm font-bold text-slate-900 outline-none"
               />
@@ -180,7 +182,7 @@ const CreatePollForm: React.FC<{
         {options.length < 5 && (
           <button 
             onClick={addOption}
-            className="w-full py-4 rounded-xl border-2 border-dashed border-slate-100 text-slate-400 hover:border-rose-500/50 hover:text-rose-400 hover:bg-rose-50/30 transition-all text-[11px] font-bold tracking-widest"
+            className="w-full py-3.5 rounded-xl border-2 border-dashed border-slate-200 text-slate-600 hover:border-rose-500/50 hover:text-rose-500 hover:bg-rose-50/30 transition-all text-[12px] font-medium tracking-wide"
           >
             + {t('meeting.add_option')}
           </button>

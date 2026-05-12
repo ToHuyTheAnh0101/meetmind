@@ -9,13 +9,19 @@ import {
   Index,
   OneToMany,
 } from 'typeorm';
-import { Meeting } from '../core/meeting.entity';
+import { Meeting, Participant } from '..';
 import { User } from '../../../users/user.entity';
 import { MeetingAnswer } from './meeting-answer.entity';
 
 export enum QuestionType {
   HOST_QA = 'host_qa', // Người điều hành hỏi khán giả
   AUDIENCE_QA = 'audience_qa', // Khán giả hỏi người điều hành (Q&A)
+}
+
+export enum QuestionStatus {
+  PENDING = 'pending',
+  ANSWERED = 'answered',
+  DISMISSED = 'dismissed',
 }
 
 @Entity('meeting-questions')
@@ -40,6 +46,13 @@ export class MeetingQuestion {
   @Column('uuid')
   askedByUserId: string;
 
+  @ManyToOne(() => Participant)
+  @JoinColumn([
+    { name: 'meetingId', referencedColumnName: 'meetingId' },
+    { name: 'askedByUserId', referencedColumnName: 'userId' },
+  ])
+  askedByParticipant: Participant;
+
   @Column()
   content: string;
 
@@ -51,6 +64,16 @@ export class MeetingQuestion {
 
   @Column({ default: false })
   isAnonymous: boolean;
+
+  @Column({
+    type: 'enum',
+    enum: QuestionStatus,
+    default: QuestionStatus.PENDING,
+  })
+  status: QuestionStatus;
+
+  @Column('uuid', { array: true, default: '{}' })
+  upvoterIds: string[];
 
   @Column({ nullable: true })
   offsetSeconds: number;

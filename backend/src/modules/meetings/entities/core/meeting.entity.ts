@@ -70,6 +70,12 @@ export class Meeting {
   @Column({ default: true })
   allowDisplayNameEdit: boolean;
 
+  @Column({ default: true })
+  isQaEnabled: boolean;
+
+  @Column({ default: true })
+  isAnonymousAllowed: boolean;
+
   @Column('jsonb', { default: [] })
   inviteeEmails: string[];
 

@@ -134,7 +134,7 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                 <div className="absolute -inset-1 bg-gradient-to-tr from-cyan-500/20 via-white/5 to-indigo-500/20 rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
                 
                 <div className="relative aspect-video rounded-[3rem] overflow-hidden border border-white/20 bg-[#0a0a0b] shadow-2xl">
-                  {isCamOn && localVideoTrack ? (
+                   {isCamOn && localVideoTrack ? (
                     <video 
                       ref={(node) => node && localVideoTrack.attach(node)} 
                       autoPlay 
@@ -144,7 +144,7 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                   ) : (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0b]">
                        <div className="relative">
-                          <div className="absolute inset-0 bg-cyan-500/20 blur-[60px] rounded-full scale-150 animate-pulse" />
+                          <div className={`absolute inset-0 ${isCamOn ? 'bg-rose-500/20' : 'bg-cyan-500/20'} blur-[60px] rounded-full scale-150 animate-pulse`} />
                           {avatarUrl ? (
                             <img src={avatarUrl} className="h-40 w-40 rounded-full border-4 border-white/10 relative z-10 object-cover shadow-2xl" alt="" />
                           ) : (
@@ -153,7 +153,6 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                             </div>
                           )}
                        </div>
-                       <p className="mt-8 text-white/40 font-bold tracking-wide text-xs">Máy ảnh đang tắt</p>
                     </div>
                   )}
 

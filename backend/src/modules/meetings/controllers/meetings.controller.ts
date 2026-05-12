@@ -56,6 +56,8 @@ export class MeetingsController {
       participantCount: meeting.participants?.length || 0,
       hasPassword: !!meeting.password,
       organizerId: meeting.organizerId,
+      isQaEnabled: meeting.isQaEnabled,
+      isAnonymousAllowed: meeting.isAnonymousAllowed,
       createdAt: meeting.createdAt,
     };
   }
@@ -225,7 +227,7 @@ export class MeetingsController {
       'Thành viên Demo',
       '[Demo] Cuộc họp tổng kết Q2 - MeetMind',
       mockDate,
-      'http://localhost:3001/meetings/demo-id-123',
+      'http://localhost:3001/room/demo-id-123',
       'meetmind2024',
     );
 
@@ -234,7 +236,7 @@ export class MeetingsController {
       'Thành viên Demo',
       '[Demo] Cuộc họp tổng kết Q2 - MeetMind',
       mockDate,
-      'http://localhost:3001/meetings/demo-id-123',
+      'http://localhost:3001/room/demo-id-123',
       'meetmind2024',
     );
 

@@ -9,6 +9,7 @@ interface SettingToggleProps {
   icon?: React.ReactNode;
   noBorder?: boolean;
   className?: string;
+  disabled?: boolean;
 }
 
 const SettingToggle: React.FC<SettingToggleProps> = ({ 
@@ -18,27 +19,28 @@ const SettingToggle: React.FC<SettingToggleProps> = ({
   onChange,
   icon,
   noBorder,
-  className
+  className,
+  disabled
 }) => {
   return (
-    <div className={`flex items-center justify-between py-3.5 transition-all ${!noBorder ? 'border-b border-white/5 last:border-0' : ''} ${className || ''}`}>
+    <div className={`flex items-center justify-between py-3.5 transition-all ${!noBorder ? 'border-b border-white/5 last:border-0' : ''} ${className || ''} ${disabled ? 'opacity-60 pointer-events-none' : ''}`}>
       <div className="flex items-start gap-4">
         {icon && (
-          <div className={`mt-0.5 p-2 rounded-xl ${enabled ? 'bg-amber-500/10 text-amber-400' : 'bg-white/5 text-slate-500'} transition-colors`}>
+          <div className={`mt-0.5 p-2 rounded-xl ${enabled ? 'bg-amber-500/10 text-amber-500' : 'bg-slate-100 text-slate-500'} transition-colors`}>
             {icon}
           </div>
         )}
         <div className="flex flex-col">
-          <h4 className="text-sm font-bold text-white tracking-tight">{label}</h4>
-          <p className="text-xs font-medium text-slate-400 leading-snug mt-1">{description}</p>
+          <h4 className="text-sm font-bold text-slate-900 tracking-tight">{label}</h4>
+          <p className="text-xs font-medium text-slate-500 leading-snug mt-1">{description}</p>
         </div>
       </div>
 
       <button
         type="button"
         onClick={() => onChange(!enabled)}
-        className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border border-white/10 transition-colors duration-200 focus:outline-none ${
-          enabled ? 'bg-amber-500' : 'bg-white/10'
+        className={`relative inline-flex h-5 w-10 shrink-0 cursor-pointer rounded-full border transition-colors duration-200 focus:outline-none ${
+          enabled ? 'bg-amber-500 border-amber-600' : 'bg-slate-200 border-slate-300'
         }`}
       >
         <motion.span

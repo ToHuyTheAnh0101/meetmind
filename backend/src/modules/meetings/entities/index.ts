@@ -20,6 +20,7 @@ export {
 // Real-time Collaboration
 export { MeetingEvent, EventType } from './collaboration/meeting-event.entity';
 export { MeetingQuestion } from './collaboration/meeting-question.entity';
+export { MeetingAnswer } from './collaboration/meeting-answer.entity';
 export { MeetingPoll } from './collaboration/meeting-poll.entity';
 export {
   BreakoutRoom,

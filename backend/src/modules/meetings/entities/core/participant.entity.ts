@@ -5,6 +5,7 @@ import {
   UpdateDateColumn,
   ManyToOne,
   JoinColumn,
+  Unique,
 } from 'typeorm';
 import { User } from '../../../users/user.entity';
 import { Meeting } from './meeting.entity';
@@ -17,6 +18,7 @@ export enum MeetingPermission {
   DOWNLOAD_RECORDING = 'download_recording',
   EDIT_MEETING_INFO = 'edit_meeting_info',
   MANAGE_POLLS = 'manage_polls',
+  MANAGE_QA = 'manage_qa',
 }
 
 export enum ParticipantStatus {
@@ -26,6 +28,7 @@ export enum ParticipantStatus {
 }
 
 @Entity('participants')
+@Unique(['meetingId', 'userId'])
 export class Participant {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -61,6 +64,9 @@ export class Participant {
     default: ParticipantStatus.ADMITTED,
   })
   status: ParticipantStatus;
+
+  @Column({ nullable: true })
+  displayName: string;
 
   @UpdateDateColumn()
   updatedAt: Date;

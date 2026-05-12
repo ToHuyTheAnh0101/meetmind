@@ -1,15 +1,13 @@
-import React, { useState } from 'react';
+import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDataChannel } from '@livekit/components-react';
 import { 
   BarChart3, 
   Plus, 
-  Trash2, 
-  CheckCircle2, 
-  Clock, 
-  X,
-  ChevronRight
+  CheckCircle2,
+  Check,
+  Lock as LockIcon
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import apiClient from '@/lib/apiClient';
@@ -105,24 +103,23 @@ const PollTab: React.FC<PollTabProps> = ({ meetingId, userId, canManagePolls, on
           </button>
         )}
 
-        {/* Active Polls Section */}
-        <section className="space-y-6">
-          <h4 className="text-[12px] font-bold text-slate-500 tracking-[0.05em] flex items-center gap-2 px-1">
-             <div className="h-1.5 w-1.5 rounded-full bg-rose-500 shadow-[0_0_8px_#f43f5e]" />
-             {t('meeting.active_polls') || 'Đang diễn ra'}
-          </h4>
-          {activePolls.length === 0 ? (
-            <div className="py-12 flex flex-col items-center justify-center text-center px-6 bg-white/5 rounded-[2.5rem] border border-white/5">
-              <div className="h-16 w-16 rounded-full bg-white/5 flex items-center justify-center mb-6">
-                <BarChart3 className="h-8 w-8 text-slate-600" />
-              </div>
-              <h5 className="text-white font-bold text-lg mb-2">{t('meeting.no_active_polls')}</h5>
-              <p className="text-slate-500 text-sm leading-relaxed max-w-[240px]">
-                {t('meeting.poll_subtitle')}
-              </p>
+        {/* Empty State */}
+        {polls.length === 0 && (
+          <div className="py-12 flex flex-col items-center justify-center text-center px-6 bg-white/5 rounded-[2.5rem] border border-white/5">
+            <div className="h-16 w-16 rounded-full bg-white/5 flex items-center justify-center mb-6">
+              <BarChart3 className="h-8 w-8 text-slate-600" />
             </div>
-          ) : (
-            activePolls.map(poll => (
+            <h5 className="text-white font-bold text-lg mb-2">{t('meeting.no_active_polls')}</h5>
+            <p className="text-slate-500 text-sm leading-relaxed max-w-[240px]">
+              {t('meeting.poll_subtitle')}
+            </p>
+          </div>
+        )}
+
+        {/* Active Polls Section */}
+        {activePolls.length > 0 && (
+          <section className="space-y-6">
+            {activePolls.map(poll => (
               <PollItem 
                 key={poll.id} 
                 poll={poll} 
@@ -131,17 +128,13 @@ const PollTab: React.FC<PollTabProps> = ({ meetingId, userId, canManagePolls, on
                 onClose={() => closeMutation.mutate(poll.id)}
                 canManage={canManagePolls}
               />
-            ))
-          )}
-        </section>
+            ))}
+          </section>
+        )}
 
         {/* Closed Polls */}
         {closedPolls.length > 0 && (
           <section className="space-y-6 pt-4">
-            <h4 className="text-[12px] font-bold text-slate-500 tracking-[0.05em] flex items-center gap-2 px-1">
-               <div className="h-1.5 w-1.5 rounded-full bg-slate-600" />
-               {t('meeting.closed_polls') || 'Đã kết thúc'}
-            </h4>
             {closedPolls.map(poll => (
               <PollItem 
                 key={poll.id} 
@@ -175,41 +168,43 @@ const PollItem: React.FC<{
     <motion.div 
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
-      className={`p-7 rounded-[2.5rem] border transition-all ${isClosed ? 'bg-white/5 border-white/5 grayscale opacity-60' : 'bg-white/5 border-white/10 hover:border-white/20 shadow-2xl'}`}
+      className={`p-5 rounded-[2.5rem] border transition-all ${isClosed ? 'bg-white/5 border-white/5 grayscale opacity-60' : 'bg-white/5 border-white/10 hover:border-white/20 shadow-2xl'}`}
     >
-      <div className="flex justify-between items-start gap-4 mb-6">
-        <div className="flex-1">
-          <h5 className="text-[17px] font-bold text-white leading-snug mb-1">
-            {poll.question}
-          </h5>
-          <span className="text-[10px] font-bold text-slate-500 tracking-[0.05em]">
-            {poll.type === 'multiple' ? (t('meeting.poll_type_multiple') || 'Nhiều lựa chọn') : (t('meeting.poll_type_single') || 'Lựa chọn duy nhất')}
-          </span>
-        </div>
-        {canManage && !isClosed && (
+      <div className="flex justify-end mb-2">
+        {canManage && !isClosed ? (
           <button 
             onClick={onClose}
-            className="p-2.5 rounded-2xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-all active:scale-90"
-            title={t('common.close') || 'Đóng'}
+            className="px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-all active:scale-95 text-[10px] font-bold border border-rose-500/20 shrink-0"
           >
-            <X className="h-4 w-4" />
+            {t('meeting.lock_poll') || 'Khóa bình chọn'}
           </button>
+        ) : isClosed && (
+          <div className="px-3 py-1.5 rounded-xl bg-white/5 text-slate-400 text-[10px] font-bold border border-white/10 shrink-0 flex items-center gap-1.5">
+             <LockIcon className="h-3 w-3" />
+             {t('meeting.poll_closed') || 'Bình chọn đã đóng'}
+          </div>
         )}
       </div>
 
-      <div className="space-y-3">
+      <div className="mb-4">
+        <h5 className="text-[13px] font-bold text-white leading-snug break-all">
+          {poll.question}
+        </h5>
+      </div>
+
+      <div className="space-y-2">
         {poll.options.map(option => {
           const voteCount = option.voterIds.length;
           const percentage = totalVotes > 0 ? Math.round((voteCount / totalVotes) * 100) : 0;
           const isSelected = userVotedOptions.includes(option.id);
-          const isVoteDisabled = isClosed || (poll.type === 'single' && hasVotedAtAll) || isSelected;
+          const isVoteDisabled = isClosed;
 
           return (
             <div key={option.id} className="space-y-2">
               <button
                 disabled={isVoteDisabled}
                 onClick={() => onVote?.(option.id)}
-                className={`w-full relative group overflow-hidden rounded-[1.25rem] border transition-all py-4 px-5 flex items-center justify-between ${isSelected ? 'border-rose-500/50 bg-rose-500/10' : (hasVotedAtAll || isClosed) ? 'border-white/5 bg-white/[0.02]' : 'border-white/5 bg-white/5 hover:border-white/20 hover:bg-white/[0.08]'}`}
+                className={`w-full relative group overflow-hidden rounded-[1.25rem] border transition-all py-3 px-4 flex flex-col items-start gap-2 text-left ${isSelected ? 'border-rose-500/40 bg-rose-500/10' : (hasVotedAtAll || isClosed) ? 'border-white/5 bg-white/[0.02]' : 'border-white/5 bg-white/5 hover:border-white/20 hover:bg-white/[0.08]'}`}
               >
                  {/* Progress Bar Background */}
                  {(hasVotedAtAll || isClosed) && (
@@ -220,29 +215,40 @@ const PollItem: React.FC<{
                    />
                  )}
 
-                 <span className={`relative z-10 text-[14px] font-medium ${isSelected ? 'text-rose-400' : 'text-slate-300'}`}>
-                    {option.text}
-                 </span>
+                 <div className="relative z-10 flex items-center gap-3 w-full">
+                    {/* Visual Indicator: Radio or Checkbox */}
+                    <div className={`h-3.5 w-3.5 shrink-0 border-2 transition-all flex items-center justify-center ${poll.type === 'multiple' ? 'rounded-[4px]' : 'rounded-full'} ${isSelected ? 'border-rose-500 bg-rose-500' : 'border-white/20 group-hover:border-white/40'}`}>
+                      {isSelected && (
+                         poll.type === 'multiple' 
+                         ? <Check className="h-2 w-2 text-white stroke-[4px]" />
+                         : <div className="h-1 w-1 rounded-full bg-white" />
+                      )}
+                    </div>
 
-                 <div className="relative z-10 flex items-center gap-2">
-                    {(hasVotedAtAll || isClosed) && (
-                      <span className={`text-[12px] font-bold ${isSelected ? 'text-rose-400' : 'text-slate-500'}`}>
+                    <span className={`text-[12px] font-medium break-all whitespace-normal flex-1 ${isSelected ? 'text-rose-400' : 'text-slate-300'}`}>
+                       {option.text}
+                    </span>
+                 </div>
+
+                 {(hasVotedAtAll || isClosed) && (
+                   <div className="relative z-10 flex items-center justify-between w-full mt-0.5 border-t border-white/5 pt-1.5">
+                      <span className={`text-[10px] font-bold ${isSelected ? 'text-rose-400' : 'text-slate-500'}`}>
                         {percentage}%
                       </span>
-                    )}
-                    {isSelected && <CheckCircle2 className="h-4 w-4 text-rose-500 shadow-[0_0_10px_rgba(244,63,94,0.5)]" />}
-                 </div>
-              </button>
+                      {isSelected && <CheckCircle2 className="h-3 w-3 text-rose-500 shadow-[0_0_8px_rgba(244,63,94,0.3)]" />}
+                   </div>
+                 )}
+               </button>
             </div>
           );
         })}
       </div>
 
-      <div className="mt-6 pt-5 border-t border-white/5 flex items-center justify-between">
-         <span className="text-[11px] font-bold text-slate-500 tracking-[0.05em]">
+      <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
+         <span className="text-[12px] font-bold text-slate-400 tracking-[0.05em]">
             {totalVotes} {t('meeting.votes') || 'lượt bình chọn'}
          </span>
-         <span className="text-[11px] font-medium text-slate-600">
+         <span className="text-[12px] font-medium text-slate-400">
             {new Date(poll.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
          </span>
       </div>

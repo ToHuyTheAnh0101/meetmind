@@ -73,31 +73,44 @@ export class PollService {
       throw new BadRequestException('Poll is closed');
     }
 
-    const option = poll.options.find((o) => o.id === optionId);
-    if (!option) {
+    const targetOption = poll.options.find((o) => o.id === optionId);
+    if (!targetOption) {
       throw new BadRequestException('Option not found');
     }
 
-    // Check if user already voted
     if (poll.type === 'single' || !poll.type) {
-      const alreadyVoted = poll.options.some((opt) =>
+      // Single choice logic
+      const currentVoteIdx = poll.options.findIndex((opt) =>
         opt.voterIds.includes(userId),
       );
-      if (alreadyVoted) {
-        throw new BadRequestException('User already voted');
+
+      if (currentVoteIdx !== -1) {
+        const currentOptionId = poll.options[currentVoteIdx].id;
+        // If clicking the same option, remove the vote (un-vote)
+        if (currentOptionId === optionId) {
+          poll.options[currentVoteIdx].voterIds = poll.options[currentVoteIdx].voterIds.filter(id => id !== userId);
+        } else {
+          // Switch vote: remove from old, add to new
+          poll.options[currentVoteIdx].voterIds = poll.options[currentVoteIdx].voterIds.filter(id => id !== userId);
+          targetOption.voterIds.push(userId);
+        }
+      } else {
+        // First time voting
+        targetOption.voterIds.push(userId);
       }
     } else {
-      // Multiple choice - check if user already voted for THIS option
-      const alreadyVotedThisOption = option.voterIds.includes(userId);
-      if (alreadyVotedThisOption) {
-        throw new BadRequestException('User already voted for this option');
+      // Multiple choice logic (Toggle)
+      if (targetOption.voterIds.includes(userId)) {
+        // Already voted for this option -> Remove it
+        targetOption.voterIds = targetOption.voterIds.filter(id => id !== userId);
+      } else {
+        // Not voted yet -> Add it
+        targetOption.voterIds.push(userId);
       }
     }
 
-    if (!option.voterIds) {
-      option.voterIds = [];
-    }
-    option.voterIds.push(userId);
+    // Force TypeORM to see the change in JSONB column by re-assigning the array
+    poll.options = [...poll.options];
 
     return this.pollRepository.save(poll);
   }

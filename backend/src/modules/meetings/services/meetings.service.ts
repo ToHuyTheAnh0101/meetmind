@@ -103,7 +103,7 @@ export class MeetingsService {
       if (savedMeeting.inviteeEmails && savedMeeting.inviteeEmails.length > 0) {
         const frontendUrl =
           this.configService.get('FRONTEND_URL') || 'http://localhost:3001';
-        const joinUrl = `${frontendUrl}/meetings/${savedMeeting.id}`;
+        const joinUrl = `${frontendUrl}/room/${savedMeeting.id}`;
 
         for (const email of savedMeeting.inviteeEmails) {
           // Gửi mail bất đồng bộ để không làm chậm quá trình tạo phòng
@@ -189,12 +189,18 @@ export class MeetingsService {
         participant = await this.participantsRepository.save({
           meetingId: id,
           userId,
+          displayName: displayName, // Save the name from lobby
           isOrganizer: isOrganizer,
           status: initialStatus,
           isInMeeting: initialStatus === ParticipantStatus.ADMITTED,
           permissions: isOrganizer ? organizerPermissions : [],
         });
       } else {
+        // If participant already exists, update their displayName if provided
+        if (displayName) {
+          participant.displayName = displayName;
+        }
+        
         // If participant already exists
         if (isOrganizer && !participant.isOrganizer) {
           // Upgrade existing record to organizer if they are the meeting owner
@@ -415,8 +421,12 @@ export class MeetingsService {
       queryDto || new ListMeetingsDto(),
     );
 
+    const user = await this.usersService.findById(userId);
+    const userEmail = user?.email;
+
     const [items, total] = await this.meetingsRepository.findAllForUser(
       userId,
+      userEmail,
       skip,
       take,
     );
@@ -517,7 +527,11 @@ export class MeetingsService {
       },
     }));
 
-    const allParticipants = [...realParticipants, ...mocks];
+    const allParticipants = [...realParticipants, ...mocks].sort((a, b) => {
+      if (a.isOrganizer && !b.isOrganizer) return -1;
+      if (!a.isOrganizer && b.isOrganizer) return 1;
+      return 0;
+    });
 
     // Manual pagination for the demo
     const total = allParticipants.length;

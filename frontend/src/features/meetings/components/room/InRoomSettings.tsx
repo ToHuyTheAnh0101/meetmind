@@ -1,14 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useDataChannel } from '@livekit/components-react';
 import apiClient from '@/lib/apiClient';
 import { 
-  UserX, 
   Check, 
   Loader2, 
-  AlertCircle,
-  Eye,
-  EyeOff
+  AlertCircle
 } from 'lucide-react';
 import { Meeting } from '@/types/api';
 import SettingToggle from '../details/SettingToggle';
@@ -20,8 +18,8 @@ interface InRoomSettingsProps {
 const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
+  const { send } = useDataChannel();
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [showPassword, setShowPassword] = useState(false);
 
   // 1. Fetch current meeting state
   const { data: meeting, isLoading } = useQuery<Meeting>({
@@ -37,7 +35,8 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
     description: '',
     waitingRoomEnabled: false,
     muteOnJoin: false,
-    password: '',
+    isQaEnabled: true,
+    isAnonymousAllowed: true,
   });
 
   useEffect(() => {
@@ -47,7 +46,8 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
         description: meeting.description || '',
         waitingRoomEnabled: !!meeting.waitingRoomEnabled,
         muteOnJoin: !!meeting.muteOnJoin,
-        password: '', // Password is not sent from server
+        isQaEnabled: meeting.isQaEnabled ?? true,
+        isAnonymousAllowed: meeting.isAnonymousAllowed ?? true,
       });
     }
   }, [meeting]);
@@ -62,6 +62,14 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
       console.log('InRoomSettings: Update successful');
       setSaveStatus('saved');
       queryClient.invalidateQueries({ queryKey: ['meeting', meetingId] });
+      
+      // Broadcast to others
+      const encoder = new TextEncoder();
+      send(encoder.encode(JSON.stringify({ type: 'MEETING_UPDATED', meetingId })), { reliable: true });
+
+      // Also refresh locally for the host
+      window.dispatchEvent(new CustomEvent('refresh-meeting', { detail: { meetingId } }));
+
       setTimeout(() => setSaveStatus('idle'), 2000);
     },
     onError: () => {
@@ -91,7 +99,7 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
           <h4 className="text-sm text-amber-500 flex items-center gap-2 font-premium-ink">
              {t('meeting.session_config')}
           </h4>
-          <p className="text-[11px] font-medium text-white/50 mt-1.5 px-0.5">
+          <p className="text-[12px] font-medium text-white/50 mt-1.5 px-0.5">
              {t('meeting.manage_params')}
           </p>
         </div>
@@ -154,40 +162,28 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
                </div>
             </div>
 
-            <div className="space-y-5 pt-6 border-t border-white/5">
-               <div className="flex items-center gap-2">
-                  <span className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.security_code')}</span>
+            {/* Q&A Settings */}
+            <div className="space-y-2 pt-4">
+               <div className="flex items-center gap-2 mb-3">
+                  <span className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.qa')}</span>
                </div>
-               <div className="relative group">
-                  <input 
-                    type={showPassword ? "text" : "password"}
-                    placeholder={t('meeting.update_password')}
-                    value={formData.password}
-                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
-                    onBlur={() => formData.password && updateMutation.mutate(formData)}
-                    className="w-full bg-white/5 border-b border-white/10 px-3 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-amber-500/30 transition-all placeholder:text-slate-300 rounded-t-lg"
+               
+               <div className="space-y-1">
+                  <SettingToggle 
+                     label={t('meeting.enable_qa')}
+                     description={t('meeting.manage_qa_desc')}
+                     enabled={formData.isQaEnabled}
+                     onChange={(val) => handleUpdate({ isQaEnabled: val })}
                   />
-                 <button 
-                   onClick={() => setShowPassword(!showPassword)}
-                   className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-amber-600 transition-colors"
-                 >
-                    {showPassword ? <EyeOff className="h-4.5 w-4.5" /> : <Eye className="h-4.5 w-4.5" />}
-                 </button>
-              </div>
-           </div>
+                  <SettingToggle 
+                     label={t('meeting.anonymous_allowed')}
+                     description={t('meeting.anonymous_allowed_desc')}
+                     enabled={formData.isAnonymousAllowed}
+                     onChange={(val) => handleUpdate({ isAnonymousAllowed: val })}
+                  />
+               </div>
+            </div>
         </div>
-
-        {/* Advanced Actions (Minimalist) */}
-         <div className="pt-10 border-t border-white/5">
-            <p className="text-[11px] font-bold text-rose-500/80 mb-4 font-premium-ink px-0.5">{t('meeting.destructive_actions')}</p>
-            <button className="text-[12px] font-bold text-rose-500 hover:text-rose-600 transition-colors flex items-center gap-2.5 px-0.5">
-               <UserX className="h-4.5 w-4.5" />
-               {t('meeting.reset_tokens')}
-            </button>
-            <p className="text-[10px] text-slate-500 mt-3 leading-relaxed px-0.5 max-w-[240px]">
-              {t('meeting.reset_tokens_desc')}
-            </p>
-         </div>
       </div>
     </div>
   );

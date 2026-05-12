@@ -504,7 +504,7 @@ const DashboardPage: React.FC = () => {
                       <>
                         <div className="absolute right-1.5 top-1.5 h-2.5 w-2.5 rounded-full bg-cyan-600 sm:hidden" />
                         <div className="absolute bottom-1.5 left-1.5 hidden rounded-full bg-cyan-600 px-2 py-0.5 text-xs font-semibold text-white sm:block">
-                          {t('meeting.participant_count', { count: meetingsOnDay })}
+                          {t('meeting.meeting_count', { count: meetingsOnDay })}
                         </div>
                       </>
                     )}

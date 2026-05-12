@@ -58,4 +58,12 @@ export class UpdateMeetingDto {
   @Max(1440)
   @IsOptional()
   reminderMinutes?: number;
+
+  @IsBoolean()
+  @IsOptional()
+  isQaEnabled?: boolean;
+
+  @IsBoolean()
+  @IsOptional()
+  isAnonymousAllowed?: boolean;
 }

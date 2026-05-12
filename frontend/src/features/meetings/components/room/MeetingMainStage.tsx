@@ -15,14 +15,10 @@ import {
 } from '@livekit/components-react';
 import { Track, ConnectionQuality } from 'livekit-client';
 import { 
-  MessageSquare, 
-  Users as UsersIcon, 
-  UserPlus,
   ChevronDown, 
   ChevronUp, 
-  Settings, 
   LogOut,
-  BarChart3
+  Users as UsersIcon
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -30,6 +26,7 @@ interface MeetingMainStageProps {
   meetingId: string;
   isSidebarOpen: boolean;
   activeTab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls';
+  hasUnreadPolls?: boolean;
   isOrganizer: boolean;
   onToggleSidebar: (tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls') => void;
   onEndSession: () => void;
@@ -48,6 +45,7 @@ const ParticipantAvatarOverlay = () => {
     }
   }, [p?.metadata]);
 
+  // Only show avatar if camera is NOT enabled AND NOT currently publishing
   if (p?.isCameraEnabled) return null;
 
   return (
@@ -105,10 +103,7 @@ const CustomParticipantTile = ({ trackRef, className, ...props }: ParticipantTil
 
 const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   meetingId,
-  isSidebarOpen,
-  activeTab,
   isOrganizer,
-  onToggleSidebar,
   onEndSession,
 }) => {
   const { t } = useTranslation();
@@ -157,8 +152,8 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
       </div>
 
       <div className="flex-1 relative overflow-hidden flex items-center justify-center p-6">
-         <div className="w-full h-fit flex items-center justify-center">
-            <GridLayout tracks={tracks} className="w-full h-full">
+         <div className="w-full h-full max-w-[calc(100vw-480px)] mx-auto">
+            <GridLayout tracks={tracks} className="w-full h-full place-content-center gap-6">
                <CustomParticipantTile />
             </GridLayout>
          </div>
@@ -166,28 +161,15 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
 
       <div className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 p-2 rounded-[2rem] bg-[#0f0f12]/95 backdrop-blur-3xl border border-white/20 shadow-2xl transition-all duration-300`}>
          {isControlsExpanded && (
-           <>
-              <div className="flex items-center gap-2">
-                <TrackToggle source={Track.Source.Microphone} className="bg-white/5 hover:bg-white/10 text-white p-3 rounded-xl transition-all [&.lk-button-enabled]:bg-cyan-500/20 [&.lk-button-enabled]:text-cyan-400" />
-                <TrackToggle source={Track.Source.Camera} className="bg-white/5 hover:bg-white/10 text-white p-3 rounded-xl transition-all [&.lk-button-enabled]:bg-cyan-500/20 [&.lk-button-enabled]:text-cyan-400" />
-                <TrackToggle source={Track.Source.ScreenShare} className="bg-white/5 hover:bg-white/10 text-white p-3 rounded-xl transition-all [&.lk-button-enabled]:bg-emerald-500/20 [&.lk-button-enabled]:text-emerald-400" />
-                <div className="w-px h-6 bg-white/10 mx-1" />
-                <DisconnectButton className="bg-rose-500 hover:bg-rose-600 text-white p-3 rounded-xl shadow-lg">
-                   <LogOut className="h-5 w-5" />
-                </DisconnectButton>
-              </div>
+           <div className="flex items-center gap-2">
+              <TrackToggle source={Track.Source.Microphone} className="bg-white/5 hover:bg-white/10 text-white p-3 rounded-xl transition-all [&[data-lk-enabled='true']]:bg-cyan-500/20 [&[data-lk-enabled='true']]:text-cyan-400" />
+              <TrackToggle source={Track.Source.Camera} className="bg-white/5 hover:bg-white/10 text-white p-3 rounded-xl transition-all [&[data-lk-enabled='true']]:bg-cyan-500/20 [&[data-lk-enabled='true']]:text-cyan-400" />
+              <TrackToggle source={Track.Source.ScreenShare} className="bg-white/5 hover:bg-white/10 text-white p-3 rounded-xl transition-all [&[data-lk-enabled='true']]:bg-emerald-500/20 [&[data-lk-enabled='true']]:text-emerald-400" />
               <div className="w-px h-6 bg-white/10 mx-1" />
-              <button onClick={() => onToggleSidebar('chat')} className={`h-10 w-10 flex items-center justify-center rounded-xl ${isSidebarOpen && activeTab === 'chat' ? 'bg-cyan-500 text-white shadow-[0_0_15px_rgba(6,182,212,0.4)]' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}><MessageSquare className="h-4 w-4" /></button>
-              <button onClick={() => onToggleSidebar('roster')} className={`h-10 w-10 flex items-center justify-center rounded-xl ${isSidebarOpen && activeTab === 'roster' ? 'bg-indigo-500 text-white shadow-[0_0_15px_rgba(99,102,241,0.4)]' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}><UsersIcon className="h-4 w-4" /></button>
-              {isOrganizer && (
-                <>
-                  <button onClick={() => onToggleSidebar('lobby')} className={`h-10 w-10 flex items-center justify-center rounded-xl ${isSidebarOpen && activeTab === 'lobby' ? 'bg-emerald-500 text-white shadow-[0_0_15px_rgba(16,185,129,0.4)]' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}><UserPlus className="h-4 w-4" /></button>
-                  <button onClick={() => onToggleSidebar('settings')} className={`h-10 w-10 flex items-center justify-center rounded-xl ${isSidebarOpen && activeTab === 'settings' ? 'bg-amber-500 text-white shadow-[0_0_15px_rgba(245,158,11,0.4)]' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}><Settings className="h-4 w-4" /></button>
-                </>
-              )}
-              <button onClick={() => onToggleSidebar('polls')} className={`h-10 w-10 flex items-center justify-center rounded-xl ${isSidebarOpen && activeTab === 'polls' ? 'bg-rose-500 text-white shadow-[0_0_15px_rgba(244,63,94,0.4)]' : 'bg-white/5 text-white/60 hover:bg-white/10'}`}><BarChart3 className="h-4 w-4" /></button>
-              <div className="w-px h-6 bg-white/10 mx-1" />
-           </>
+              <DisconnectButton className="bg-rose-500 hover:bg-rose-600 text-white p-3 rounded-xl shadow-lg">
+                 <LogOut className="h-5 w-5" />
+              </DisconnectButton>
+           </div>
          )}
          <button onClick={() => setIsControlsExpanded(!isControlsExpanded)} className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 text-white/80 hover:bg-white/10 transition-all">{isControlsExpanded ? <ChevronDown className="h-5 w-5" /> : <ChevronUp className="h-5 w-5" />}</button>
       </div>

@@ -22,6 +22,7 @@ export class MeetingRepository {
 
   async findAllForUser(
     userId: string,
+    userEmail?: string,
     skip?: number,
     take?: number,
   ): Promise<[Meeting[], number]> {
@@ -29,10 +30,18 @@ export class MeetingRepository {
       .createQueryBuilder('meeting')
       .leftJoinAndSelect('meeting.participants', 'participant')
       .leftJoinAndSelect('participant.user', 'user')
+      .leftJoinAndSelect('meeting.organizer', 'organizer')
       .where('meeting.organizerId = :userId', { userId })
-      .orWhere('participant.userId = :userId', { userId })
-      .orderBy('meeting.startTime', 'DESC')
-      .distinct(true);
+      .orWhere('participant.userId = :userId', { userId });
+
+    if (userEmail) {
+      // Check if userEmail exists in inviteeEmails JSONB array
+      query.orWhere('meeting.inviteeEmails @> :emailJson', {
+        emailJson: JSON.stringify([userEmail]),
+      });
+    }
+
+    query.orderBy('meeting.startTime', 'DESC').distinct(true);
 
     if (skip !== undefined) {
       query.skip(skip);

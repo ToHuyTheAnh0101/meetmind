@@ -30,15 +30,21 @@ interface JoinResponse {
   status?: string
 }
 
-const DataHandler: React.FC<{ meetingId: string; onNewPoll: () => void }> = ({ meetingId, onNewPoll }) => {
+const DataHandler: React.FC<{ meetingId: string; onNotify: () => void }> = ({ meetingId, onNotify }) => {
   useDataChannel((msg) => {
     try {
       const data = JSON.parse(msg.payload instanceof Uint8Array ? new TextDecoder().decode(msg.payload) : msg.payload as string);
       if (data.type === 'POLL_CREATED' || data.type === 'POLL_UPDATED') {
         window.dispatchEvent(new CustomEvent('refresh-polls', { detail: { meetingId } }));
         if (data.type === 'POLL_CREATED') {
-          onNewPoll();
+          onNotify();
         }
+      }
+      if (data.type === 'QA_UPDATED') {
+        window.dispatchEvent(new CustomEvent('refresh-qa', { detail: { meetingId } }));
+      }
+      if (data.type === 'MEETING_UPDATED') {
+        window.dispatchEvent(new CustomEvent('refresh-meeting', { detail: { meetingId } }));
       }
     } catch (e) {
       console.error("Failed to parse data message", e);
@@ -64,6 +70,8 @@ const MeetingRoomPage: React.FC = () => {
     description: string; 
     participantCount: number;
     allowDisplayNameEdit: boolean;
+    isQaEnabled: boolean;
+    isAnonymousAllowed: boolean;
     organizerId: string;
   } | null>(null)
 
@@ -76,13 +84,20 @@ const MeetingRoomPage: React.FC = () => {
 
   // Room UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [activeTab, setActiveTab] = useState<'chat' | 'roster' | 'lobby' | 'settings' | 'polls'>('roster')
+  const [activeTab, setActiveTab] = useState<'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa'>('roster')
   const [isPollModalOpen, setIsPollModalOpen] = useState(false)
+  const [hasUnreadPolls, setHasUnreadPolls] = useState(false)
 
   const canManagePolls = useMemo(() => {
     if (!joinData || !user) return false;
     const p = joinData.participants.find(part => part.id === user.id || part.userId === user.id);
     return p?.isOrganizer || p?.permissions?.includes('manage_polls');
+  }, [joinData, user]);
+
+  const canManageQA = useMemo(() => {
+    if (!joinData || !user) return false;
+    const p = joinData.participants.find(part => part.id === user.id || part.userId === user.id);
+    return p?.isOrganizer || p?.permissions?.includes('manage_qa');
   }, [joinData, user]);
 
   // Icons used in Lobby
@@ -109,41 +124,65 @@ const MeetingRoomPage: React.FC = () => {
     return () => clearInterval(interval);
   }, [isWaitingInLobby, id, password]);
 
-  // Fetch Meeting Details for Lobby
+  // Fetch Meeting Details for Lobby & Room
+  const fetchMeetingDetails = useCallback(() => {
+    if (!id) return;
+    apiClient.get(`/meetings/${id}/public`).then(res => {
+      setMeetingDetails({
+        title: res.data.title,
+        description: res.data.description,
+        participantCount: res.data.participantCount || 0,
+        allowDisplayNameEdit: res.data.allowDisplayNameEdit ?? true,
+        isQaEnabled: res.data.isQaEnabled ?? true,
+        isAnonymousAllowed: res.data.isAnonymousAllowed ?? true,
+        organizerId: res.data.organizerId
+      })
+      if (res.data.hasPassword) {
+        setRequiresPassword(true)
+      }
+    }).catch(err => console.error("Failed to fetch meeting details", err))
+  }, [id]);
+
   useEffect(() => {
-    if (id) {
-      apiClient.get(`/meetings/${id}/public`).then(res => {
-        setMeetingDetails({
-          title: res.data.title,
-          description: res.data.description,
-          participantCount: res.data.participantCount || 0,
-          allowDisplayNameEdit: res.data.allowDisplayNameEdit ?? true,
-          organizerId: res.data.organizerId
-        })
-        if (res.data.hasPassword) {
-          setRequiresPassword(true)
-        }
-      }).catch(err => console.error("Failed to fetch meeting details", err))
-    }
-  }, [id])
+    fetchMeetingDetails();
+  }, [fetchMeetingDetails]);
+
+  // Listener for meeting updates
+  useEffect(() => {
+    const handleRefresh = (e: any) => {
+      if (e.detail?.meetingId === id) {
+        fetchMeetingDetails();
+      }
+    };
+    window.addEventListener('refresh-meeting', handleRefresh);
+    return () => window.removeEventListener('refresh-meeting', handleRefresh);
+  }, [id, fetchMeetingDetails]);
 
   // Initialize camera preview
   useEffect(() => {
     let activeTrack: LocalVideoTrack | null = null
+    let isMounted = true
 
-    if (isCamOn && !joinData) {
-      const startPreview = async () => {
+    const startPreview = async () => {
+      if (isCamOn && !joinData) {
         try {
-          activeTrack = await createLocalVideoTrack()
+          const track = await createLocalVideoTrack()
+          if (!isMounted || joinData) {
+            track.stop()
+            return
+          }
+          activeTrack = track
           setLocalVideoTrack(activeTrack)
         } catch (e) {
           console.error("Failed to start preview", e)
         }
       }
-      startPreview()
     }
 
+    startPreview()
+
     return () => {
+      isMounted = false
       if (activeTrack) {
         activeTrack.stop()
       }
@@ -153,6 +192,12 @@ const MeetingRoomPage: React.FC = () => {
 
   const handlePreJoinSubmit = async (choices: LocalUserChoices) => {
     setIsLoading(true)
+    // Stop preview track before joining to release hardware
+    if (localVideoTrack) {
+      localVideoTrack.stop();
+      setLocalVideoTrack(null);
+    }
+    
     try {
       const response = await apiClient.post<any>(`/meetings/${id}/join`, { 
         password,
@@ -186,6 +231,9 @@ const MeetingRoomPage: React.FC = () => {
     } else {
       setIsSidebarOpen(true)
       setActiveTab(tab)
+      if (tab === 'polls') {
+        setHasUnreadPolls(false)
+      }
     }
   }, [isSidebarOpen, activeTab]);
 
@@ -341,34 +389,57 @@ const MeetingRoomPage: React.FC = () => {
         audio={preJoinChoices.audioEnabled}
         token={joinData.token}
         serverUrl={joinData.liveKitUrl}
-        onDisconnected={() => navigate('/')}
+        onDisconnected={() => {
+          console.log("Disconnected from LiveKit room");
+          navigate('/');
+        }}
+        onError={(e) => {
+          console.error("LiveKitRoom error:", e);
+          setError(e.message);
+        }}
         data-lk-theme="default"
         className="w-full h-full flex overflow-hidden lg:flex-row flex-col"
       >
-        <DataHandler meetingId={id!} onNewPoll={handleOpenPollModal} />
+        <DataHandler meetingId={id!} onNotify={() => {
+          if (activeTab !== 'polls' || !isSidebarOpen) {
+            setHasUnreadPolls(true);
+          }
+        }} />
         <LayoutContextProvider>
-           <div className="flex-1 h-full min-w-0 overflow-hidden flex flex-col relative transition-all duration-500 ease-in-out">
+           <motion.div 
+             layout
+             className="flex-1 h-full min-w-0 overflow-hidden flex flex-col relative"
+           >
             <MeetingMainStage 
               meetingId={id || ''}
               isSidebarOpen={isSidebarOpen}
               isOrganizer={isOrganizer}
               activeTab={activeTab as any}
+              hasUnreadPolls={hasUnreadPolls}
               onToggleSidebar={handleToggleSidebar}
               onEndSession={handleEndSession}
               onLeaveSession={handleLeaveSession}
             />
-          </div>
+          </motion.div>
 
           <MeetingSidebar 
             isOpen={isSidebarOpen}
             onClose={handleCloseSidebar}
             activeTab={activeTab}
-            setActiveTab={setActiveTab as any}
+            hasUnreadPolls={hasUnreadPolls}
+            setActiveTab={(tab: any) => {
+              setActiveTab(tab);
+              setIsSidebarOpen(true);
+              if (tab === 'polls') setHasUnreadPolls(false);
+            }}
             meetingId={joinData.meetingId}
             userId={user?.id || ''}
             organizerId={joinData.organizerId}
             isOrganizer={isOrganizer}
             canManagePolls={canManagePolls}
+            canManageQA={canManageQA}
+            isQaEnabled={meetingDetails?.isQaEnabled ?? true}
+            isAnonymousAllowed={meetingDetails?.isAnonymousAllowed ?? true}
             onOpenCreateModal={handleOpenPollModal}
           />
         </LayoutContextProvider>

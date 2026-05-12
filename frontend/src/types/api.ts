@@ -37,9 +37,12 @@ export interface Meeting {
   waitingRoomEnabled?: boolean
   muteOnJoin?: boolean
   allowDisplayNameEdit?: boolean
+  isQaEnabled?: boolean
+  isAnonymousAllowed?: boolean
   inviteeEmails?: string[]
   reminderMinutes?: number
   password?: string
+  organizerId?: string
 }
 
 export interface Participant {
