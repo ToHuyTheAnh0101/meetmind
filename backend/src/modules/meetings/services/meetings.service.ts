@@ -653,4 +653,31 @@ export class MeetingsService {
       );
     }
   }
+
+  async checkConflict(userId: string, time: string, currentMeetingId?: string) {
+    const checkTime = new Date(time);
+    if (isNaN(checkTime.getTime())) {
+      throw new BadRequestException('Invalid time format');
+    }
+
+    // Reset seconds and milliseconds to check by minute
+    checkTime.setSeconds(0);
+    checkTime.setMilliseconds(0);
+
+    const nextMinute = new Date(checkTime.getTime() + 60000);
+
+    const before = await this.meetingsRepository.findNearestBefore(userId, checkTime);
+    // For 'after', we want the first meeting that starts AFTER this minute window
+    const after = await this.meetingsRepository.findNearestAfter(userId, nextMinute);
+    // For 'conflict', we want anything starting WITHIN this minute
+    const exact = await this.meetingsRepository.findExactAt(userId, checkTime);
+
+    const result = {
+      before: before?.id === currentMeetingId ? null : before,
+      after: after?.id === currentMeetingId ? null : after,
+      conflict: exact?.id === currentMeetingId ? null : exact,
+    };
+
+    return result;
+  }
 }

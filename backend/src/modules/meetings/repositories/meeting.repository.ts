@@ -65,4 +65,35 @@ export class MeetingRepository {
   async remove(meeting: Meeting): Promise<void> {
     await this.repo.remove(meeting);
   }
+
+  async findNearestBefore(userId: string, time: Date): Promise<Meeting | null> {
+    return this.repo
+      .createQueryBuilder('meeting')
+      .where('meeting.organizerId = :userId', { userId })
+      .andWhere('meeting.startTime < :time', { time })
+      .andWhere("meeting.status != 'cancelled'")
+      .orderBy('meeting.startTime', 'DESC')
+      .getOne();
+  }
+
+  async findNearestAfter(userId: string, time: Date): Promise<Meeting | null> {
+    return this.repo
+      .createQueryBuilder('meeting')
+      .where('meeting.organizerId = :userId', { userId })
+      .andWhere('meeting.startTime > :time', { time })
+      .andWhere("meeting.status != 'cancelled'")
+      .orderBy('meeting.startTime', 'ASC')
+      .getOne();
+  }
+
+  async findExactAt(userId: string, time: Date): Promise<Meeting | null> {
+    const nextMinute = new Date(time.getTime() + 60000);
+    return this.repo
+      .createQueryBuilder('meeting')
+      .where('meeting.organizerId = :userId', { userId })
+      .andWhere('meeting.startTime >= :time', { time })
+      .andWhere('meeting.startTime < :nextMinute', { nextMinute })
+      .andWhere("meeting.status != 'cancelled'")
+      .getOne();
+  }
 }

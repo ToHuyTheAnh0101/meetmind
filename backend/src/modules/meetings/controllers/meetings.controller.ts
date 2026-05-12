@@ -39,6 +39,16 @@ export class MeetingsController {
     private readonly mailService: MailService,
   ) {}
 
+  @Get('check-conflict')
+  @UseGuards(JwtAuthGuard)
+  async checkConflict(
+    @Query('time') time: string,
+    @Query('currentMeetingId') currentMeetingId: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    return this.meetingsService.checkConflict(req.user.id, time, currentMeetingId);
+  }
+
   @Get(':id/public')
   async getMeetingPublicInfo(@Param('id') id: string): Promise<any> {
     // Public endpoint - no auth required

@@ -245,6 +245,11 @@
     "add_option": "Thêm lựa chọn",
     "publish_poll": "Phát hành",
     "camera_error_or_blocked": "Không thể truy cập camera. Có thể do bị chặn hoặc đang được ứng dụng khác sử dụng.",
-    "camera_off": "Máy ảnh đang tắt"
+    "camera_off": "Máy ảnh đang tắt",
+    "timeline_before": "Cuộc họp gần nhất trước đó",
+    "timeline_after": "Cuộc họp gần nhất sau đó",
+    "timeline_selected": "Giờ bạn đang chọn",
+    "conflict_with": "Trùng lịch với: Cuộc họp \"{{title}}\"",
+    "checking_schedule": "Đang kiểm tra lịch trình..."
   }
 }

@@ -242,6 +242,11 @@
     "add_option": "Add option",
     "publish_poll": "Publish",
     "camera_error_or_blocked": "Could not access camera. It might be blocked or in use by another app.",
-    "camera_off": "Camera is off"
+    "camera_off": "Camera is off",
+    "timeline_before": "Nearest previous meeting",
+    "timeline_after": "Nearest upcoming meeting",
+    "timeline_selected": "Your selected time",
+    "conflict_with": "Schedule conflict with: Meeting \"{{title}}\"",
+    "checking_schedule": "Checking schedule..."
   }
 }
