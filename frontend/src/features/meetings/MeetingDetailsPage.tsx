@@ -3,7 +3,6 @@ import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
 import { 
-  ChevronLeft, 
   Calendar, 
   AlignLeft, 
   Loader2, 
@@ -31,11 +30,13 @@ import {
   useInfiniteQuery 
 } from '@tanstack/react-query'
 import apiClient from '@/lib/apiClient'
-import type { Meeting } from '@/types/api'
+import { Meeting, MeetingPermission } from '@/types/api'
 import SettingToggle from './components/details/SettingToggle'
 import EmailTagInput from './components/details/EmailTagInput'
 import { useTimeTheme } from '@/hooks/useTimeTheme'
 import { useAuth } from '@/features/auth/AuthContext'
+
+import MeetingPermissionsTab from './components/details/MeetingPermissionsTab'
 
 const MeetingDetailsPage: React.FC = () => {
   const { t } = useTranslation()
@@ -49,6 +50,7 @@ const MeetingDetailsPage: React.FC = () => {
   const isNew = location.pathname === '/meetings/new'
   const [copied, setCopied] = useState(false)
   const [isInstant, setIsInstant] = useState(true)
+  const [activeTab, setActiveTab] = useState<'general' | 'permissions'>('general')
   
   const [formData, setFormData] = useState({
     title: '',
@@ -139,6 +141,12 @@ const MeetingDetailsPage: React.FC = () => {
   })
 
   const isOrganizer = isNew || (meeting && meeting.organizerId === user?.id)
+  const isCoHost = React.useMemo(() => {
+    if (!meeting || !user) return false;
+    return meeting.participants?.find(p => p.userId === user.id)?.permissions?.includes(MeetingPermission.CO_HOST);
+  }, [meeting, user]);
+
+  const canEdit = isOrganizer || isCoHost;
 
   // 2. Fetch Paginated Participants (Infinite Scroll)
   const {
@@ -272,7 +280,7 @@ const MeetingDetailsPage: React.FC = () => {
   if (isLoading && !isNew) {
     return (
       <div className="flex h-[70vh] items-center justify-center">
-        <Loader2 className={`h-10 w-10 animate-spin ${theme.colors.primary}`} />
+        <Loader2 className={`h-10 w-10 animate-spin text-cyan-500`} />
       </div>
     )
   }
@@ -289,7 +297,7 @@ const MeetingDetailsPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-20">
+    <div className="max-w-6xl mx-auto space-y-6 pb-20">
       {/* 1. CUSTOM DELETE CONFIRMATION MODAL */}
       <AnimatePresence>
         {showDeleteConfirm && (
@@ -341,463 +349,501 @@ const MeetingDetailsPage: React.FC = () => {
           </div>
         )}
       </AnimatePresence>
-      <button 
-        onClick={() => navigate('/meetings')}
-        className="group flex items-center gap-2 text-slate-500 hover:text-slate-900 transition-colors"
-      >
-        <ChevronLeft className="h-5 w-5 transition-transform group-hover:-translate-x-1" />
-        <span className="text-sm font-black">{t('meeting.back_to_hub')}</span>
-      </button>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
-        {/* LEFT: UNIFIED CONFIGURATION FORM */}
-        <div className="lg:col-span-8 space-y-8">
-          <motion.div 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="rounded-[2.5rem] border border-white/80 bg-white/70 p-8 shadow-2xl backdrop-blur-xl sm:p-12"
+      <div className="flex flex-col gap-6">
+        {!isNew && (
+          <div className="flex p-1 rounded-2xl bg-slate-100/50 border border-slate-300 w-fit backdrop-blur-sm">
+            <button 
+              onClick={() => setActiveTab('general')}
+              className={`relative px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'general' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              {activeTab === 'general' && (
+                <motion.div layoutId="tab-bg" className="absolute inset-0 bg-white shadow-sm border border-slate-300 rounded-xl" />
+              )}
+              <span className="relative z-10">{t('meeting.permissions.tab_general')}</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('permissions')}
+              className={`relative px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'permissions' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              {activeTab === 'permissions' && (
+                <motion.div layoutId="tab-bg" className="absolute inset-0 bg-white shadow-sm border border-slate-300 rounded-xl" />
+              )}
+              <span className="relative z-10">{t('meeting.permissions.tab_permissions')}</span>
+            </button>
+          </div>
+        )}
+      </div>
+
+      <AnimatePresence mode="wait">
+        {activeTab === 'general' ? (
+          <motion.div
+            key="general"
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: 20 }}
+            className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
           >
-            {/* 1. SESSION SECTION */}
-            <section className="space-y-6 pb-10">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-                <div>
-                  <h2 className="text-3xl font-black text-slate-900 leading-tight">{t('meeting.session_info')}</h2>
-                </div>
-                {isNew && (
-                  <div className="flex p-1 rounded-xl bg-slate-100/80 border border-slate-200">
-                    <button 
-                      onClick={() => setIsInstant(false)}
-                       className={`px-4 py-2 rounded-lg text-sm font-black transition-all ${!isInstant ? 'bg-sky-50 shadow-sm text-sky-700 border border-sky-200/50' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      {t('meeting.schedule_session')}
-                    </button>
-                    <button 
-                      onClick={() => setIsInstant(true)}
-                       className={`px-4 py-2 rounded-lg text-sm font-black transition-all ${isInstant ? 'bg-cyan-50 shadow-sm text-cyan-700 border border-cyan-200/50' : 'text-slate-500 hover:text-slate-700'}`}
-                    >
-                      {t('dashboard.instant_meeting')}
-                    </button>
+            {/* LEFT: UNIFIED CONFIGURATION FORM */}
+            <div className="lg:col-span-8 space-y-8">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="rounded-[2.5rem] border border-white/80 bg-white/70 p-6 shadow-2xl backdrop-blur-xl sm:p-10"
+              >
+                {/* 1. SESSION SECTION */}
+                <section className="space-y-6 pb-10">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <h2 className="text-3xl font-black text-slate-900 leading-tight tracking-tight">{t('meeting.session_info')}</h2>
+                      <p className="text-sm font-bold text-slate-500 mt-1">{t('meeting.session_info_subtitle')}</p>
+                    </div>
+                    {isNew && (
+                      <div className="flex p-1 rounded-xl bg-slate-100/80 border border-slate-200">
+                        <button 
+                          onClick={() => setIsInstant(false)}
+                           className={`px-4 py-2 rounded-lg text-sm font-black transition-all ${!isInstant ? 'bg-white shadow-sm text-indigo-600 border border-indigo-100' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                          {t('meeting.schedule_session')}
+                        </button>
+                        <button 
+                          onClick={() => setIsInstant(true)}
+                           className={`px-4 py-2 rounded-lg text-sm font-black transition-all ${isInstant ? 'bg-white shadow-sm text-indigo-600 border border-indigo-100' : 'text-slate-500 hover:text-slate-700'}`}
+                        >
+                          {t('dashboard.instant_meeting')}
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
 
-              <div className="space-y-6">
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-cyan-700">{t('meeting.title')}</label>
-                  <input
-                    type="text"
-                    placeholder={t('meeting.title_example')}
-                    disabled={!isOrganizer}
-                    className={`w-full border-b-2 border-slate-200 bg-transparent py-2 text-xl font-black placeholder:text-slate-300 focus:outline-none transition-all focus:border-${theme.colors.primary.split('-')[1]}-500 ${!isOrganizer ? 'cursor-default' : ''}`}
-                    value={formData.title}
-                    onChange={e => setFormData({ ...formData, title: e.target.value })}
-                  />
-                </div>
-
-                <div className="space-y-2">
-                  <label className="text-sm font-bold text-slate-500">{t('meeting.description_agenda')}</label>
-                  <div className="relative">
-                    <AlignLeft className="absolute left-0 top-4 h-5 w-5 text-slate-300" />
-                    <textarea
-                      rows={4}
-                      placeholder={t('meeting.description_placeholder')}
-                      readOnly={!isOrganizer}
-                      className={`w-full border-b-2 border-slate-200 bg-transparent py-2 pl-10 text-base font-medium placeholder:text-slate-300 focus:border-cyan-500 focus:outline-none transition-all resize-none ${!isOrganizer ? 'cursor-default' : ''}`}
-                      value={formData.description}
-                      onChange={e => setFormData({ ...formData, description: e.target.value })}
-                    />
-                  </div>
-                </div>
-
-                {!isInstant && (
-                  <motion.div 
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    className="space-y-2"
-                  >
-                    <label className="text-sm font-bold text-slate-500">{t('meeting.start_time')}</label>
-                    <div className="relative">
-                      <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
+                  <div className="space-y-6">
+                    <div className="space-y-2">
+                      <label className="text-[14px] font-bold text-slate-500">{t('meeting.title')}</label>
                       <input
-                        type="datetime-local"
-                        disabled={!isOrganizer}
-                        min={new Date().toISOString().slice(0, 16)}
-                        className={`w-full border-b-2 border-slate-200 bg-transparent py-2 pl-10 text-base font-medium focus:border-cyan-500 focus:outline-none transition-all ${!isOrganizer ? 'cursor-default' : ''}`}
-                        value={formData.startTime}
-                        onChange={e => setFormData({ ...formData, startTime: e.target.value })}
+                        type="text"
+                        placeholder={t('meeting.title_example')}
+                        disabled={!canEdit}
+                        className={`w-full border-b-2 border-slate-200 bg-transparent py-2 text-xl font-black placeholder:text-slate-300 focus:outline-none transition-all focus:border-indigo-500 ${!canEdit ? 'cursor-default' : ''}`}
+                        value={formData.title}
+                        onChange={e => setFormData({ ...formData, title: e.target.value })}
                       />
                     </div>
 
-                    {/* Timeline Conflict Context Preview */}
-                    <AnimatePresence>
-                      {isNew && (conflictContext || isCheckingConflict) && !isInstant && (
-                        <motion.div
-                          initial={{ opacity: 0, y: -10 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: -10 }}
-                          className="mt-4 overflow-hidden rounded-2xl bg-slate-50/50 border border-slate-100 p-4"
-                        >
-                          {isCheckingConflict ? (
-                            <div className="flex items-center justify-center py-2 gap-2 text-xs font-bold text-slate-400">
-                              <Loader2 className="h-3 w-3 animate-spin" />
-                              <span>{t('meeting.checking_schedule')}</span>
-                            </div>
-                          ) : (
-                            <div className="flex flex-col gap-3">
-                               {/* Conflict Warning */}
-                               {conflictContext?.conflict && (
-                                  <div className="flex items-center gap-2 text-rose-500 bg-rose-50 p-2 rounded-xl border border-rose-100 animate-pulse">
-                                     <AlertCircle className="h-4 w-4 shrink-0" />
-                                     <span className="text-[11px] font-black tracking-tight">
-                                        {t('meeting.conflict_with', { title: conflictContext.conflict.title })}
-                                     </span>
-                                  </div>
-                               )}
-                               
-                               <div className="flex items-center justify-between relative px-2">
-                                  {/* Dashed Connector Line */}
-                                  <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-slate-200 z-0" />
-                                  
-                                  {/* Prev */}
-                                  <div className="relative z-10 bg-white shadow-sm border border-slate-100 p-2 rounded-xl text-center flex-1 max-w-[150px] min-h-[60px] flex flex-col justify-center">
-                                     <p className="text-[12px] font-black text-slate-400 leading-tight mb-1">{t('meeting.timeline_before')}</p>
-                                     <p className="text-sm font-black text-slate-600 truncate">
-                                        {conflictContext?.before ? new Date(conflictContext.before.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                                     </p>
-                                  </div>
+                    <div className="space-y-2">
+                      <label className="text-[14px] font-bold text-slate-500">{t('meeting.description_agenda')}</label>
+                      <div className="relative">
+                        <AlignLeft className="absolute left-0 top-4 h-5 w-5 text-slate-300" />
+                        <textarea
+                          rows={4}
+                          placeholder={t('meeting.description_placeholder')}
+                          readOnly={!canEdit}
+                          className={`w-full border-b-2 border-slate-200 bg-transparent py-2 pl-10 text-base font-medium placeholder:text-slate-300 focus:border-cyan-500 focus:outline-none transition-all resize-none ${!canEdit ? 'cursor-default' : ''}`}
+                          value={formData.description}
+                          onChange={e => setFormData({ ...formData, description: e.target.value })}
+                        />
+                      </div>
+                    </div>
 
-                                  {/* Selected */}
-                                  <div className={`relative z-10 p-2 rounded-xl text-center min-w-[120px] min-h-[60px] flex flex-col justify-center shadow-lg mx-2 ${conflictContext?.conflict ? 'bg-rose-500 text-white' : 'bg-cyan-500 text-white'}`}>
-                                     <p className="text-[12px] font-black opacity-70 leading-tight mb-1">{t('meeting.timeline_selected')}</p>
-                                     <p className="text-sm font-black">
-                                        {new Date(formData.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                                     </p>
-                                  </div>
+                    {!isInstant && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        className="space-y-2"
+                      >
+                        <label className="text-[14px] font-bold text-slate-500">{t('meeting.start_time')}</label>
+                        <div className="relative">
+                          <Calendar className="absolute left-0 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
+                          <input
+                            type="datetime-local"
+                            disabled={!canEdit}
+                            min={new Date().toISOString().slice(0, 16)}
+                            className={`w-full border-b-2 border-slate-200 bg-transparent py-2 pl-10 text-base font-medium focus:border-cyan-500 focus:outline-none transition-all ${!canEdit ? 'cursor-default' : ''}`}
+                            value={formData.startTime}
+                            onChange={e => setFormData({ ...formData, startTime: e.target.value })}
+                          />
+                        </div>
 
-                                  {/* Next */}
-                                  <div className="relative z-10 bg-white shadow-sm border border-slate-100 p-2 rounded-xl text-center flex-1 max-w-[150px] min-h-[60px] flex flex-col justify-center">
-                                     <p className="text-[12px] font-black text-slate-400 leading-tight mb-1">{t('meeting.timeline_after')}</p>
-                                     <p className="text-sm font-black text-slate-600 truncate">
-                                        {conflictContext?.after ? new Date(conflictContext.after.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
-                                     </p>
-                                  </div>
-                               </div>
-                            </div>
+                        {/* Timeline Conflict Context Preview */}
+                        <AnimatePresence>
+                          {isNew && (conflictContext || isCheckingConflict) && !isInstant && (
+                            <motion.div
+                              initial={{ opacity: 0, y: -10 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              exit={{ opacity: 0, y: -10 }}
+                              className="mt-4 overflow-hidden rounded-2xl bg-slate-50/50 border border-slate-100 p-4"
+                            >
+                              {isCheckingConflict ? (
+                                <div className="flex items-center justify-center py-2 gap-2 text-xs font-bold text-slate-400">
+                                  <Loader2 className="h-3 w-3 animate-spin" />
+                                  <span>{t('meeting.checking_schedule')}</span>
+                                </div>
+                              ) : (
+                                <div className="flex flex-col gap-3">
+                                   {/* Conflict Warning */}
+                                   {conflictContext?.conflict && (
+                                      <div className="flex items-center gap-2 text-rose-500 bg-rose-50 p-2 rounded-xl border border-rose-100 animate-pulse">
+                                         <AlertCircle className="h-4 w-4 shrink-0" />
+                                         <span className="text-[11px] font-black tracking-tight">
+                                            {t('meeting.conflict_with', { title: conflictContext.conflict.title })}
+                                         </span>
+                                      </div>
+                                   )}
+                                   
+                                   <div className="flex items-center justify-between relative px-2">
+                                      {/* Dashed Connector Line */}
+                                      <div className="absolute left-0 right-0 top-1/2 -translate-y-1/2 border-t-2 border-dashed border-slate-200 z-0" />
+                                      
+                                      {/* Prev */}
+                                      <div className="relative z-10 bg-white shadow-sm border border-slate-100 p-2 rounded-xl text-center flex-1 max-w-[150px] min-h-[60px] flex flex-col justify-center">
+                                         <p className="text-[12px] font-black text-slate-400 leading-tight mb-1">{t('meeting.timeline_before')}</p>
+                                         <p className="text-sm font-black text-slate-600 truncate">
+                                            {conflictContext?.before ? new Date(conflictContext.before.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                                         </p>
+                                      </div>
+
+                                      {/* Selected */}
+                                      <div className={`relative z-10 p-2 rounded-xl text-center min-w-[120px] min-h-[60px] flex flex-col justify-center shadow-lg mx-2 ${conflictContext?.conflict ? 'bg-rose-500 text-white' : 'bg-cyan-500 text-white'}`}>
+                                         <p className="text-[12px] font-black opacity-70 leading-tight mb-1">{t('meeting.timeline_selected')}</p>
+                                         <p className="text-sm font-black">
+                                            {new Date(formData.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                                         </p>
+                                      </div>
+
+                                      {/* Next */}
+                                      <div className="relative z-10 bg-white shadow-sm border border-slate-100 p-2 rounded-xl text-center flex-1 max-w-[150px] min-h-[60px] flex flex-col justify-center">
+                                         <p className="text-[12px] font-black text-slate-400 leading-tight mb-1">{t('meeting.timeline_after')}</p>
+                                         <p className="text-sm font-black text-slate-600 truncate">
+                                            {conflictContext?.after ? new Date(conflictContext.after.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}
+                                         </p>
+                                      </div>
+                                   </div>
+                                </div>
+                              )}
+                            </motion.div>
                           )}
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
-                  </motion.div>
-                )}
-              </div>
-            </section>
-
-            {isOrganizer && (
-              <>
-                {/* 2. PRIVACY & PARTICIPANTS SECTION */}
-                <section className="pt-10 space-y-8">
-                  <div>
-                    <h2 className="text-3xl font-black text-slate-900 leading-tight">{t('meeting.privacy_members')}</h2>
-                    <p className="text-sm font-bold text-slate-500 mt-1">{t('meeting.access_control_desc')}</p>
-                  </div>
-     
-                   {/* Password Protection */}
-                   <div className="space-y-3">
-                      <div className="flex items-center gap-2">
-                         <Lock className="h-4 w-4 text-slate-400" />
-                         <label className="text-sm font-bold text-cyan-700">{t('meeting.password_optional')}</label>
-                      </div>
-                      <div className="relative group">
-                         <input
-                           type={showPassword ? "text" : "password"}
-                           placeholder={t('meeting.set_password')}
-                           className="w-full h-11 pl-4 pr-12 rounded-xl bg-white/50 border border-slate-200 focus:bg-white focus:border-cyan-500 focus:outline-none transition-all text-sm font-bold text-slate-900 shadow-inner"
-                           value={formData.password}
-                           onChange={e => setFormData({ ...formData, password: e.target.value })}
-                         />
-                         <button
-                           type="button"
-                           onClick={() => setShowPassword(!showPassword)}
-                           className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-slate-100/50 text-slate-400 transition-colors"
-                         >
-                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                         </button>
-                      </div>
-                      <p className="text-xs font-medium text-slate-600 leading-tight">
-                         {t('meeting.leave_empty_password')}
-                      </p>
-                   </div>
-    
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      <div className="space-y-4">
-                         <label className="text-sm font-bold text-slate-500">{t('meeting.access_mode')}</label>
-                         <div className="grid grid-cols-1 gap-3">
-                            <button
-                              type="button"
-                              onClick={() => setFormData({ ...formData, accessType: 'public' })}
-                            className={`p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${formData.accessType === 'public' ? 'bg-cyan-50 border-cyan-500 shadow-md shadow-cyan-100' : 'bg-white opacity-60 border-slate-200 hover:opacity-100'}`}
-                            >
-                               <div className={`p-2 rounded-lg ${formData.accessType === 'public' ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                  <Video className="h-4 w-4" />
-                               </div>
-                               <div className="text-left">
-                                  <h4 className="text-sm font-black text-slate-900">{t('meeting.anytime_link')}</h4>
-                                  <p className="text-[11px] font-bold text-slate-500">{t('meeting.public')}</p>
-                               </div>
-                            </button>
-    
-                            <button
-                              type="button"
-                              onClick={() => setFormData({ ...formData, accessType: 'invite_only' })}
-                              className={`p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${formData.accessType === 'invite_only' ? 'bg-indigo-50 border-indigo-500 shadow-md shadow-indigo-100' : 'bg-white opacity-60 border-slate-200 hover:opacity-100'}`}
-                            >
-                               <div className={`p-2 rounded-lg ${formData.accessType === 'invite_only' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
-                                  <Shield className="h-4 w-4" />
-                               </div>
-                               <div className="text-left">
-                                  <h4 className="text-sm font-black text-slate-900">{t('meeting.guest_list_only')}</h4>
-                                  <p className="text-[11px] font-bold text-slate-500">{t('meeting.strict')}</p>
-                               </div>
-                            </button>
-                         </div>
-                      </div>
-    
-                      <div className="space-y-4">
-                         <label className="text-sm font-bold text-slate-500">{t('meeting.guest_invitations')}</label>
-                         <EmailTagInput 
-                            emails={formData.inviteeEmails}
-                            onChange={(emails) => setFormData({ ...formData, inviteeEmails: emails })}
-                         />
-                      </div>
-                   </div>
-    
-                   <SettingToggle 
-                      label={t('meeting.enable_waiting_room')}
-                      description={t('meeting.waiting_room_desc')}
-                      enabled={formData.waitingRoomEnabled}
-                      onChange={(val) => setFormData({ ...formData, waitingRoomEnabled: val })}
-                      icon={<Users className="h-4 w-4" />}
-                   />
-                </section>
-    
-                {/* 3. SETTINGS & INTERACTION SECTION */}
-                <section className="space-y-8 pt-10">
-                   <div>
-                      <h2 className="text-3xl font-black text-slate-900 leading-tight">{t('meeting.preferences')}</h2>
-                      <p className="text-sm font-bold text-slate-500 mt-1">{t('meeting.notify_before')}</p>
-                   </div>
-    
-                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                       <div className="p-4 rounded-2xl bg-white/40 border border-slate-200 flex items-center justify-between">
-                         <SettingToggle 
-                            label={t('meeting.mute_on_entry')}
-                            description={t('meeting.mute_on_entry_desc')}
-                            enabled={formData.muteOnJoin}
-                            onChange={(val) => setFormData({ ...formData, muteOnJoin: val })}
-                            icon={<MicOff className="h-4 w-4" />}
-                            noBorder
-                            className="w-full py-0"
-                         />
-                       </div>
-    
-                       <div className="p-4 rounded-2xl bg-white/40 border border-slate-200 flex items-center justify-between">
-                         <SettingToggle 
-                            label={t('meeting.allow_display_name_edit')}
-                            description={t('meeting.allow_display_name_edit_desc')}
-                            enabled={formData.allowDisplayNameEdit}
-                            onChange={(val) => setFormData({ ...formData, allowDisplayNameEdit: val })}
-                            icon={<User className="h-4 w-4" />}
-                            noBorder
-                            className="w-full py-0"
-                         />
-                       </div>
-    
-                      <div className="p-4 rounded-2xl bg-white/40 border border-slate-200 flex items-center justify-between">
-                         <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
-                               <Bell className="h-4 w-4" />
-                            </div>
-                            <div>
-                               <h4 className="text-sm font-black text-slate-900 tracking-tight">{t('meeting.reminders')}</h4>
-                               <p className="text-xs font-medium text-slate-500 leading-tight mt-1">{t('meeting.notify_before')}</p>
-                            </div>
-                         </div>
-                         <select 
-                            value={formData.reminderMinutes}
-                            onChange={(e) => setFormData({ ...formData, reminderMinutes: parseInt(e.target.value) })}
-                            className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl text-xs font-black border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/5 transition-all cursor-pointer hover:bg-white ml-8"
-                         >
-                            <option value="0">{t('meeting.none')}</option>
-                            <option value="5">5m</option>
-                            <option value="15">15m</option>
-                            <option value="30">30m</option>
-                            <option value="60">1h</option>
-                         </select>
-                      </div>
-                   </div>
-                </section>
-              </>
-            )}
-
-            {/* 4. ATTACHMENTS & RESOURCES - Always visible */}
-            <section className="pt-10 space-y-8">
-               <div className="relative group p-8 rounded-3xl border-2 border-dashed border-slate-200 hover:border-cyan-200 transition-all text-center">
-                  <div className="mx-auto h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-4">
-                     <Paperclip className="h-6 w-6" />
-                  </div>
-                  <h4 className="text-sm font-black text-slate-900">{t('meeting.attachments')}</h4>
-                  <p className="text-xs font-bold text-slate-500 mt-1">{t('meeting.coming_soon')}</p>
-               </div>
-            </section>
-          </motion.div>
-        </div>
-
-        {/* RIGHT: PERSISTENT ACTION SIDEBAR */}
-        <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-8">
-          <motion.div 
-            initial={{ opacity: 0, x: 20 }}
-            animate={{ opacity: 1, x: 0 }}
-            className="rounded-[2.5rem] border border-white/80 bg-white/70 p-8 shadow-2xl backdrop-blur-xl"
-          >
-             <h3 className={`text-lg font-black mb-8 flex items-center gap-3 transition-colors duration-1000 ${theme.colors.primary}`}>
-                <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${theme.colors.primary.replace('text-', 'bg-')}`} />
-                {t('meeting.control_center')}
-             </h3>
-             
-             <div className="space-y-4">
-                {!isNew && (
-                  <>
-                    <button 
-                      disabled={meeting?.status === 'completed'}
-                      onClick={() => navigate(`/room/${id}`)}
-                      className={`flex w-full items-center justify-center gap-3 rounded-2xl py-4 text-sm font-black text-white shadow-xl transition group ${meeting?.status === 'completed' ? 'bg-slate-400 cursor-not-allowed opacity-70' : 'bg-slate-900 hover:scale-[1.05] active:scale-95'}`}
-                    >
-                      <Video className="h-5 w-5 transition-transform group-hover:rotate-12" />
-                      {meeting?.status === 'completed' ? t('meeting.status.completed') : t('meeting.join_workspace')}
-                    </button>
-                    {meeting?.status === 'completed' && (
-                       <p className="text-xs font-bold text-rose-500 text-center mt-2 px-4 leading-relaxed">
-                          {t('meeting.meeting_ended_note')}
-                       </p>
+                        </AnimatePresence>
+                      </motion.div>
                     )}
+                  </div>
+                </section>
+
+                {canEdit && (
+                  <>
+                    {/* 2. PRIVACY & PARTICIPANTS SECTION */}
+                    <section className="pt-10 space-y-8">
+                      <div>
+                        <h2 className="text-3xl font-black text-slate-900 leading-tight">{t('meeting.privacy_members')}</h2>
+                        <p className="text-sm font-bold text-slate-500 mt-1">{t('meeting.access_control_desc')}</p>
+                      </div>
+         
+                       {/* Password Protection */}
+                       <div className="space-y-3">
+                          <div className="flex items-center gap-2">
+                             <Lock className="h-4 w-4 text-slate-400" />
+                             <label className="text-sm font-bold text-cyan-700">{t('meeting.password_optional')}</label>
+                          </div>
+                          <div className="relative group">
+                             <input
+                               type={showPassword ? "text" : "password"}
+                               placeholder={t('meeting.set_password')}
+                               className="w-full h-11 pl-4 pr-12 rounded-xl bg-white/50 border border-slate-200 focus:bg-white focus:border-cyan-500 focus:outline-none transition-all text-sm font-bold text-slate-900 shadow-inner"
+                               value={formData.password}
+                               onChange={e => setFormData({ ...formData, password: e.target.value })}
+                             />
+                             <button
+                               type="button"
+                               onClick={() => setShowPassword(!showPassword)}
+                               className="absolute right-2 top-1/2 -translate-y-1/2 p-2 rounded-lg hover:bg-slate-100/50 text-slate-400 transition-colors"
+                             >
+                                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                             </button>
+                          </div>
+                          <p className="text-xs font-medium text-slate-600 leading-tight">
+                             {t('meeting.leave_empty_password')}
+                          </p>
+                       </div>
+        
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          <div className="space-y-4">
+                             <label className="text-sm font-bold text-slate-500">{t('meeting.access_mode')}</label>
+                             <div className="grid grid-cols-1 gap-3">
+                                <button
+                                  type="button"
+                                  onClick={() => setFormData({ ...formData, accessType: 'public' })}
+                                className={`p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${formData.accessType === 'public' ? 'bg-cyan-50 border-cyan-500 shadow-md shadow-cyan-100' : 'bg-white opacity-60 border-slate-200 hover:opacity-100'}`}
+                                >
+                                   <div className={`p-2 rounded-lg ${formData.accessType === 'public' ? 'bg-cyan-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                      <Video className="h-4 w-4" />
+                                   </div>
+                                   <div className="text-left">
+                                      <h4 className="text-sm font-black text-slate-900">{t('meeting.anytime_link')}</h4>
+                                      <p className="text-[11px] font-bold text-slate-500">{t('meeting.public')}</p>
+                                   </div>
+                                </button>
+        
+                                <button
+                                  type="button"
+                                  onClick={() => setFormData({ ...formData, accessType: 'invite_only' })}
+                                  className={`p-4 rounded-xl border-2 transition-all flex items-center gap-4 ${formData.accessType === 'invite_only' ? 'bg-indigo-50 border-indigo-500 shadow-md shadow-indigo-100' : 'bg-white opacity-60 border-slate-200 hover:opacity-100'}`}
+                                >
+                                   <div className={`p-2 rounded-lg ${formData.accessType === 'invite_only' ? 'bg-indigo-600 text-white' : 'bg-slate-100 text-slate-400'}`}>
+                                      <Shield className="h-4 w-4" />
+                                   </div>
+                                   <div className="text-left">
+                                      <h4 className="text-sm font-black text-slate-900">{t('meeting.guest_list_only')}</h4>
+                                      <p className="text-[11px] font-bold text-slate-500">{t('meeting.strict')}</p>
+                                   </div>
+                                </button>
+                             </div>
+                          </div>
+        
+                          <div className="space-y-4">
+                             <label className="text-sm font-bold text-slate-500">{t('meeting.guest_invitations')}</label>
+                             <EmailTagInput 
+                                emails={formData.inviteeEmails}
+                                onChange={(emails) => setFormData({ ...formData, inviteeEmails: emails })}
+                             />
+                          </div>
+                       </div>
+        
+                       <SettingToggle 
+                          label={t('meeting.enable_waiting_room')}
+                          description={t('meeting.waiting_room_desc')}
+                          enabled={formData.waitingRoomEnabled}
+                          onChange={(val) => setFormData({ ...formData, waitingRoomEnabled: val })}
+                          icon={<Users className="h-4 w-4" />}
+                       />
+                    </section>
+        
+                    {/* 3. SETTINGS & INTERACTION SECTION */}
+                    <section className="space-y-8 pt-10">
+                       <div>
+                          <h2 className="text-3xl font-black text-slate-900 leading-tight">{t('meeting.preferences')}</h2>
+                          <p className="text-sm font-bold text-slate-500 mt-1">{t('meeting.notify_before')}</p>
+                       </div>
+        
+                       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                           <div className="p-4 rounded-2xl bg-white/40 border border-slate-200 flex items-center justify-between">
+                             <SettingToggle 
+                                label={t('meeting.mute_on_entry')}
+                                description={t('meeting.mute_on_entry_desc')}
+                                enabled={formData.muteOnJoin}
+                                onChange={(val) => setFormData({ ...formData, muteOnJoin: val })}
+                                icon={<MicOff className="h-4 w-4" />}
+                                noBorder
+                                className="w-full py-0"
+                             />
+                           </div>
+        
+                           <div className="p-4 rounded-2xl bg-white/40 border border-slate-200 flex items-center justify-between">
+                             <SettingToggle 
+                                label={t('meeting.allow_display_name_edit')}
+                                description={t('meeting.allow_display_name_edit_desc')}
+                                enabled={formData.allowDisplayNameEdit}
+                                onChange={(val) => setFormData({ ...formData, allowDisplayNameEdit: val })}
+                                icon={<User className="h-4 w-4" />}
+                                noBorder
+                                className="w-full py-0"
+                             />
+                           </div>
+        
+                          <div className="p-4 rounded-2xl bg-white/40 border border-slate-200 flex items-center justify-between">
+                             <div className="flex items-center gap-4">
+                                <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400">
+                                   <Bell className="h-4 w-4" />
+                                </div>
+                                <div>
+                                   <h4 className="text-sm font-black text-slate-900 tracking-tight">{t('meeting.reminders')}</h4>
+                                   <p className="text-xs font-medium text-slate-500 leading-tight mt-1">{t('meeting.notify_before')}</p>
+                                </div>
+                             </div>
+                             <select 
+                                value={formData.reminderMinutes}
+                                onChange={(e) => setFormData({ ...formData, reminderMinutes: parseInt(e.target.value) })}
+                                className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl text-xs font-black border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/5 transition-all cursor-pointer hover:bg-white ml-8"
+                             >
+                                <option value="0">{t('meeting.none')}</option>
+                                <option value="5">5m</option>
+                                <option value="15">15m</option>
+                                <option value="30">30m</option>
+                                <option value="60">1h</option>
+                             </select>
+                          </div>
+                       </div>
+                    </section>
                   </>
                 )}
 
-                {isOrganizer && (
-                  <button 
-                    disabled={mutation.isPending || !formData.title || (!formData.startTime && !isInstant)}
-                    onClick={() => mutation.mutate(formData)}
-                    className={`flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-br transition-all duration-500 py-4 text-sm font-black text-white shadow-xl hover:scale-[1.05] active:scale-95 disabled:opacity-50 disabled:grayscale disabled:hover:scale-100 ${theme.colors.textGradient.replace('from-', 'from-').replace('to-', 'to-')} ${isDirty ? 'animate-pulse shadow-[0_0_20px_rgba(34,211,238,0.4)]' : theme.period === 'morning' ? 'shadow-cyan-100' : theme.period === 'afternoon' ? 'shadow-orange-100' : 'shadow-indigo-100'}`}
-                  >
-                    {mutation.isPending ? (
-                      <Loader2 className="h-5 w-5 animate-spin" />
-                    ) : (
-                      <>
-                        {isNew ? (isInstant ? t('meeting.launch_now') : t('meeting.schedule_session')) : t('meeting.save_changes')}
-                        {isDirty && !isNew && <div className="h-2 w-2 rounded-full bg-white animate-bounce" />}
-                        <ArrowRight className="h-4 w-4" />
-                      </>
-                    )}
-                  </button>
-                )}
+                {/* 4. ATTACHMENTS & RESOURCES - Always visible */}
+                <section className="pt-10 space-y-8">
+                   <div className="relative group p-8 rounded-3xl border-2 border-dashed border-slate-200 hover:border-cyan-200 transition-all text-center">
+                      <div className="mx-auto h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-4">
+                         <Paperclip className="h-6 w-6" />
+                      </div>
+                      <h4 className="text-sm font-black text-slate-900">{t('meeting.attachments')}</h4>
+                      <p className="text-xs font-bold text-slate-500 mt-1">{t('meeting.coming_soon')}</p>
+                   </div>
+                </section>
+              </motion.div>
+            </div>
 
-                {!isNew && (
-                  <div className="pt-6 mt-4 border-t border-slate-100 space-y-4">
-                    <div className="flex items-center gap-3 bg-slate-50/50 border border-slate-200 rounded-2xl p-3 pl-4">
-                        <div className="flex-1 truncate">
-                           <p className="text-sm font-bold text-slate-400">{t('meeting.invite_link')}</p>
-                           <p className="text-sm font-bold text-slate-600 truncate">{window.location.origin}/room/{id}</p>
-                        </div>
+            {/* RIGHT: PERSISTENT ACTION SIDEBAR */}
+            <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-8">
+              <motion.div 
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                className="rounded-[2.5rem] border border-white/80 bg-white/70 p-8 shadow-2xl backdrop-blur-xl"
+              >
+                 <h3 className={`text-lg font-black mb-8 flex items-center gap-3 transition-colors duration-1000 ${theme.colors.primary}`}>
+                    <div className={`h-1.5 w-1.5 rounded-full animate-pulse ${theme.colors.primary.replace('text-', 'bg-')}`} />
+                    {t('meeting.control_center')}
+                 </h3>
+                 
+                 <div className="space-y-4">
+                    {!isNew && (
+                      <>
                         <button 
-                          onClick={handleCopyLink}
-                          className="h-10 w-10 flex items-center justify-center rounded-xl bg-white shadow-sm text-cyan-600 transition hover:bg-cyan-50 active:scale-95"
+                          disabled={meeting?.status === 'completed'}
+                          onClick={() => navigate(`/room/${id}`)}
+                          className={`flex w-full items-center justify-center gap-3 rounded-2xl py-4 text-sm font-black text-white shadow-xl transition group ${meeting?.status === 'completed' ? 'bg-slate-400 cursor-not-allowed opacity-70' : 'bg-slate-900 hover:scale-[1.05] active:scale-95'}`}
                         >
-                          {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
-                    </button>
-                    </div>
-
-                    {isOrganizer && (
-                       <button 
-                         onClick={() => setShowDeleteConfirm(true)}
-                         className="flex w-full items-center justify-center gap-2 pt-2 text-sm font-bold text-rose-400 hover:text-rose-600 transition"
-                       >
-                          <Trash2 className="h-4 w-4" />
-                          {t('meeting.destroy_workspace')}
-                       </button>
-                    )}
-                  </div>
-                )}
-             </div>
-          </motion.div>
-
-          {!isNew && (
-            <motion.div 
-              initial={{ opacity: 0, x: 20 }}
-              animate={{ opacity: 1, x: 0 }}
-              className="glass-card p-8 rounded-[2.5rem] relative overflow-hidden bg-white/70 backdrop-blur-xl border border-white/80"
-            >
-               <div className="absolute top-0 right-0 p-6 opacity-[0.03] rotate-12">
-                  <Users className="h-32 w-32" />
-               </div>
-
-               <div className="relative z-10">
-                  <div className="flex items-center justify-between mb-6">
-                     <h3 className="text-xl font-black text-slate-900 tracking-tight">{t('meeting.team_presence')}</h3>
-                     <span className="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-xs font-black">{filteredParticipants.length}</span>
-                  </div>
-                  
-                  {/* Search Bar */}
-                  <div className="relative mb-6">
-                    <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                    <input 
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      placeholder="Tìm kiếm thành viên..."
-                      className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:border-slate-200 focus:bg-white transition-all outline-none"
-                    />
-                  </div>
-
-                  <div className="space-y-6 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar" onScroll={handleScroll}>
-                    {filteredParticipants.length > 0 ? (
-                      <>
-                        {filteredParticipants.map((p: any, idx: number) => (
-                          <div key={p.id || idx} className="flex items-center justify-between group">
-                             <div className="flex items-center gap-4">
-                                <div className="relative h-12 w-12 rounded-2xl border-2 border-white/80 overflow-hidden shadow-sm group-hover:border-slate-200 transition-colors bg-slate-100">
-                                   <img 
-                                     src={p.user?.picture || p.user?.profilePictureUrl || `https://ui-avatars.com/api/?name=${p.user?.firstName}+${p.user?.lastName}&background=random`} 
-                                     className="h-full w-full object-cover"
-                                     alt=""
-                                   />
-                                </div>
-                                <div>
-                                   <p className="text-sm font-black text-slate-900">{p.user?.firstName} {p.user?.lastName}</p>
-                                   <p className="text-[11px] font-black text-slate-400">
-                                     {p.isOrganizer ? t('meeting.host') : t('meeting.member')}
-                                  </p>
-                                </div>
-                             </div>
-                             <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]" />
-                          </div>
-                        ))}
-                        {isFetchingNextPage && (
-                           <div className="flex justify-center py-4">
-                              <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
-                           </div>
+                          <Video className="h-5 w-5 transition-transform group-hover:rotate-12" />
+                          {meeting?.status === 'completed' ? t('meeting.status.completed') : t('meeting.join_workspace')}
+                        </button>
+                        {meeting?.status === 'completed' && (
+                           <p className="text-xs font-bold text-rose-500 text-center mt-2 px-4 leading-relaxed">
+                              {t('meeting.meeting_ended_note')}
+                           </p>
                         )}
                       </>
-                    ) : (
-                      <div className="py-10 text-center">
-                        <p className="text-sm font-bold text-slate-400">Không tìm thấy thành viên</p>
+                    )}
+
+                    {canEdit && (
+                      <button 
+                        disabled={mutation.isPending || !formData.title || (!formData.startTime && !isInstant)}
+                        onClick={() => mutation.mutate(formData)}
+                        className={`flex w-full items-center justify-center gap-3 rounded-2xl bg-gradient-to-br transition-all duration-500 py-4 text-sm font-black text-white shadow-xl hover:scale-[1.05] active:scale-95 disabled:opacity-50 disabled:grayscale disabled:hover:scale-100 ${theme.colors.textGradient.replace('from-', 'from-').replace('to-', 'to-')} ${isDirty ? 'animate-pulse shadow-[0_0_20px_rgba(34,211,238,0.4)]' : theme.period === 'morning' ? 'shadow-cyan-100' : theme.period === 'afternoon' ? 'shadow-orange-100' : 'shadow-indigo-100'}`}
+                      >
+                        {mutation.isPending ? (
+                          <Loader2 className="h-5 w-5 animate-spin" />
+                        ) : (
+                          <>
+                            {isNew ? (isInstant ? t('meeting.launch_now') : t('meeting.schedule_session')) : t('meeting.save_changes')}
+                            {isDirty && !isNew && <div className="h-2 w-2 rounded-full bg-white animate-bounce" />}
+                            <ArrowRight className="h-4 w-4" />
+                          </>
+                        )}
+                      </button>
+                    )}
+
+                    {!isNew && (
+                      <div className="pt-6 mt-4 border-t border-slate-100 space-y-4">
+                        <div className="flex items-center gap-3 bg-slate-50/50 border border-slate-200 rounded-2xl p-3 pl-4">
+                            <div className="flex-1 truncate">
+                               <p className="text-sm font-bold text-slate-400">{t('meeting.invite_link')}</p>
+                               <p className="text-sm font-bold text-slate-600 truncate">{window.location.origin}/room/{id}</p>
+                            </div>
+                            <button 
+                              onClick={handleCopyLink}
+                              className="h-10 w-10 flex items-center justify-center rounded-xl bg-white shadow-sm text-cyan-600 transition hover:bg-cyan-50 active:scale-95"
+                            >
+                              {copied ? <Check className="h-5 w-5" /> : <Copy className="h-5 w-5" />}
+                        </button>
+                        </div>
+
+                        {canEdit && (
+                           <button 
+                             onClick={() => setShowDeleteConfirm(true)}
+                             className="flex w-full items-center justify-center gap-2 pt-2 text-sm font-bold text-rose-400 hover:text-rose-600 transition"
+                           >
+                              <Trash2 className="h-4 w-4" />
+                              {t('meeting.destroy_workspace')}
+                           </button>
+                        )}
                       </div>
                     )}
-                  </div>
-               </div>
-            </motion.div>
-          )}
-        </div>
-      </div>
+                 </div>
+              </motion.div>
+
+              {!isNew && (
+                <motion.div 
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  className="glass-card p-8 rounded-[2.5rem] relative overflow-hidden bg-white/70 backdrop-blur-xl border border-white/80"
+                >
+                   <div className="absolute top-0 right-0 p-6 opacity-[0.03] rotate-12">
+                      <Users className="h-32 w-32" />
+                   </div>
+
+                   <div className="relative z-10">
+                      <div className="flex items-center justify-between mb-6">
+                         <h3 className="text-xl font-black text-slate-900 tracking-tight">{t('meeting.team_presence')}</h3>
+                         <span className="px-2.5 py-1 rounded-lg bg-slate-900 text-white text-xs font-black">{filteredParticipants.length}</span>
+                      </div>
+                      
+                      {/* Search Bar */}
+                      <div className="relative mb-6">
+                        <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <input 
+                          type="text"
+                          value={searchTerm}
+                          onChange={(e) => setSearchTerm(e.target.value)}
+                          placeholder="Tìm kiếm thành viên..."
+                          className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:border-slate-200 focus:bg-white transition-all outline-none"
+                        />
+                      </div>
+
+                      <div className="space-y-6 max-h-[460px] overflow-y-auto pr-2 custom-scrollbar" onScroll={handleScroll}>
+                        {filteredParticipants.length > 0 ? (
+                          <>
+                            {filteredParticipants.map((p: any, idx: number) => (
+                              <div key={p.id || idx} className="flex items-center justify-between group">
+                                 <div className="flex items-center gap-4">
+                                    <div className="relative h-12 w-12 rounded-2xl border-2 border-white/80 overflow-hidden shadow-sm group-hover:border-slate-200 transition-colors bg-slate-100">
+                                       <img 
+                                         src={p.user?.picture || p.user?.profilePictureUrl || `https://ui-avatars.com/api/?name=${p.user?.firstName}+${p.user?.lastName}&background=random`} 
+                                         className="h-full w-full object-cover"
+                                         alt=""
+                                       />
+                                    </div>
+                                    <div>
+                                       <p className="text-sm font-black text-slate-900">{p.user?.firstName} {p.user?.lastName}</p>
+                                       <p className="text-[11px] font-black text-slate-400">
+                                         {p.isOrganizer ? t('meeting.host') : (p.permissions?.includes(MeetingPermission.CO_HOST) ? t('meeting.permissions.list.co_host.label') : t('meeting.member'))}
+                                      </p>
+                                    </div>
+                                 </div>
+                                 <div className="h-2 w-2 rounded-full bg-emerald-500 shadow-[0_0_10px_rgba(16,185,129,0.4)]" />
+                              </div>
+                            ))}
+                            {isFetchingNextPage && (
+                               <div className="flex justify-center py-4">
+                                  <Loader2 className="h-5 w-5 animate-spin text-slate-400" />
+                               </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="py-10 text-center">
+                            <p className="text-sm font-bold text-slate-400">Không tìm thấy thành viên</p>
+                          </div>
+                        )}
+                      </div>
+                   </div>
+                </motion.div>
+              )}
+            </div>
+          </motion.div>
+        ) : (
+          <motion.div
+            key="permissions"
+            initial={{ opacity: 0, x: 20 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: -20 }}
+          >
+            <MeetingPermissionsTab meetingId={id!} variant="details" />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   )
 }

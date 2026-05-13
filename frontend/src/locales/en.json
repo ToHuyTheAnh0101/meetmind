@@ -102,6 +102,7 @@
     "requesting_admittance": "Requesting Admittance...",
     "cancel_request": "Cancel Request",
     "session_info": "Session Information",
+    "session_info_subtitle": "Set the title, description, and scheduled time for the meeting",
     "basic_details": "Basic foundational details",
     "title": "Meeting Title",
     "description": "Meeting Description",
@@ -247,6 +248,25 @@
     "timeline_after": "Nearest upcoming meeting",
     "timeline_selected": "Your selected time",
     "conflict_with": "Schedule conflict with: Meeting \"{{title}}\"",
-    "checking_schedule": "Checking schedule..."
+    "checking_schedule": "Checking schedule...",
+    "permissions": {
+      "title": "Participant permissions",
+      "subtitle": "Manage what each person can do during the meeting.",
+      "search_placeholder": "Search by name or email...",
+      "organizer_note": "Host has full control over the meeting",
+      "loading": "Loading participants...",
+      "no_results": "No participants found matching your search.",
+      "tab_general": "General settings",
+      "tab_permissions": "Permissions",
+      "list": {
+        "edit_meeting_info": { "label": "Edit meeting info", "desc": "Allows changing title, description, and time" },
+        "manage_polls": { "label": "Manage polls", "desc": "Create and close surveys" },
+        "manage_qa": { "label": "Manage Q&A", "desc": "Approve and answer questions" },
+        "view_transcript": { "label": "View transcript", "desc": "Access transcript content" },
+        "chat_with_ai": { "label": "Chat with AI", "desc": "Use AI assistant in the room" },
+        "edit_summary": { "label": "Edit summary", "desc": "Modify AI summary content" },
+        "download_recording": { "label": "Download recording", "desc": "Download audio/video files" }
+      }
+    }
   }
 }

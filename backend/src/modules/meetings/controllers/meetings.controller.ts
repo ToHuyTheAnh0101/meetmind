@@ -21,7 +21,7 @@ import { Request as ExpressRequest } from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MeetingsService } from '../services/meetings.service';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
-import { Meeting, Participant } from '../entities';
+import { Meeting, Participant, MeetingPermission } from '../entities';
 import { CreateMeetingDto } from '../dto/create-meeting.dto';
 import { UpdateMeetingDto } from '../dto/update-meeting.dto';
 import { ListMeetingsDto } from '../dto/list-meetings.dto';
@@ -160,6 +160,22 @@ export class MeetingsController {
     @Request() req: { user: { id: string } },
   ): Promise<void> {
     return this.meetingsService.rejectParticipant(id, userId, req.user.id);
+  }
+
+  @Put(':id/participants/:userId/permissions')
+  @UseGuards(JwtAuthGuard)
+  async updateParticipantPermissions(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Body('permissions') permissions: MeetingPermission[],
+    @Request() req: { user: { id: string } },
+  ): Promise<Participant> {
+    return this.meetingsService.updateParticipantPermissions(
+      id,
+      userId,
+      permissions,
+      req.user.id,
+    );
   }
 
   @Post(':id/leave')

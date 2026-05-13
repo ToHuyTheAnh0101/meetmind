@@ -680,4 +680,36 @@ export class MeetingsService {
 
     return result;
   }
+
+  /**
+   * Cập nhật quyền hạn cho thành viên tham gia cuộc họp
+   */
+  async updateParticipantPermissions(
+    meetingId: string,
+    targetUserId: string,
+    permissions: MeetingPermission[],
+    requesterId: string,
+  ): Promise<Participant> {
+    const meeting = await this.findOne(meetingId);
+
+    // Chỉ chủ phòng mới có quyền thay đổi phân quyền
+    if (meeting.organizerId !== requesterId) {
+      throw new ForbiddenException(
+        'Only the organizer can update participant permissions',
+      );
+    }
+
+    const participant = await this.participantsRepository.findByMeetingAndUser(
+      meetingId,
+      targetUserId,
+    );
+
+    if (!participant) {
+      throw new NotFoundException('Participant not found in this meeting');
+    }
+
+    // Cập nhật quyền
+    participant.permissions = permissions;
+    return this.participantsRepository.save(participant);
+  }
 }

@@ -101,6 +101,7 @@
     "requesting_admittance": "Đang yêu cầu tham gia...",
     "cancel_request": "Hủy yêu cầu",
     "session_info": "Thông tin cuộc họp",
+    "session_info_subtitle": "Thiết lập tiêu đề, mô tả và thời gian diễn ra cuộc họp",
     "basic_details": "Thông Tin Cơ Bản",
     "title": "Tiêu đề cuộc họp",
     "description": "Mô tả cuộc họp",
@@ -250,6 +251,26 @@
     "timeline_after": "Cuộc họp gần nhất sau đó",
     "timeline_selected": "Giờ bạn đang chọn",
     "conflict_with": "Trùng lịch với: Cuộc họp \"{{title}}\"",
-    "checking_schedule": "Đang kiểm tra lịch trình..."
+    "checking_schedule": "Đang kiểm tra lịch trình...",
+    "permissions": {
+      "title": "Quyền hạn thành viên",
+      "subtitle": "Quản lý những gì mỗi người có thể thực hiện trong cuộc họp.",
+      "search_placeholder": "Tìm theo tên hoặc email...",
+      "organizer_note": "Chủ phòng có toàn quyền kiểm soát cuộc họp",
+      "loading": "Đang tải danh sách thành viên...",
+      "no_results": "Không tìm thấy thành viên nào khớp với tìm kiếm.",
+      "tab_general": "Thiết lập chung",
+      "tab_permissions": "Phân quyền",
+      "list": {
+        "edit_meeting_info": { "label": "Sửa thông tin họp", "desc": "Cho phép thay đổi tiêu đề, mô tả, thời gian" },
+        "manage_polls": { "label": "Quản lý bình chọn", "desc": "Tạo và đóng các cuộc khảo sát" },
+        "manage_qa": { "label": "Quản lý Q&A", "desc": "Duyệt và trả lời câu hỏi" },
+        "co_host": { "label": "Quyền Đồng chủ trì", "desc": "Cấp quyền quản lý ngang hàng chủ phòng" },
+        "view_transcript": { "label": "Xem bản dịch", "desc": "Truy cập nội dung transcript" },
+        "chat_with_ai": { "label": "Chat với AI", "desc": "Sử dụng AI assistant trong phòng" },
+        "edit_summary": { "label": "Sửa tóm tắt", "desc": "Chỉnh sửa nội dung AI summary" },
+        "download_recording": { "label": "Tải bản ghi", "desc": "Tải về file ghi âm/video" }
+      }
+    }
   }
 }

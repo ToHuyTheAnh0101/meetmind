@@ -7,7 +7,8 @@ import {
   ChevronRight,
   UserPlus,
   BarChart3,
-  MessageCircle
+  MessageCircle,
+  Shield
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -16,18 +17,20 @@ import CustomChat from './CustomChat';
 import CustomParticipantList from './CustomParticipantList';
 import LobbyManagement from './LobbyManagement';
 import InRoomSettings from './InRoomSettings';
+import MeetingPermissionsTab from '../details/MeetingPermissionsTab';
 import PollTab from './PollTab';
 import QATab from './QATab';
 
 interface MeetingSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  activeTab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa';
-  setActiveTab: (tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa') => void;
+  activeTab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa' | 'permissions';
+  setActiveTab: (tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa' | 'permissions') => void;
   meetingId: string;
   userId: string;
   organizerId: string;
   isOrganizer: boolean;
+  isCoHost: boolean;
   canManagePolls: boolean;
   canManageQA: boolean;
   isQaEnabled: boolean;
@@ -45,6 +48,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   userId,
   organizerId,
   isOrganizer,
+  isCoHost,
   canManagePolls,
   canManageQA,
   isQaEnabled,
@@ -60,18 +64,22 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
     { id: 'polls', icon: BarChart3, label: t('meeting.polls'), color: 'text-rose-400' },
   ].filter(tab => {
     if (tab.id === 'qa') {
-      // Hide QA tab for participants if disabled AND they don't have manage privilege
-      // Note: we still show it to moderators because they can use "Discussion"
       return isQaEnabled || canManageQA;
     }
     return true;
   });
 
-  if (isOrganizer) {
+  if (isOrganizer || isCoHost) {
     tabs.push(
-      { id: 'lobby', icon: UserPlus, label: t('meeting.lobby'), color: 'text-emerald-400' },
-      { id: 'settings', icon: Settings, label: t('common.settings'), color: 'text-amber-400' }
+      { id: 'lobby', icon: UserPlus, label: t('meeting.lobby'), color: 'text-emerald-400' }
     );
+    
+    // Only Organizer can manage permissions for now to prevent Co-host from removing Host's rights
+    if (isOrganizer) {
+      tabs.push({ id: 'permissions', icon: Shield, label: t('meeting.permissions.tab_permissions'), color: 'text-slate-100' });
+    }
+
+    tabs.push({ id: 'settings', icon: Settings, label: t('common.settings'), color: 'text-amber-400' });
   }
 
   return (
@@ -108,6 +116,9 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
               )}
               {activeTab === 'lobby' && (
                  <LobbyManagement meetingId={meetingId} />
+              )}
+              {activeTab === 'permissions' && (
+                 <MeetingPermissionsTab meetingId={meetingId} />
               )}
               {activeTab === 'settings' && (
                  <InRoomSettings meetingId={meetingId} />
@@ -149,7 +160,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
          >
             <ChevronRight className={`h-5 w-5 transition-transform duration-300 ${isOpen ? '' : 'rotate-180'}`} />
          </button>
-
+ 
          <div className="w-8 h-px bg-white/10 mb-2" />
 
          {tabs.map((tab) => {
@@ -176,7 +187,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                {isActive && (
                  <motion.div 
                     layoutId="activeTabIndicator"
-                    className={`absolute -right-[1px] w-[3px] h-6 ${tab.id === 'chat' ? 'bg-cyan-500' : tab.id === 'roster' ? 'bg-indigo-500' : tab.id === 'lobby' ? 'bg-emerald-500' : tab.id === 'polls' ? 'bg-rose-500' : tab.id === 'qa' ? 'bg-lime-500' : 'bg-amber-500'} rounded-l-full shadow-[0_0_15px_currentColor]`}
+                    className={`absolute -right-[1px] w-[3px] h-6 ${tab.id === 'chat' ? 'bg-cyan-500' : tab.id === 'roster' ? 'bg-indigo-500' : tab.id === 'lobby' ? 'bg-emerald-500' : tab.id === 'polls' ? 'bg-rose-500' : tab.id === 'qa' ? 'bg-lime-500' : tab.id === 'permissions' ? 'bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)]' : 'bg-amber-500'} rounded-l-full shadow-[0_0_15px_currentColor]`}
                  />
                )}
              </button>

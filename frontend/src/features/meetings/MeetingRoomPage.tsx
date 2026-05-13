@@ -84,21 +84,29 @@ const MeetingRoomPage: React.FC = () => {
 
   // Room UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-  const [activeTab, setActiveTab] = useState<'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa'>('roster')
+  const [activeTab, setActiveTab] = useState<'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa' | 'permissions'>('roster')
   const [isPollModalOpen, setIsPollModalOpen] = useState(false)
   const [hasUnreadPolls, setHasUnreadPolls] = useState(false)
 
   const canManagePolls = useMemo(() => {
     if (!joinData || !user) return false;
     const p = joinData.participants.find(part => part.id === user.id || part.userId === user.id);
-    return p?.isOrganizer || p?.permissions?.includes('manage_polls');
+    return p?.isOrganizer || p?.permissions?.includes('manage_polls') || p?.permissions?.includes('co_host');
   }, [joinData, user]);
 
   const canManageQA = useMemo(() => {
     if (!joinData || !user) return false;
     const p = joinData.participants.find(part => part.id === user.id || part.userId === user.id);
-    return p?.isOrganizer || p?.permissions?.includes('manage_qa');
+    return p?.isOrganizer || p?.permissions?.includes('manage_qa') || p?.permissions?.includes('co_host');
   }, [joinData, user]);
+
+  const isCoHost = useMemo(() => {
+    if (!joinData || !user) return false;
+    const p = joinData.participants.find(part => part.id === user.id || part.userId === user.id);
+    return p?.permissions?.includes('co_host');
+  }, [joinData, user]);
+
+
 
   // Icons used in Lobby
   const UsersIcon = () => (
@@ -225,7 +233,7 @@ const MeetingRoomPage: React.FC = () => {
     }
   }
 
-  const handleToggleSidebar = useCallback((tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls') => {
+  const handleToggleSidebar = useCallback((tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'permissions') => {
     if (isSidebarOpen && activeTab === tab) {
       setIsSidebarOpen(false)
     } else {
@@ -436,6 +444,7 @@ const MeetingRoomPage: React.FC = () => {
             userId={user?.id || ''}
             organizerId={joinData.organizerId}
             isOrganizer={isOrganizer}
+            isCoHost={isCoHost}
             canManagePolls={canManagePolls}
             canManageQA={canManageQA}
             isQaEnabled={meetingDetails?.isQaEnabled ?? true}

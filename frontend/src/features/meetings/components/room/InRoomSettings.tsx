@@ -84,6 +84,7 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
     updateMutation.mutate(newData);
   };
 
+
   if (isLoading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -93,96 +94,98 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
   }
 
   return (
-    <div className="flex-1 flex flex-col p-6 overflow-y-auto custom-scrollbar">
-      <div className="mb-8 flex items-center justify-between">
-        <div>
-          <h4 className="text-sm text-amber-500 flex items-center gap-2 font-premium-ink">
-             {t('meeting.session_config')}
-          </h4>
-          <p className="text-[12px] font-medium text-white/50 mt-1.5 px-0.5">
-             {t('meeting.manage_params')}
-          </p>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {saveStatus === 'saving' && <Loader2 className="h-4 w-4 animate-spin text-amber-500" />}
-          {saveStatus === 'saved' && <Check className="h-4 w-4 text-emerald-500" />}
-          {saveStatus === 'error' && <AlertCircle className="h-4 w-4 text-rose-500" />}
-        </div>
-      </div>
-
-      <div className="space-y-10 font-sans">
-        {/* Basic Info */}
-         <div className="space-y-7">
-            <div className="space-y-2">
-               <label className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.title')}</label>
-               <input 
-                 type="text"
-                 value={formData.title}
-                 onChange={(e) => setFormData({ ...formData, title: e.target.value })}
-                 onBlur={() => updateMutation.mutate(formData)}
-                 className="w-full bg-white/5 border-b border-white/10 px-3 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-amber-500/30 transition-all placeholder:text-slate-300 rounded-t-lg"
-                 placeholder={t('meeting.enter_meeting_title')}
-               />
-            </div>
-
-            <div className="space-y-2">
-               <label className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.description')}</label>
-               <textarea 
-                 rows={2}
-                 value={formData.description}
-                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                 onBlur={() => updateMutation.mutate(formData)}
-                 className="w-full bg-white/5 border-b border-white/10 px-3 py-2.5 text-sm font-medium text-slate-300 focus:outline-none focus:border-amber-500/30 transition-all resize-none placeholder:text-slate-300 rounded-t-lg"
-                 placeholder={t('meeting.add_description')}
-               />
-            </div>
+    <div className="flex-1 flex flex-col h-full overflow-hidden">
+      <div className="flex-1 overflow-y-auto custom-scrollbar p-6">
+        <div className="mb-8 flex items-center justify-between">
+          <div>
+            <h4 className="text-sm text-amber-500 flex items-center gap-2 font-premium-ink">
+               {t('meeting.session_config')}
+            </h4>
+            <p className="text-[12px] font-medium text-white/50 mt-1.5 px-0.5">
+               {t('meeting.manage_params')}
+            </p>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            {saveStatus === 'saving' && <Loader2 className="h-4 w-4 animate-spin text-amber-500" />}
+            {saveStatus === 'saved' && <Check className="h-4 w-4 text-emerald-500" />}
+            {saveStatus === 'error' && <AlertCircle className="h-4 w-4 text-rose-500" />}
+          </div>
         </div>
 
-        {/* Access & Safety */}
-        <div className="space-y-8">
-            <div className="space-y-2">
-               <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.access_control')}</span>
-               </div>
-               
-               <div className="space-y-1">
-                  <SettingToggle 
-                     label={t('meeting.waiting_room')}
-                     description={t('meeting.manual_approval')}
-                     enabled={formData.waitingRoomEnabled}
-                     onChange={(val) => handleUpdate({ waitingRoomEnabled: val })}
-                  />
-                  <SettingToggle 
-                     label={t('meeting.mute_on_entry')}
-                     description={t('meeting.silence_guests')}
-                     enabled={formData.muteOnJoin}
-                     onChange={(val) => handleUpdate({ muteOnJoin: val })}
-                  />
-               </div>
-            </div>
+        <div className="space-y-10 font-sans">
+          {/* Basic Info */}
+           <div className="space-y-7">
+              <div className="space-y-2">
+                 <label className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.title')}</label>
+                 <input 
+                   type="text"
+                   value={formData.title}
+                   onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                   onBlur={() => updateMutation.mutate(formData)}
+                   className="w-full bg-white/5 border-b border-white/10 px-3 py-2.5 text-sm font-bold text-white focus:outline-none focus:border-amber-500/30 transition-all placeholder:text-slate-300 rounded-t-lg"
+                   placeholder={t('meeting.enter_meeting_title')}
+                 />
+              </div>
 
-            {/* Q&A Settings */}
-            <div className="space-y-2 pt-4">
-               <div className="flex items-center gap-2 mb-3">
-                  <span className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.qa')}</span>
-               </div>
-               
-               <div className="space-y-1">
-                  <SettingToggle 
-                     label={t('meeting.enable_qa')}
-                     description={t('meeting.manage_qa_desc')}
-                     enabled={formData.isQaEnabled}
-                     onChange={(val) => handleUpdate({ isQaEnabled: val })}
-                  />
-                  <SettingToggle 
-                     label={t('meeting.anonymous_allowed')}
-                     description={t('meeting.anonymous_allowed_desc')}
-                     enabled={formData.isAnonymousAllowed}
-                     onChange={(val) => handleUpdate({ isAnonymousAllowed: val })}
-                  />
-               </div>
-            </div>
+              <div className="space-y-2">
+                 <label className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.description')}</label>
+                 <textarea 
+                   rows={2}
+                   value={formData.description}
+                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+                   onBlur={() => updateMutation.mutate(formData)}
+                   className="w-full bg-white/5 border-b border-white/10 px-3 py-2.5 text-sm font-medium text-slate-300 focus:outline-none focus:border-amber-500/30 transition-all resize-none placeholder:text-slate-300 rounded-t-lg"
+                   placeholder={t('meeting.add_description')}
+                 />
+              </div>
+          </div>
+
+          {/* Access & Safety */}
+          <div className="space-y-8">
+              <div className="space-y-2">
+                 <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.access_control')}</span>
+                 </div>
+                 
+                 <div className="space-y-1">
+                    <SettingToggle 
+                       label={t('meeting.waiting_room')}
+                       description={t('meeting.manual_approval')}
+                       enabled={formData.waitingRoomEnabled}
+                       onChange={(val) => handleUpdate({ waitingRoomEnabled: val })}
+                    />
+                    <SettingToggle 
+                       label={t('meeting.mute_on_entry')}
+                       description={t('meeting.silence_guests')}
+                       enabled={formData.muteOnJoin}
+                       onChange={(val) => handleUpdate({ muteOnJoin: val })}
+                    />
+                 </div>
+              </div>
+
+              {/* Q&A Settings */}
+              <div className="space-y-2 pt-4">
+                 <div className="flex items-center gap-2 mb-3">
+                    <span className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.qa')}</span>
+                 </div>
+                 
+                 <div className="space-y-1">
+                    <SettingToggle 
+                       label={t('meeting.enable_qa')}
+                       description={t('meeting.manage_qa_desc')}
+                       enabled={formData.isQaEnabled}
+                       onChange={(val) => handleUpdate({ isQaEnabled: val })}
+                    />
+                    <SettingToggle 
+                       label={t('meeting.anonymous_allowed')}
+                       description={t('meeting.anonymous_allowed_desc')}
+                       enabled={formData.isAnonymousAllowed}
+                       onChange={(val) => handleUpdate({ isAnonymousAllowed: val })}
+                    />
+                 </div>
+              </div>
+          </div>
         </div>
       </div>
     </div>

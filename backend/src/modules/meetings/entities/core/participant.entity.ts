@@ -19,6 +19,7 @@ export enum MeetingPermission {
   EDIT_MEETING_INFO = 'edit_meeting_info',
   MANAGE_POLLS = 'manage_polls',
   MANAGE_QA = 'manage_qa',
+  CO_HOST = 'co_host',
 }
 
 export enum ParticipantStatus {
