@@ -19,7 +19,9 @@ import MeetingLobby from './components/room/MeetingLobby'
 import MeetingMainStage from './components/room/MeetingMainStage'
 import MeetingSidebar from './components/room/MeetingSidebar'
 import PollModal from './components/room/PollModal'
+import QuestionDetailModal from './components/room/QuestionDetailModal'
 import { useDataChannel } from '@livekit/components-react'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 
 interface JoinResponse {
   meetingId: string
@@ -56,9 +58,11 @@ const DataHandler: React.FC<{ meetingId: string; onNotify: () => void }> = ({ me
 const MeetingRoomPage: React.FC = () => {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
-  const navigate = useNavigate()
+   const navigate = useNavigate()
   const { user } = useAuth()
+  const queryClient = useQueryClient()
   
+  // State
   const [preJoinChoices, setPreJoinChoices] = useState<LocalUserChoices | undefined>(undefined)
   const [joinData, setJoinData] = useState<JoinResponse | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -75,18 +79,28 @@ const MeetingRoomPage: React.FC = () => {
     organizerId: string;
   } | null>(null)
 
-  // Custom Lobby State
   const [username, setUsername] = useState(user ? `${user.firstName} ${user.lastName}` : '')
   const [isMicOn, setIsMicOn] = useState(true)
   const [isCamOn, setIsCamOn] = useState(true)
   const [localVideoTrack, setLocalVideoTrack] = useState<LocalVideoTrack | null>(null)
   const [isWaitingInLobby, setIsWaitingInLobby] = useState(false)
 
-  // Room UI State
   const [isSidebarOpen, setIsSidebarOpen] = useState(true)
   const [activeTab, setActiveTab] = useState<'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa' | 'permissions'>('roster')
   const [isPollModalOpen, setIsPollModalOpen] = useState(false)
   const [hasUnreadPolls, setHasUnreadPolls] = useState(false)
+  const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false)
+  const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null)
+
+  // Derived Values
+  const organizerId = useMemo(() => {
+    return joinData?.organizerId || meetingDetails?.organizerId || '';
+  }, [joinData, meetingDetails]);
+
+  const isOrganizer = useMemo(() => {
+    if (user && organizerId) return organizerId === user.id;
+    return false;
+  }, [organizerId, user]);
 
   const canManagePolls = useMemo(() => {
     if (!joinData || !user) return false;
@@ -106,33 +120,29 @@ const MeetingRoomPage: React.FC = () => {
     return p?.permissions?.includes('co_host');
   }, [joinData, user]);
 
+  const isPasswordError = useMemo(() => {
+    return requiresPassword && (
+      error?.toLowerCase().includes('password') || 
+      error === t('meeting.invalid_password')
+    );
+  }, [requiresPassword, error, t]);
 
+  // Queries
+  const { data: allQuestions = [] } = useQuery<any[]>({
+    queryKey: ['questions', id],
+    queryFn: async () => {
+      const res = await apiClient.get(`/meetings/${id}/qa`);
+      return res.data;
+    },
+    enabled: !!id && (isQuestionModalOpen || activeTab === 'qa')
+  });
 
-  // Icons used in Lobby
-  const UsersIcon = () => (
-    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+  const selectedQuestion = useMemo(() => 
+    allQuestions.find(q => q.id === selectedQuestionId) || null,
+    [allQuestions, selectedQuestionId]
   );
 
-  // Polling for admittance if in lobby
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isWaitingInLobby && id) {
-      interval = setInterval(async () => {
-        try {
-          const response = await apiClient.post<JoinResponse>(`/meetings/${id}/join`, { password }, { _skipLogout: true } as any);
-          if (response.data.status === 'admitted') {
-            setIsWaitingInLobby(false);
-            setJoinData(response.data as JoinResponse);
-          }
-        } catch (error) {
-          console.error("Polling for admittance failed", error);
-        }
-      }, 5000);
-    }
-    return () => clearInterval(interval);
-  }, [isWaitingInLobby, id, password]);
-
-  // Fetch Meeting Details for Lobby & Room
+  // Callbacks
   const fetchMeetingDetails = useCallback(() => {
     if (!id) return;
     apiClient.get(`/meetings/${id}/public`).then(res => {
@@ -151,68 +161,61 @@ const MeetingRoomPage: React.FC = () => {
     }).catch(err => console.error("Failed to fetch meeting details", err))
   }, [id]);
 
-  useEffect(() => {
-    fetchMeetingDetails();
-  }, [fetchMeetingDetails]);
+  const handleOpenQuestionModal = useCallback((question: any) => {
+    setSelectedQuestionId(question.id);
+    setIsQuestionModalOpen(true);
+  }, []);
 
-  // Listener for meeting updates
-  useEffect(() => {
-    const handleRefresh = (e: any) => {
-      if (e.detail?.meetingId === id) {
-        fetchMeetingDetails();
-      }
-    };
-    window.addEventListener('refresh-meeting', handleRefresh);
-    return () => window.removeEventListener('refresh-meeting', handleRefresh);
-  }, [id, fetchMeetingDetails]);
+  const handleCloseQuestionModal = useCallback(() => {
+    setIsQuestionModalOpen(false);
+    setSelectedQuestionId(null);
+  }, []);
 
-  // Initialize camera preview
-  useEffect(() => {
-    let activeTrack: LocalVideoTrack | null = null
-    let isMounted = true
+  const handleToggleSidebar = useCallback((tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'permissions' | 'qa') => {
+    setIsSidebarOpen(prevOpen => {
+      if (prevOpen && activeTab === tab) return false;
+      setActiveTab(tab as any);
+      if (tab === 'polls') setHasUnreadPolls(false);
+      return true;
+    });
+  }, [activeTab]);
 
-    const startPreview = async () => {
-      if (isCamOn && !joinData) {
-        try {
-          const track = await createLocalVideoTrack()
-          if (!isMounted || joinData) {
-            track.stop()
-            return
-          }
-          activeTrack = track
-          setLocalVideoTrack(activeTrack)
-        } catch (e) {
-          console.error("Failed to start preview", e)
-        }
-      }
+  const handleCloseSidebar = useCallback(() => setIsSidebarOpen(false), []);
+  const handleOpenPollModal = useCallback(() => setIsPollModalOpen(true), []);
+  const handleClosePollModal = useCallback(() => setIsPollModalOpen(false), []);
+
+  const handleEndSession = useCallback(async () => {
+    try {
+      await apiClient.post(`/meetings/${id}/end`)
+      navigate('/')
+    } catch (err) {
+      console.error("Failed to end meeting", err)
+      navigate('/')
     }
+  }, [id, navigate]);
 
-    startPreview()
-
-    return () => {
-      isMounted = false
-      if (activeTrack) {
-        activeTrack.stop()
-      }
-      setLocalVideoTrack(null)
+  const handleLeaveSession = useCallback(async () => {
+    try {
+      await apiClient.post(`/meetings/${id}/leave`)
+    } catch (err) {
+      console.error("Failed to call leave API", err)
     }
-  }, [isCamOn, !!joinData])
+    navigate('/')
+  }, [id, navigate]);
 
-  const handlePreJoinSubmit = async (choices: LocalUserChoices) => {
+  const handlePreJoinSubmit = useCallback(async (choices: LocalUserChoices) => {
     setIsLoading(true)
-    // Stop preview track before joining to release hardware
     if (localVideoTrack) {
       localVideoTrack.stop();
       setLocalVideoTrack(null);
     }
-    
     try {
       const response = await apiClient.post<any>(`/meetings/${id}/join`, { 
         password,
         displayName: choices.username 
       }, { _skipLogout: true } as any)
       
-      if (response.data.status === 'waiting') {
+      if (response.data.status === 'waiting' || response.data.status === 'pending') {
         setIsWaitingInLobby(true);
         setPreJoinChoices(choices);
         return;
@@ -231,105 +234,124 @@ const MeetingRoomPage: React.FC = () => {
     } finally {
       setIsLoading(false)
     }
-  }
+  }, [id, password, t, localVideoTrack]);
 
-  const handleToggleSidebar = useCallback((tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'permissions') => {
-    if (isSidebarOpen && activeTab === tab) {
-      setIsSidebarOpen(false)
-    } else {
-      setIsSidebarOpen(true)
-      setActiveTab(tab)
-      if (tab === 'polls') {
-        setHasUnreadPolls(false)
+  // Effects
+  useEffect(() => {
+    fetchMeetingDetails();
+  }, [fetchMeetingDetails]);
+
+   useEffect(() => {
+    const handleRefreshMeeting = (e: any) => {
+      if (e.detail?.meetingId === id) fetchMeetingDetails();
+    };
+    const handleRefreshQA = (e: any) => {
+      if (e.detail?.meetingId === id) {
+        queryClient.invalidateQueries({ queryKey: ['questions', id] });
       }
+    };
+    const handleRefreshPolls = (e: any) => {
+      if (e.detail?.meetingId === id) {
+        queryClient.invalidateQueries({ queryKey: ['polls', id] });
+      }
+    };
+
+    window.addEventListener('refresh-meeting', handleRefreshMeeting);
+    window.addEventListener('refresh-qa', handleRefreshQA);
+    window.addEventListener('refresh-polls', handleRefreshPolls);
+    return () => {
+      window.removeEventListener('refresh-meeting', handleRefreshMeeting);
+      window.removeEventListener('refresh-qa', handleRefreshQA);
+      window.removeEventListener('refresh-polls', handleRefreshPolls);
+    };
+  }, [id, fetchMeetingDetails, queryClient]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isWaitingInLobby && id) {
+      interval = setInterval(async () => {
+        try {
+          const response = await apiClient.post<JoinResponse>(`/meetings/${id}/join`, { password }, { _skipLogout: true } as any);
+          if (response.data.status === 'admitted' || response.data.status === 'active') {
+            setIsWaitingInLobby(false);
+            setJoinData(response.data);
+          }
+        } catch (err) {
+          console.error("Polling for admittance failed", err);
+        }
+      }, 5000);
     }
-  }, [isSidebarOpen, activeTab]);
+    return () => clearInterval(interval);
+  }, [isWaitingInLobby, id, password]);
 
-  const isPasswordError = requiresPassword && (
-    error?.toLowerCase().includes('password') || 
-    error === t('meeting.invalid_password')
-  )
-
-  const isOrganizer = useMemo(() => {
-    if (joinData && user) return joinData.organizerId === user.id
-    if (meetingDetails && user) return meetingDetails.organizerId === user.id
-    return false
-  }, [joinData, meetingDetails, user])
-
-  const handleCloseSidebar = useCallback(() => setIsSidebarOpen(false), []);
-  const handleOpenPollModal = useCallback(() => setIsPollModalOpen(true), []);
-  const handleClosePollModal = useCallback(() => setIsPollModalOpen(false), []);
-
-  const handleEndSession = async () => {
-    try {
-      await apiClient.post(`/meetings/${id}/end`)
-      navigate('/')
-    } catch (err) {
-      console.error("Failed to end meeting", err)
-      navigate('/') // Fallback
+  useEffect(() => {
+    let activeTrack: LocalVideoTrack | null = null;
+    let isMounted = true;
+    const startPreview = async () => {
+      if (isCamOn && !joinData) {
+        try {
+          const track = await createLocalVideoTrack();
+          if (!isMounted || joinData) {
+            track.stop();
+            return;
+          }
+          activeTrack = track;
+          setLocalVideoTrack(activeTrack);
+        } catch (e) {
+          console.error("Failed to start preview", e);
+        }
+      }
+    };
+    startPreview();
+    return () => {
+      isMounted = false;
+      if (activeTrack) activeTrack.stop();
+      setLocalVideoTrack(null);
     }
-  }
+  }, [isCamOn, !!joinData]);
 
-  const handleLeaveSession = async () => {
-    try {
-      await apiClient.post(`/meetings/${id}/leave`)
-    } catch (err) {
-      console.error("Failed to call leave API", err)
-    }
-    navigate('/')
-  }
-
-  // Handle explicit tab close or navigation
   useEffect(() => {
     if (joinData && id) {
       const handleUnload = () => {
-        // Use sendBeacon for more reliability on close if needed, but simple fetch might work for navigation
         apiClient.post(`/meetings/${id}/leave`).catch(() => {});
       }
-      
       window.addEventListener('beforeunload', handleUnload);
       return () => {
-        handleUnload(); // Call on unmount
+        handleUnload();
         window.removeEventListener('beforeunload', handleUnload);
       }
     }
   }, [joinData, id]);
 
+  // UI Components
+  const UsersIcon = () => (
+    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-users"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+  );
+
+  // Early Returns
   if (isWaitingInLobby) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#050505] p-6">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="relative w-full max-w-xl overflow-hidden rounded-[3.5rem] border border-white/20 bg-[#0a0a0b] p-12 text-center shadow-2xl"
-        >
-          {/* Ambient Background */}
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="relative w-full max-w-xl overflow-hidden rounded-[3.5rem] border border-white/20 bg-[#0a0a0b] p-12 text-center shadow-2xl">
           <div className="absolute -left-20 -top-20 h-64 w-64 rounded-full bg-cyan-500/10 blur-[100px]" />
           <div className="absolute -right-20 -bottom-20 h-64 w-64 rounded-full bg-indigo-500/10 blur-[100px]" />
-          
           <div className="relative z-10 flex flex-col items-center">
             <div className="mb-8 flex h-24 w-24 items-center justify-center rounded-[2.5rem] bg-white/5 border border-white/10 relative">
                <div className="absolute inset-0 rounded-[2.5rem] border-2 border-cyan-500/20 border-t-cyan-500 animate-spin" />
                <UsersIcon />
             </div>
-            
             <h1 className="text-4xl font-black tracking-tight text-white mb-4">{t('meeting.permission_pending')}</h1>
             <p className="text-slate-400 font-medium leading-relaxed max-w-md mx-auto">
               {t('meeting.host_notified')} 
               <br />
               <span className="text-white font-bold">{t('meeting.stay_on_page')}</span> {t('meeting.securing_entry')}
             </p>
-            
             <div className="mt-12 flex flex-col items-center gap-6">
                <div className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/5 border border-white/10">
                   <div className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
                   <span className="text-[14px] font-black text-cyan-400">{t('meeting.requesting_admittance')}</span>
                </div>
-               
-               <button 
-                  onClick={() => setIsWaitingInLobby(false)}
-                  className="text-sm font-bold text-slate-500 hover:text-white transition-colors"
-               >
+               <button onClick={() => setIsWaitingInLobby(false)} className="text-sm font-bold text-slate-500 hover:text-white transition-colors">
                   {t('meeting.cancel_request')}
                </button>
             </div>
@@ -342,20 +364,13 @@ const MeetingRoomPage: React.FC = () => {
   if (error && !isPasswordError) {
     return (
       <div className="flex min-h-screen flex-col items-center justify-center bg-slate-950 p-6 text-white">
-        <motion.div 
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          className="flex max-w-md flex-col items-center rounded-[2.5rem] border border-white/10 bg-white/5 p-12 text-center backdrop-blur-xl"
-        >
+        <motion.div initial={{ opacity: 0, scale: 0.9 }} animate={{ opacity: 1, scale: 1 }} className="flex max-w-md flex-col items-center rounded-[2.5rem] border border-white/10 bg-white/5 p-12 text-center backdrop-blur-xl">
           <div className="flex h-20 w-20 items-center justify-center rounded-3xl bg-rose-500/20 text-rose-500">
             <AlertCircle className="h-10 w-10" />
           </div>
           <h2 className="mt-8 text-2xl font-black tracking-tight">{t('meeting.access_denied')}</h2>
           <p className="mt-4 text-slate-400 font-medium leading-relaxed">{error}</p>
-          <button 
-            onClick={() => navigate('/')}
-            className="mt-10 flex items-center gap-2 rounded-2xl bg-white px-8 py-3.5 text-sm font-bold text-slate-950 transition hover:bg-slate-200 active:scale-95"
-          >
+          <button onClick={() => navigate('/')} className="mt-10 flex items-center gap-2 rounded-2xl bg-white px-8 py-3.5 text-sm font-bold text-slate-950 transition hover:bg-slate-200 active:scale-95">
             <ArrowLeft className="h-4 w-4" />
             {t('dashboard.back_to_dashboard')}
           </button>
@@ -397,27 +412,16 @@ const MeetingRoomPage: React.FC = () => {
         audio={preJoinChoices.audioEnabled}
         token={joinData.token}
         serverUrl={joinData.liveKitUrl}
-        onDisconnected={() => {
-          console.log("Disconnected from LiveKit room");
-          navigate('/');
-        }}
-        onError={(e) => {
-          console.error("LiveKitRoom error:", e);
-          setError(e.message);
-        }}
+        onDisconnected={() => navigate('/')}
+        onError={(e) => setError(e.message)}
         data-lk-theme="default"
         className="w-full h-full flex overflow-hidden lg:flex-row flex-col"
       >
         <DataHandler meetingId={id!} onNotify={() => {
-          if (activeTab !== 'polls' || !isSidebarOpen) {
-            setHasUnreadPolls(true);
-          }
+          if (activeTab !== 'polls' || !isSidebarOpen) setHasUnreadPolls(true);
         }} />
         <LayoutContextProvider>
-           <motion.div 
-             layout
-             className="flex-1 h-full min-w-0 overflow-hidden flex flex-col relative"
-           >
+           <motion.div layout className="flex-1 h-full min-w-0 overflow-hidden flex flex-col relative">
             <MeetingMainStage 
               meetingId={id || ''}
               isSidebarOpen={isSidebarOpen}
@@ -429,7 +433,6 @@ const MeetingRoomPage: React.FC = () => {
               onLeaveSession={handleLeaveSession}
             />
           </motion.div>
-
           <MeetingSidebar 
             isOpen={isSidebarOpen}
             onClose={handleCloseSidebar}
@@ -447,52 +450,27 @@ const MeetingRoomPage: React.FC = () => {
             isCoHost={isCoHost}
             canManagePolls={canManagePolls}
             canManageQA={canManageQA}
-            isQaEnabled={meetingDetails?.isQaEnabled ?? true}
-            isAnonymousAllowed={meetingDetails?.isAnonymousAllowed ?? true}
             onOpenCreateModal={handleOpenPollModal}
+            onOpenQuestionModal={handleOpenQuestionModal}
           />
         </LayoutContextProvider>
-
-        <PollModal 
-          isOpen={isPollModalOpen}
-          onClose={handleClosePollModal}
-          meetingId={joinData.meetingId}
+        <PollModal isOpen={isPollModalOpen} onClose={handleClosePollModal} meetingId={joinData.meetingId} />
+        <QuestionDetailModal 
+          isOpen={isQuestionModalOpen} 
+          onClose={handleCloseQuestionModal} 
+          question={selectedQuestion} 
+          userId={user?.id || ''} 
+          meetingId={id || ''} 
+          isOrganizer={isOrganizer}
+          isCoHost={isCoHost}
         />
       </LiveKitRoom>
-
-      {/* Global CSS Overrides */}
       <style dangerouslySetInnerHTML={{ __html: `
-        .lk-premium-theme .lk-control-bar {
-          background: transparent !important;
-          border: none !important;
-          width: auto !important;
-          margin: 0 !important;
-          gap: 0.5rem !important;
-        }
-        .lk-premium-theme .lk-button {
-          height: 40px !important;
-          width: 40px !important;
-          border-radius: 0.75rem !important;
-          background: rgba(255, 255, 255, 0.05) !important;
-          border: 1px solid rgba(255, 255, 255, 0.05) !important;
-          padding: 0 !important;
-          display: flex !important;
-          align-items: center !important;
-          justify-content: center !important;
-          transition: all 0.2s !important;
-        }
-        .lk-premium-theme .lk-button:hover {
-          background: rgba(255, 255, 255, 0.1) !important;
-          transform: translateY(-2px);
-        }
-        .lk-premium-theme .lk-button[data-lk-active="true"] {
-          background: rgba(34, 211, 238, 0.1) !important;
-          color: #22d3ee !important;
-          border-color: rgba(34, 211, 238, 0.2) !important;
-        }
-        .lk-premium-theme .lk-disconnect-button {
-          background: #ef4444 !important;
-        }
+        .lk-premium-theme .lk-control-bar { background: transparent !important; border: none !important; width: auto !important; margin: 0 !important; gap: 0.5rem !important; }
+        .lk-premium-theme .lk-button { height: 40px !important; width: 40px !important; border-radius: 0.75rem !important; background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(255, 255, 255, 0.05) !important; padding: 0 !important; display: flex !important; align-items: center !important; justify-content: center !important; transition: all 0.2s !important; }
+        .lk-premium-theme .lk-button:hover { background: rgba(255, 255, 255, 0.1) !important; transform: translateY(-2px); }
+        .lk-premium-theme .lk-button[data-lk-active="true"] { background: rgba(34, 211, 238, 0.1) !important; color: #22d3ee !important; border-color: rgba(34, 211, 238, 0.2) !important; }
+        .lk-premium-theme .lk-disconnect-button { background: #ef4444 !important; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }

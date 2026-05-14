@@ -236,11 +236,11 @@ export class MeetingsService {
       const fullName = displayName || `${user.firstName} ${user.lastName}`;
 
       // If user is WAITING or DENIED, do not generate token
-      if (participant.status !== ParticipantStatus.ADMITTED) {
+      if (!participant || participant.status !== ParticipantStatus.ADMITTED) {
         return {
           meetingId: meeting.id,
           organizerId: meeting.organizerId,
-          status: participant.status,
+          status: participant?.status || ParticipantStatus.DENIED,
           token: '',
           liveKitUrl: '',
           participants: [],
@@ -711,5 +711,65 @@ export class MeetingsService {
     // Cập nhật quyền
     participant.permissions = permissions;
     return this.participantsRepository.save(participant);
+  }
+
+  /**
+   * Cập nhật quyền hạn hàng loạt cho thành viên
+   */
+  async updateBulkParticipantsPermissions(
+    meetingId: string,
+    userIds: string[] | undefined,
+    action: 'grant' | 'revoke',
+    permissions: MeetingPermission[],
+    requesterId: string,
+  ): Promise<{ count: number }> {
+    this.logger.log(
+      `Bulk update: meetingId=${meetingId}, action=${action}, permissions=${JSON.stringify(permissions)}`,
+    );
+    const meeting = await this.findOne(meetingId);
+
+    if (meeting.organizerId !== requesterId) {
+      throw new ForbiddenException(
+        'Only the organizer can update participant permissions',
+      );
+    }
+
+    const query = this.participantsRepository
+      .createQueryBuilder('participant')
+      .where('participant.meetingId = :meetingId', { meetingId })
+      .andWhere('participant.isOrganizer = false');
+
+    if (userIds && userIds.length > 0) {
+      query.andWhere('participant.userId IN (:...userIds)', { userIds });
+    }
+
+    const participants = await query.getMany();
+    this.logger.log(`Updating ${participants.length} participants`);
+
+    for (const participant of participants) {
+      const currentPermissions = participant.permissions || [];
+      let newPermissions: MeetingPermission[];
+
+      if (action === 'grant') {
+        newPermissions = Array.from(
+          new Set([...currentPermissions, ...permissions]),
+        );
+      } else {
+        newPermissions = currentPermissions.filter(
+          (p) => !permissions.includes(p),
+        );
+      }
+
+      participant.permissions = newPermissions;
+    }
+
+    if (participants.length > 0) {
+      await this.participantsRepository.save(participants);
+      this.logger.log(
+        `Successfully updated permissions for ${participants.length} participants`,
+      );
+    }
+
+    return { count: participants.length };
   }
 }

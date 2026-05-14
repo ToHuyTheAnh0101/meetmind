@@ -218,7 +218,7 @@
     "discussion": "Thảo luận",
     "qa_section": "Hỏi đáp",
     "ask_host": "Hỏi ban tổ chức",
-    "host_asking": "Ban tổ chức hỏi",
+    "host_asking": "Nội dung câu hỏi",
     "enter_question": "Nhập câu hỏi của bạn...",
     "enter_answer": "Nhập câu trả lời...",
     "ask_anonymous": "Đặt câu hỏi ẩn danh",
@@ -236,6 +236,13 @@
     "qa_disabled_desc": "Ban tổ chức hiện không cho phép đặt câu hỏi mới",
     "anonymous_allowed": "Cho phép hỏi ẩn danh",
     "anonymous_allowed_desc": "Người tham gia có thể đặt câu hỏi mà không lộ danh tính",
+    "discussion_details": "Chi tiết hỏi đáp",
+    "view_all_responses": "Xem tất cả câu trả lời từ mọi người",
+    "all_responses": "Tất cả câu trả lời",
+    "your_responses": "Câu trả lời của bạn",
+    "responses": "Câu trả lời",
+    "no_responses_yet": "Chưa có câu trả lời nào",
+    "reply_placeholder": "Nhập câu trả lời của bạn...",
     "question": "Câu hỏi",
     "poll_question_placeholder": "Bạn muốn đặt câu hỏi gì?",
     "poll_type": "Loại bình chọn",
@@ -262,15 +269,44 @@
       "tab_general": "Thiết lập chung",
       "tab_permissions": "Phân quyền",
       "list": {
-        "edit_meeting_info": { "label": "Sửa thông tin họp", "desc": "Cho phép thay đổi tiêu đề, mô tả, thời gian" },
-        "manage_polls": { "label": "Quản lý bình chọn", "desc": "Tạo và đóng các cuộc khảo sát" },
-        "manage_qa": { "label": "Quản lý Q&A", "desc": "Duyệt và trả lời câu hỏi" },
-        "co_host": { "label": "Quyền Đồng chủ trì", "desc": "Cấp quyền quản lý ngang hàng chủ phòng" },
-        "view_transcript": { "label": "Xem bản dịch", "desc": "Truy cập nội dung transcript" },
-        "chat_with_ai": { "label": "Chat với AI", "desc": "Sử dụng AI assistant trong phòng" },
-        "edit_summary": { "label": "Sửa tóm tắt", "desc": "Chỉnh sửa nội dung AI summary" },
-        "download_recording": { "label": "Tải bản ghi", "desc": "Tải về file ghi âm/video" }
-      }
+        "edit_meeting_info": {
+          "label": "Sửa thông tin họp",
+          "desc": "Cho phép thay đổi tiêu đề, mô tả, thời gian"
+        },
+        "manage_polls": {
+          "label": "Quản lý bình chọn",
+          "desc": "Tạo và đóng các cuộc khảo sát"
+        },
+        "manage_qa": {
+          "label": "Quản lý Q&A",
+          "desc": "Duyệt và trả lời câu hỏi"
+        },
+        "co_host": {
+          "label": "Quyền Đồng chủ trì",
+          "desc": "Cấp quyền quản lý ngang hàng chủ phòng"
+        },
+        "view_transcript": {
+          "label": "Xem bản dịch",
+          "desc": "Truy cập nội dung transcript"
+        },
+        "chat_with_ai": {
+          "label": "Chat với AI",
+          "desc": "Sử dụng AI assistant trong phòng"
+        },
+        "edit_summary": {
+          "label": "Sửa tóm tắt",
+          "desc": "Chỉnh sửa nội dung AI summary"
+        },
+        "download_recording": {
+          "label": "Tải bản ghi",
+          "desc": "Tải về file ghi âm/video"
+        }
+      },
+      "bulk_actions": "Thao tác hàng loạt",
+      "bulk_actions_desc": "Thiết lập nhanh cho mọi người",
+      "grant_all": "Cấp cho tất cả",
+      "revoke_all": "Thu hồi tất cả",
+      "bulk_success": "Đã cập nhật quyền thành công cho toàn bộ thành viên"
     }
   }
 }

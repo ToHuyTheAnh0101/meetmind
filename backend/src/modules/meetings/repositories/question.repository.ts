@@ -13,14 +13,14 @@ export class QuestionRepository {
   async findById(id: string): Promise<MeetingQuestion | null> {
     return this.repo.findOne({
       where: { id },
-      relations: ['askedByUser', 'askedByParticipant', 'answers', 'answers.answeredByUser'],
+      relations: ['askedByUser', 'askedByParticipant', 'answers', 'answers.answeredByUser', 'answers.answeredByParticipant'],
     });
   }
 
   async findByMeetingId(meetingId: string): Promise<MeetingQuestion[]> {
     return this.repo.find({
       where: { meetingId },
-      relations: ['askedByUser', 'askedByParticipant', 'answers', 'answers.answeredByUser'],
+      relations: ['askedByUser', 'askedByParticipant', 'answers', 'answers.answeredByUser', 'answers.answeredByParticipant'],
       order: { createdAt: 'DESC' },
     });
   }

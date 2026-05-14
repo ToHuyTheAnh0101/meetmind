@@ -51,6 +51,21 @@ export class QuestionController {
     @Body() dto: CreateQuestionDto,
     @Request() req: { user: { id: string } },
   ): Promise<MeetingQuestion> {
+    const participant = await this.participantRepository.findByMeetingAndUser(
+      meetingId,
+      req.user.id,
+    );
+
+    const hasManagePrivilege =
+      participant?.isOrganizer ||
+      participant?.permissions.includes(MeetingPermission.MANAGE_QA);
+
+    if (!hasManagePrivilege) {
+      throw new ForbiddenException(
+        'You do not have permission to create discussion questions',
+      );
+    }
+
     return this.questionService.create(meetingId, {
       ...dto,
       askedByUserId: req.user.id,

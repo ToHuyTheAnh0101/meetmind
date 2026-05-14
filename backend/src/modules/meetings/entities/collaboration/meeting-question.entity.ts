@@ -36,20 +36,20 @@ export class MeetingQuestion {
   @JoinColumn({ name: 'meeting_id' })
   meeting: Meeting;
 
-  @Column('uuid')
+  @Column({ name: 'meeting_id', type: 'uuid', nullable: true })
   meetingId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'asked_by_user_id' })
   askedByUser: User;
 
-  @Column('uuid')
+  @Column({ name: 'asked_by_user_id', type: 'uuid', nullable: true })
   askedByUserId: string;
 
   @ManyToOne(() => Participant)
   @JoinColumn([
-    { name: 'meetingId', referencedColumnName: 'meetingId' },
-    { name: 'askedByUserId', referencedColumnName: 'userId' },
+    { name: 'meeting_id', referencedColumnName: 'meetingId' },
+    { name: 'asked_by_user_id', referencedColumnName: 'userId' },
   ])
   askedByParticipant: Participant;
 

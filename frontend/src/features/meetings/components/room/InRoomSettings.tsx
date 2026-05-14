@@ -35,8 +35,6 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
     description: '',
     waitingRoomEnabled: false,
     muteOnJoin: false,
-    isQaEnabled: true,
-    isAnonymousAllowed: true,
   });
 
   useEffect(() => {
@@ -46,8 +44,6 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
         description: meeting.description || '',
         waitingRoomEnabled: !!meeting.waitingRoomEnabled,
         muteOnJoin: !!meeting.muteOnJoin,
-        isQaEnabled: meeting.isQaEnabled ?? true,
-        isAnonymousAllowed: meeting.isAnonymousAllowed ?? true,
       });
     }
   }, [meeting]);
@@ -160,28 +156,6 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
                        description={t('meeting.silence_guests')}
                        enabled={formData.muteOnJoin}
                        onChange={(val) => handleUpdate({ muteOnJoin: val })}
-                    />
-                 </div>
-              </div>
-
-              {/* Q&A Settings */}
-              <div className="space-y-2 pt-4">
-                 <div className="flex items-center gap-2 mb-3">
-                    <span className="text-[13px] font-bold text-slate-200 font-premium-ink px-0.5">{t('meeting.qa')}</span>
-                 </div>
-                 
-                 <div className="space-y-1">
-                    <SettingToggle 
-                       label={t('meeting.enable_qa')}
-                       description={t('meeting.manage_qa_desc')}
-                       enabled={formData.isQaEnabled}
-                       onChange={(val) => handleUpdate({ isQaEnabled: val })}
-                    />
-                    <SettingToggle 
-                       label={t('meeting.anonymous_allowed')}
-                       description={t('meeting.anonymous_allowed_desc')}
-                       enabled={formData.isAnonymousAllowed}
-                       onChange={(val) => handleUpdate({ isAnonymousAllowed: val })}
                     />
                  </div>
               </div>

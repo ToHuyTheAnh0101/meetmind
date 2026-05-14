@@ -26,6 +26,8 @@ export class QuestionService {
     const question = this.questionRepository.create({
       ...data,
       meetingId,
+      type: data.type || ('host_qa' as any), // Default to host_qa
+      isAnonymous: false, // Discussion questions are never anonymous
     });
 
     const savedQuestion = await this.questionRepository.save(question);
@@ -47,18 +49,9 @@ export class QuestionService {
   ): Promise<MeetingQuestion[]> {
     const questions = await this.questionRepository.findByMeetingId(meetingId);
 
-    if (hasManagePrivilege) {
-      return questions;
-    }
-
-    // Filter for regular participants
-    return questions.filter((q) => {
-      // Always see host questions
-      if (q.type === 'host_qa') return true;
-      // See own questions
-      if (q.askedByUserId === userId) return true;
-      return false;
-    });
+    // Everyone can see all discussion (host_qa) questions
+    // In this new flow, we primarily care about host_qa
+    return questions.filter((q) => q.type === 'host_qa');
   }
 
   async upvote(id: string, userId: string): Promise<MeetingQuestion> {
@@ -91,6 +84,7 @@ export class QuestionService {
   ): Promise<MeetingAnswer> {
     const question = await this.findById(questionId);
     const answer = this.answerRepository.create({
+      meetingId: question.meetingId,
       questionId,
       content,
       answeredByUserId,

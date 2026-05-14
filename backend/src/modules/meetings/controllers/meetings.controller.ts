@@ -162,6 +162,22 @@ export class MeetingsController {
     return this.meetingsService.rejectParticipant(id, userId, req.user.id);
   }
 
+  @Put(':id/participants/permissions/bulk')
+  @UseGuards(JwtAuthGuard)
+  async updateBulkParticipantsPermissions(
+    @Param('id') id: string,
+    @Body() dto: { userIds?: string[]; action: 'grant' | 'revoke'; permissions: MeetingPermission[] },
+    @Request() req: { user: { id: string } },
+  ): Promise<{ count: number }> {
+    return this.meetingsService.updateBulkParticipantsPermissions(
+      id,
+      dto.userIds,
+      dto.action,
+      dto.permissions,
+      req.user.id,
+    );
+  }
+
   @Put(':id/participants/:userId/permissions')
   @UseGuards(JwtAuthGuard)
   async updateParticipantPermissions(

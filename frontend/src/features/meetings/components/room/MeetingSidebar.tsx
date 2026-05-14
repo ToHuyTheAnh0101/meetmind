@@ -33,9 +33,8 @@ interface MeetingSidebarProps {
   isCoHost: boolean;
   canManagePolls: boolean;
   canManageQA: boolean;
-  isQaEnabled: boolean;
-  isAnonymousAllowed: boolean;
   onOpenCreateModal: () => void;
+  onOpenQuestionModal: (question: any) => void;
   hasUnreadPolls?: boolean;
 }
 
@@ -51,9 +50,8 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   isCoHost,
   canManagePolls,
   canManageQA,
-  isQaEnabled,
-  isAnonymousAllowed,
   onOpenCreateModal,
+  onOpenQuestionModal,
   hasUnreadPolls,
 }) => {
   const { t } = useTranslation();
@@ -62,12 +60,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
     { id: 'roster', icon: Users, label: t('meeting.participants'), color: 'text-indigo-400' },
     { id: 'qa', icon: MessageCircle, label: t('meeting.qa'), color: 'text-lime-400' },
     { id: 'polls', icon: BarChart3, label: t('meeting.polls'), color: 'text-rose-400' },
-  ].filter(tab => {
-    if (tab.id === 'qa') {
-      return isQaEnabled || canManageQA;
-    }
-    return true;
-  });
+  ];
 
   if (isOrganizer || isCoHost) {
     tabs.push(
@@ -136,8 +129,8 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                   meetingId={meetingId} 
                   userId={userId} 
                   hasManagePrivilege={canManageQA} 
-                  isQaEnabled={isQaEnabled}
-                  isAnonymousAllowed={isAnonymousAllowed}
+                  onOpenQuestionModal={onOpenQuestionModal}
+                  organizerId={organizerId}
                 />
               )}
             </div>

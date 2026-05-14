@@ -31,10 +31,21 @@ export class ParticipantRepository {
     });
   }
 
+  async findManyByMeetingId(meetingId: string): Promise<Participant[]> {
+    return this.repo.find({
+      where: { meetingId },
+      relations: ['user'],
+    });
+  }
+
+  createQueryBuilder(alias: string) {
+    return this.repo.createQueryBuilder(alias);
+  }
+
   async save(
-    participant: Participant | Partial<Participant>,
-  ): Promise<Participant> {
-    return this.repo.save(participant);
+    participant: Participant | Partial<Participant> | Participant[],
+  ): Promise<any> {
+    return this.repo.save(participant as any);
   }
 
   async remove(participant: Participant): Promise<void> {

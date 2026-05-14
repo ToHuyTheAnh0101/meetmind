@@ -233,6 +233,13 @@
     "qa_disabled_desc": "The organizer is not accepting new questions at this time",
     "anonymous_allowed": "Allow anonymous questions",
     "anonymous_allowed_desc": "Participants can ask questions without revealing their identity",
+    "discussion_details": "Discussion Details",
+    "view_all_responses": "View all responses from everyone",
+    "all_responses": "All Responses",
+    "your_responses": "Your Responses",
+    "responses": "Responses",
+    "no_responses_yet": "No responses yet",
+    "reply_placeholder": "Type your answer here...",
     "question": "Question",
     "poll_question_placeholder": "What do you want to ask?",
     "poll_type": "Poll Type",
@@ -262,11 +269,17 @@
         "edit_meeting_info": { "label": "Edit meeting info", "desc": "Allows changing title, description, and time" },
         "manage_polls": { "label": "Manage polls", "desc": "Create and close surveys" },
         "manage_qa": { "label": "Manage Q&A", "desc": "Approve and answer questions" },
+        "co_host": { "label": "Co-host permissions", "desc": "Grant peer management rights to the host" },
         "view_transcript": { "label": "View transcript", "desc": "Access transcript content" },
         "chat_with_ai": { "label": "Chat with AI", "desc": "Use AI assistant in the room" },
         "edit_summary": { "label": "Edit summary", "desc": "Modify AI summary content" },
         "download_recording": { "label": "Download recording", "desc": "Download audio/video files" }
-      }
+      },
+      "bulk_actions": "Bulk Actions",
+      "bulk_actions_desc": "Quick settings for everyone",
+      "grant_all": "Grant All",
+      "revoke_all": "Revoke All",
+      "bulk_success": "Successfully updated permissions for all participants"
     }
   }
 }
