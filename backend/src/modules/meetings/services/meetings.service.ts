@@ -99,26 +99,44 @@ export class MeetingsService {
       savedMeeting.livekitRoomName = savedMeeting.id;
       await this.meetingsRepository.save(savedMeeting);
 
-      // Gửi email mời họp cho danh sách khách mời
+      // Gửi email mời họp và lên lịch nhắc nhở cho danh sách khách mời
       if (savedMeeting.inviteeEmails && savedMeeting.inviteeEmails.length > 0) {
         const frontendUrl =
           this.configService.get('FRONTEND_URL') || 'http://localhost:3001';
         const joinUrl = `${frontendUrl}/room/${savedMeeting.id}`;
 
         for (const email of savedMeeting.inviteeEmails) {
-          // Gửi mail bất đồng bộ để không làm chậm quá trình tạo phòng
+          // 1. Gửi lời mời ngay lập tức
           this.mailService
             .sendMeetingInvitation(
               email,
-              'Quý khách', // Có thể cải tiến bằng cách lấy tên từ User nếu có
+              'Quý khách',
               savedMeeting.title,
               savedMeeting.startTime,
               joinUrl,
               savedMeeting.password,
             )
             .catch((err) =>
-              this.logger.error(`Không thể gửi mail cho ${email}:`, err),
+              this.logger.error(`Không thể gửi lời mời cho ${email}:`, err),
             );
+
+          // 2. Lên lịch nhắc nhở (Reminder)
+          if (savedMeeting.reminderMinutes > 0) {
+            this.mailService
+              .scheduleMeetingReminder(
+                email,
+                'Quý khách',
+                savedMeeting.id,
+                savedMeeting.title,
+                savedMeeting.startTime,
+                savedMeeting.reminderMinutes,
+                joinUrl,
+                savedMeeting.password,
+              )
+              .catch((err) =>
+                this.logger.error(`Không thể lên lịch nhắc cho ${email}:`, err),
+              );
+          }
         }
       }
     } catch (error) {
@@ -470,7 +488,45 @@ export class MeetingsService {
       startTime: dto.startTime ? new Date(dto.startTime) : meeting.startTime,
     });
 
-    return this.meetingsRepository.save(meeting);
+    const updatedMeeting = await this.meetingsRepository.save(meeting);
+
+    // Cập nhật lại lịch nhắc nhở nếu có thay đổi liên quan
+    if (
+      dto.startTime ||
+      dto.reminderMinutes !== undefined ||
+      dto.inviteeEmails
+    ) {
+      const frontendUrl =
+        this.configService.get('FRONTEND_URL') || 'http://localhost:3001';
+      const joinUrl = `${frontendUrl}/room/${updatedMeeting.id}`;
+
+      for (const email of updatedMeeting.inviteeEmails || []) {
+        if (updatedMeeting.reminderMinutes > 0) {
+          this.mailService
+            .scheduleMeetingReminder(
+              email,
+              'Quý khách',
+              updatedMeeting.id,
+              updatedMeeting.title,
+              updatedMeeting.startTime,
+              updatedMeeting.reminderMinutes,
+              joinUrl,
+              updatedMeeting.password,
+            )
+            .catch((err) =>
+              this.logger.error(
+                `Không thể cập nhật lịch nhắc cho ${email}:`,
+                err,
+              ),
+            );
+        } else {
+          // Nếu reminderMinutes = 0, hủy job nhắc lịch cũ
+          this.mailService.removeMeetingReminder(updatedMeeting.id, email);
+        }
+      }
+    }
+
+    return updatedMeeting;
   }
 
   async remove(id: string, userId: string): Promise<void> {

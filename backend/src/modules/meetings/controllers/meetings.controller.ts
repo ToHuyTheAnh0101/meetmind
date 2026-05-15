@@ -30,6 +30,9 @@ import { JoinResponseDto } from '../dto/join-response.dto';
 import { JoinMeetingDto } from '../dto/join-meeting.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { MailService } from '../../../providers/mail/mail.service';
+import { Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 
 @Controller('meetings')
 export class MeetingsController {
@@ -37,6 +40,7 @@ export class MeetingsController {
     private readonly meetingsService: MeetingsService,
     private readonly liveKitService: LiveKitService,
     private readonly mailService: MailService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
   @Get('check-conflict')
@@ -51,10 +55,14 @@ export class MeetingsController {
 
   @Get(':id/public')
   async getMeetingPublicInfo(@Param('id') id: string): Promise<any> {
-    // Public endpoint - no auth required
-    // Shows meeting info before user joins
+    const cacheKey = `meeting_public:${id}`;
+    const cachedData = await this.cacheManager.get(cacheKey);
+    if (cachedData) {
+      return cachedData;
+    }
+
     const meeting = await this.meetingsService.findOne(id);
-    return {
+    const publicInfo = {
       id: meeting.id,
       title: meeting.title,
       description: meeting.description,
@@ -70,6 +78,10 @@ export class MeetingsController {
       isAnonymousAllowed: meeting.isAnonymousAllowed,
       createdAt: meeting.createdAt,
     };
+
+    // Lưu vào cache trong 5 phút (300000ms)
+    await this.cacheManager.set(cacheKey, publicInfo, 300000);
+    return publicInfo;
   }
 
   @Post()
@@ -103,7 +115,10 @@ export class MeetingsController {
     @Body() dto: UpdateMeetingDto,
     @Request() req: { user: { id: string } },
   ): Promise<Meeting> {
-    return this.meetingsService.update(id, dto, req.user.id);
+    const result = await this.meetingsService.update(id, dto, req.user.id);
+    // Xóa cache khi update
+    await this.cacheManager.del(`meeting_public:${id}`);
+    return result;
   }
 
   @Delete(':id')
@@ -113,7 +128,9 @@ export class MeetingsController {
     @Param('id') id: string,
     @Request() req: { user: { id: string } },
   ): Promise<void> {
-    return this.meetingsService.remove(id, req.user.id);
+    await this.meetingsService.remove(id, req.user.id);
+    // Xóa cache khi delete
+    await this.cacheManager.del(`meeting_public:${id}`);
   }
 
   @Post(':id/join')
@@ -273,11 +290,13 @@ export class MeetingsController {
       'meetmind2024',
     );
 
-    await this.mailService.sendMeetingReminder(
+    await this.mailService.scheduleMeetingReminder(
       email,
       'Thành viên Demo',
+      'demo-meeting-id',
       '[Demo] Cuộc họp tổng kết Q2 - MeetMind',
       mockDate,
+      10, // Nhắc trước 10 phút
       'http://localhost:3001/room/demo-id-123',
       'meetmind2024',
     );
