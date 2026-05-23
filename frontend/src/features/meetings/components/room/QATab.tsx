@@ -39,7 +39,6 @@ interface Question {
   type: 'host_qa' | 'audience_qa';
   isAnonymous: boolean;
   status: 'pending' | 'answered' | 'dismissed';
-  upvoterIds: string[];
   answers: Answer[];
   createdAt: string;
 }

@@ -207,7 +207,6 @@ Q&A questions asked during a meeting.
 | meetingId | UUID | NO | Foreign key to Meeting (cascade delete) |
 | askedByUserId | UUID | NO | User who asked the question (cascade delete) |
 | content | String | NO | Question text |
-| upvoterIds | UUID Array | NO | Array of user IDs who upvoted (default: []) |
 | status | Enum | NO | Question status (see QuestionStatus enum) |
 | answer | String | YES | Answer text |
 | offsetSeconds | Number | YES | Meeting timestamp when asked (seconds) |
@@ -685,7 +684,6 @@ All entities include `createdAt` and `updatedAt` (except MeetingEvent and ChatHi
 ### JSON/JSONB Columns
 - `Participant.permissions`: Array of MeetingPermission enums
 - `MeetingEvent.metadata`: Flexible metadata storage
-- `MeetingQuestion.upvoterIds`: Array of voter UUIDs
 - `MeetingPoll.options`: Structured poll options with voter tracking
 - `Summary.content`: Structured summary sections
 - `SummaryTemplate.sections`: Template section definitions

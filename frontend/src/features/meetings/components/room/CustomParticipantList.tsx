@@ -65,7 +65,7 @@ const ParticipantItem = ({ organizerId }: { organizerId: string }) => {
   if (p.metadata) {
     try {
       const meta = JSON.parse(p.metadata);
-      avatarUrl = meta.avatar;
+      avatarUrl = meta.picture || meta.avatar;
     } catch (e) {
       console.error("Failed to parse metadata", e);
     }

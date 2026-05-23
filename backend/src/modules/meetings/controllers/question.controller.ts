@@ -14,6 +14,7 @@ import { MeetingQuestion, MeetingPermission, MeetingAnswer } from '../entities';
 import { CreateQuestionDto, CreateAnswerDto } from '../dto/create-question.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { ParticipantRepository } from '../repositories/participant.repository';
+import { QuestionStatus } from '../entities/collaboration/meeting-question.entity';
 
 @Controller('meetings/:meetingId/qa')
 export class QuestionController {
@@ -26,22 +27,8 @@ export class QuestionController {
   @UseGuards(JwtAuthGuard)
   async findAll(
     @Param('meetingId') meetingId: string,
-    @Request() req: { user: { id: string } },
   ): Promise<MeetingQuestion[]> {
-    const participant = await this.participantRepository.findByMeetingAndUser(
-      meetingId,
-      req.user.id,
-    );
-
-    const hasManagePrivilege =
-      participant?.isOrganizer ||
-      participant?.permissions.includes(MeetingPermission.MANAGE_QA);
-
-    return this.questionService.findByMeetingId(
-      meetingId,
-      req.user.id,
-      hasManagePrivilege,
-    );
+    return this.questionService.findByMeetingId(meetingId);
   }
 
   @Post()
@@ -72,21 +59,12 @@ export class QuestionController {
     });
   }
 
-  @Patch(':id/upvote')
-  @UseGuards(JwtAuthGuard)
-  async upvote(
-    @Param('id') id: string,
-    @Request() req: { user: { id: string } },
-  ): Promise<MeetingQuestion> {
-    return this.questionService.upvote(id, req.user.id);
-  }
-
   @Patch(':id/status')
   @UseGuards(JwtAuthGuard)
   async updateStatus(
     @Param('meetingId') meetingId: string,
     @Param('id') id: string,
-    @Body('status') status: 'answered' | 'dismissed' | 'pending',
+    @Body('status') status: QuestionStatus,
     @Request() req: { user: { id: string } },
   ): Promise<MeetingQuestion> {
     const participant = await this.participantRepository.findByMeetingAndUser(

@@ -72,9 +72,6 @@ export class MeetingQuestion {
   })
   status: QuestionStatus;
 
-  @Column('uuid', { array: true, default: '{}' })
-  upvoterIds: string[];
-
   @Column({ nullable: true })
   offsetSeconds: number;
 

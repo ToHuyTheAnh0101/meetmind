@@ -31,6 +31,8 @@ interface MeetingMainStageProps {
   onToggleSidebar: (tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls') => void;
   onEndSession: () => void;
   onLeaveSession?: () => void;
+  onReturnToMain?: () => void;
+  isInBreakout?: boolean;
 }
 
 const ParticipantAvatarOverlay = () => {
@@ -39,7 +41,7 @@ const ParticipantAvatarOverlay = () => {
     if (!p?.metadata) return null;
     try {
       const meta = JSON.parse(p.metadata);
-      return meta.avatar;
+      return meta.picture || meta.avatar;
     } catch (e) {
       return null;
     }
@@ -105,6 +107,8 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   meetingId,
   isOrganizer,
   onEndSession,
+  onReturnToMain,
+  isInBreakout,
 }) => {
   const { t } = useTranslation();
   const [isControlsExpanded, setIsControlsExpanded] = useState(true);
@@ -122,6 +126,20 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
 
   return (
     <div className="flex-1 flex flex-col relative overflow-hidden max-h-full bg-[#020202]">
+      {/* Floating Breakout Leave Button */}
+      {isInBreakout && onReturnToMain && (
+        <div className="absolute top-8 right-8 z-[50]">
+          <button 
+            onClick={onReturnToMain}
+            className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 backdrop-blur-3xl transition-all shadow-2xl group active:scale-95"
+          >
+            <div className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_10px_rgba(129,140,248,0.5)]" />
+            <span className="text-sm font-black tracking-tight">RỜI PHÒNG THẢO LUẬN</span>
+            <LogOut className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
+      )}
+
       <AnimatePresence>
         {showEndConfirmation && (
           <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
@@ -144,11 +162,13 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
             <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
             <span className="text-lg font-medium text-white/90">{t('meeting.live_session')}: {meetingId?.slice(0, 8)}</span>
           </div>
-         {isOrganizer && (
-           <button onClick={() => setShowEndConfirmation(true)} className="px-6 py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-medium transition-all shadow-lg shadow-rose-500/20">
-             {t('meeting.end_session')}
-           </button>
-         )}
+          <div className="flex items-center gap-3">
+            {isOrganizer && (
+              <button onClick={() => setShowEndConfirmation(true)} className="px-6 py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-medium transition-all shadow-lg shadow-rose-500/20">
+                {t('meeting.end_session')}
+              </button>
+            )}
+          </div>
       </div>
 
       <div className="flex-1 relative overflow-hidden flex items-center justify-center p-6">
@@ -166,6 +186,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
               <TrackToggle source={Track.Source.Camera} className="bg-white/5 hover:bg-white/10 text-white p-3 rounded-xl transition-all [&[data-lk-enabled='true']]:bg-cyan-500/20 [&[data-lk-enabled='true']]:text-cyan-400" />
               <TrackToggle source={Track.Source.ScreenShare} className="bg-white/5 hover:bg-white/10 text-white p-3 rounded-xl transition-all [&[data-lk-enabled='true']]:bg-emerald-500/20 [&[data-lk-enabled='true']]:text-emerald-400" />
               <div className="w-px h-6 bg-white/10 mx-1" />
+              
               <DisconnectButton className="bg-rose-500 hover:bg-rose-600 text-white p-3 rounded-xl shadow-lg">
                  <LogOut className="h-5 w-5" />
               </DisconnectButton>

@@ -107,7 +107,7 @@ const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   return (
     <AnimatePresence>
       {isOpen && question && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4">
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
           <motion.div 
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
@@ -120,38 +120,38 @@ const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
             initial={{ opacity: 0, scale: 0.9, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-xl bg-white rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden border border-white/20"
+            className="relative w-full max-w-xl bg-[#0f1115] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden border border-white/10"
           >
             {/* Header */}
-            <div className="px-8 py-6 border-b border-slate-200 flex items-center justify-between bg-gradient-to-r from-white to-lime-50/30">
+            <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/5">
               <div className="flex items-center gap-4">
                 <div className="p-3 rounded-2xl bg-lime-500 text-white shadow-lg shadow-lime-500/20">
                   <MessageCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-semibold text-slate-900">{t('meeting.discussion_details') || 'Chi tiết hỏi đáp'}</h3>
-                  <p className="text-[13px] font-medium text-slate-600">{t('meeting.view_all_responses') || 'Xem tất cả câu trả lời từ mọi người'}</p>
+                  <h3 className="text-xl font-black text-white">{t('meeting.discussion_details') || 'Chi tiết hỏi đáp'}</h3>
+                  <p className="text-[13px] font-medium text-slate-300">{t('meeting.view_all_responses') || 'Xem tất cả câu trả lời từ mọi người'}</p>
                 </div>
               </div>
               <button 
                 onClick={onClose}
-                className="p-2.5 rounded-xl hover:bg-slate-100 text-slate-300 hover:text-slate-900 transition-all"
+                className="p-2.5 rounded-xl hover:bg-white/5 text-slate-500 hover:text-white transition-all"
               >
                 <X className="h-6 w-6" />
               </button>
             </div>
 
             {/* Question Content */}
-            <div className="px-8 py-6 bg-slate-50/50 border-b border-slate-200">
+            <div className="px-8 py-6 bg-white/5 border-b border-white/5">
               <div className="flex items-center gap-2 mb-3">
-                <div className="h-6 w-6 rounded-full overflow-hidden bg-lime-100 flex items-center justify-center border border-lime-200">
+                <div className="h-6 w-6 rounded-full overflow-hidden bg-lime-500/10 flex items-center justify-center border border-lime-500/20">
                   {question.askedByUser?.picture ? (
                     <img src={question.askedByUser.picture} alt="" className="h-full w-full object-cover" />
                   ) : (
-                    <User className="h-4 w-4 text-lime-600" />
+                    <User className="h-4 w-4 text-lime-400" />
                   )}
                 </div>
-                <span className="text-sm font-semibold text-slate-800">
+                <span className="text-sm font-bold text-slate-200">
                   {question.askedByUserId === userId 
                     ? t('common.you') || 'Bạn'
                     : (question.askedByParticipant?.displayName || (question.askedByUser ? `${question.askedByUser.firstName} ${question.askedByUser.lastName}` : t('common.participant') || 'Người tham gia'))
@@ -162,30 +162,30 @@ const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
                   {new Date(question.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              <p className="text-lg font-bold text-slate-900 leading-relaxed">
+              <p className="text-lg font-black text-white leading-relaxed">
                 {question.content}
               </p>
             </div>
 
             {/* Answers List */}
-            <div className="flex-1 px-8 py-6 overflow-y-auto max-h-[40vh] custom-scrollbar bg-white space-y-6">
+            <div className="flex-1 px-8 py-6 overflow-y-auto max-h-[40vh] custom-scrollbar bg-transparent space-y-6">
               <div className="flex items-center justify-between">
-                <h4 className="text-[15px] font-semibold text-slate-700">
+                <h4 className="text-[15px] font-bold text-slate-300">
                   {(isOrganizer || isCoHost) ? t('meeting.all_responses') || 'Tất cả câu trả lời' : t('meeting.your_responses') || 'Câu trả lời của bạn'} ({filteredAnswers.length})
                 </h4>
               </div>
 
               {filteredAnswers.length === 0 ? (
-                <div className="py-10 flex flex-col items-center justify-center text-slate-500 space-y-2">
+                <div className="py-10 flex flex-col items-center justify-center text-slate-600 space-y-2">
                   <MessageCircle className="h-10 w-10" />
-                  <p className="text-sm font-medium">{t('meeting.no_responses_yet') || 'Chưa có câu trả lời nào'}</p>
+                  <p className="text-sm font-bold">{t('meeting.no_responses_yet') || 'Chưa có câu trả lời nào'}</p>
                 </div>
               ) : (
                 <div className="space-y-6">
                   {filteredAnswers.map((ans) => (
                     <div key={ans.id} className="flex gap-4 group">
                       <div className="shrink-0">
-                        <div className={`h-10 w-10 rounded-2xl overflow-hidden flex items-center justify-center transition-all border ${ans.answeredByUserId === userId ? 'bg-lime-500 text-white border-lime-400' : 'bg-slate-100 text-slate-400 border-slate-200'}`}>
+                        <div className={`h-10 w-10 rounded-2xl overflow-hidden flex items-center justify-center transition-all border ${ans.answeredByUserId === userId ? 'bg-lime-500 text-white border-lime-400' : 'bg-white/5 text-slate-500 border-white/5'}`}>
                           {ans.answeredByUser?.picture ? (
                             <img src={ans.answeredByUser.picture} alt="" className="h-full w-full object-cover" />
                           ) : (
@@ -195,17 +195,17 @@ const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
                       </div>
                       <div className="flex-1 space-y-1">
                         <div className="flex items-center justify-between">
-                          <span className="text-[14px] font-semibold text-slate-900">
+                          <span className="text-[14px] font-bold text-white">
                             {ans.answeredByUserId === userId 
                               ? t('common.you') || 'Bạn'
                               : (ans.answeredByParticipant?.displayName || (ans.answeredByUser ? `${ans.answeredByUser.firstName} ${ans.answeredByUser.lastName}` : t('common.participant') || 'Người tham gia'))
                             }
                           </span>
-                          <span className="text-[12px] text-slate-600 font-medium">
+                          <span className="text-[12px] text-slate-500 font-medium">
                             {new Date(ans.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                           </span>
                         </div>
-                        <div className="p-4 rounded-2xl bg-slate-50 border border-slate-100 text-sm text-slate-700 leading-relaxed group-hover:bg-white group-hover:border-lime-100 group-hover:shadow-lg group-hover:shadow-lime-500/5 transition-all">
+                        <div className="p-4 rounded-2xl bg-white/5 border border-white/5 text-sm text-slate-200 leading-relaxed group-hover:bg-white/10 group-hover:border-lime-500/20 transition-all">
                           {ans.content}
                         </div>
                       </div>
@@ -216,14 +216,14 @@ const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
             </div>
 
             {/* Reply Footer */}
-            <div className="px-8 py-4 border-t border-slate-200 bg-slate-50/30">
+            <div className="px-8 py-4 border-t border-white/5 bg-white/5">
               <div className="relative group">
                 <textarea 
                   value={replyContent}
                   onChange={(e) => setReplyContent(e.target.value)}
                   placeholder={t('meeting.enter_answer') || 'Nhập câu trả lời của bạn...'}
-                  className="w-full p-3 pr-14 rounded-2xl bg-white border-2 border-slate-100 focus:border-lime-500 transition-all text-sm font-bold text-slate-900 outline-none resize-none shadow-sm focus:shadow-xl focus:shadow-lime-500/10 custom-scrollbar"
-                  rows={4}
+                  className="w-full p-3 pr-14 rounded-2xl bg-white/5 border border-white/10 focus:border-lime-500 transition-all text-sm font-bold text-white outline-none resize-none shadow-sm focus:shadow-xl focus:shadow-lime-500/10 custom-scrollbar"
+                  rows={3}
                 />
                 <button 
                   disabled={!replyContent.trim() || answerMutation.isPending}

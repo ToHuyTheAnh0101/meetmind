@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   MessageSquare, 
@@ -8,9 +8,12 @@ import {
   UserPlus,
   BarChart3,
   MessageCircle,
-  Shield
+  Shield,
+  Grid2X2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import apiClient from '@/lib/apiClient';
+import { showSuccessToast, showErrorToast } from '@/lib/toastUtils';
 
 // Tab Components
 import CustomChat from './CustomChat';
@@ -20,12 +23,13 @@ import InRoomSettings from './InRoomSettings';
 import MeetingPermissionsTab from '../details/MeetingPermissionsTab';
 import PollTab from './PollTab';
 import QATab from './QATab';
+import ConfirmEndBreakoutModal from './ConfirmEndBreakoutModal';
 
 interface MeetingSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  activeTab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa' | 'permissions';
-  setActiveTab: (tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa' | 'permissions') => void;
+  activeTab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa' | 'permissions' | 'breakout';
+  setActiveTab: (tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa' | 'permissions' | 'breakout') => void;
   meetingId: string;
   userId: string;
   organizerId: string;
@@ -35,6 +39,10 @@ interface MeetingSidebarProps {
   canManageQA: boolean;
   onOpenCreateModal: () => void;
   onOpenQuestionModal: (question: any) => void;
+  onOpenBreakoutModal: () => void;
+  onOpenConfirmEndModal: () => void;
+  onReturnToMain: () => void;
+  isInBreakout: boolean;
   hasUnreadPolls?: boolean;
 }
 
@@ -52,9 +60,38 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   canManageQA,
   onOpenCreateModal,
   onOpenQuestionModal,
+  onOpenBreakoutModal,
+  onOpenConfirmEndModal,
+  onReturnToMain,
+  isInBreakout,
   hasUnreadPolls,
 }) => {
   const { t } = useTranslation();
+  const [breakoutRooms, setBreakoutRooms] = useState<any[]>([]);
+  
+  const fetchBreakoutRooms = useCallback(async () => {
+    try {
+      const resp = await apiClient.get(`/meetings/${meetingId}/breakout-rooms`);
+      setBreakoutRooms(resp.data);
+    } catch (err) {
+      console.error("Failed to fetch breakout rooms", err);
+    }
+  }, [meetingId]);
+
+  useEffect(() => {
+    if (activeTab === 'breakout' && isOpen) {
+      fetchBreakoutRooms();
+    }
+  }, [activeTab, isOpen, fetchBreakoutRooms]);
+
+  useEffect(() => {
+    window.addEventListener('breakout-started', fetchBreakoutRooms);
+    window.addEventListener('breakout-ended', fetchBreakoutRooms);
+    return () => {
+      window.removeEventListener('breakout-started', fetchBreakoutRooms);
+      window.removeEventListener('breakout-ended', fetchBreakoutRooms);
+    };
+  }, [fetchBreakoutRooms]);
   const tabs = [
     { id: 'chat', icon: MessageSquare, label: t('meeting.chat'), color: 'text-cyan-400' },
     { id: 'roster', icon: Users, label: t('meeting.participants'), color: 'text-indigo-400' },
@@ -67,9 +104,9 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
       { id: 'lobby', icon: UserPlus, label: t('meeting.lobby'), color: 'text-emerald-400' }
     );
     
-    // Only Organizer can manage permissions for now to prevent Co-host from removing Host's rights
     if (isOrganizer) {
       tabs.push({ id: 'permissions', icon: Shield, label: t('meeting.permissions.tab_permissions'), color: 'text-slate-100' });
+      tabs.push({ id: 'breakout', icon: Grid2X2, label: 'Chia phòng', color: 'text-teal-400' });
     }
 
     tabs.push({ id: 'settings', icon: Settings, label: t('common.settings'), color: 'text-amber-400' });
@@ -103,8 +140,18 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
             <div className="flex-1 overflow-hidden flex flex-col bg-slate-900/30">
               {activeTab === 'chat' && <CustomChat />}
               {activeTab === 'roster' && (
-                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+                <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col">
                    <CustomParticipantList organizerId={organizerId} />
+                   
+                   {isInBreakout && (
+                     <button 
+                       onClick={onReturnToMain}
+                       className="mt-6 w-full py-3.5 rounded-2xl border-2 border-dashed border-white/10 text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-indigo-500/5 transition-all text-[13px] font-bold flex items-center justify-center gap-2"
+                     >
+                       <ChevronRight className="h-4 w-4 rotate-180" />
+                       Quay lại phòng chính
+                     </button>
+                   )}
                 </div>
               )}
               {activeTab === 'lobby' && (
@@ -130,8 +177,79 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                   userId={userId} 
                   hasManagePrivilege={canManageQA} 
                   onOpenQuestionModal={onOpenQuestionModal}
-                  organizerId={organizerId}
                 />
+              )}
+              {activeTab === 'breakout' && (
+                <div className="flex-1 flex flex-col p-4 overflow-y-auto custom-scrollbar">
+                  {breakoutRooms.length > 0 ? (
+                    <div className="space-y-4">
+                      <div className="flex items-center justify-between mb-2">
+                        <span className="text-xs font-bold text-teal-400/80 tracking-wider">Phòng đang hoạt động</span>
+                        <button 
+                          onClick={onOpenBreakoutModal}
+                          className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-[11px] font-bold text-teal-400 hover:text-teal-300 transition-all border border-teal-500/20 shadow-lg shadow-teal-500/5"
+                        >
+                          <Settings size={12} className="animate-spin-slow" />
+                          <span>Quản lý</span>
+                        </button>
+                      </div>
+                      {breakoutRooms.map(room => (
+                        <div key={room.id} className="p-4 rounded-2xl bg-white/5 border border-white/10">
+                          <div className="flex items-center justify-between mb-3">
+                            <span className="text-sm font-bold text-white">{room.name}</span>
+                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/20">
+                              {room.status === 'active' ? 'Đang họp' : 'Đã kết thúc'}
+                            </span>
+                          </div>
+                          <div className="flex flex-wrap gap-2">
+                            {room.participants?.length > 0 ? (
+                              room.participants.map((p: any) => (
+                                <div key={p.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/5">
+                                  <div className="w-4 h-4 rounded-md bg-teal-500/20 flex items-center justify-center text-[8px] text-teal-400 overflow-hidden">
+                                    <img 
+                                      src={p.user?.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.user?.firstName || 'U')}&background=random&color=fff`} 
+                                      alt="" 
+                                      className="w-full h-full object-cover" 
+                                    />
+                                  </div>
+                                  <span className="text-[10px] text-slate-300 truncate max-w-[60px]">
+                                    {p.user?.firstName || 'Người dùng'}
+                                  </span>
+                                </div>
+                              ))
+                            ) : (
+                              <span className="text-[10px] text-slate-500 italic">Chưa có người tham gia</span>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+
+                      {/* Nút thu hồi toàn bộ */}
+                      <button 
+                        onClick={onOpenConfirmEndModal}
+                        className="w-full mt-6 py-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white font-black text-sm transition-all border border-rose-500/20 shadow-xl shadow-rose-500/5 flex items-center justify-center gap-2"
+                      >
+                        Thu hồi toàn bộ
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex-1 flex flex-col items-center justify-center text-center p-4">
+                      <div className="w-16 h-16 rounded-3xl bg-teal-500/10 flex items-center justify-center mb-6">
+                        <Grid2X2 className="text-teal-400" />
+                      </div>
+                      <h4 className="text-lg font-bold text-white mb-2">Chia phòng họp nhỏ</h4>
+                      <p className="text-sm text-slate-400 mb-8 leading-relaxed">
+                        Tạo các nhóm thảo luận riêng biệt để tăng hiệu quả làm việc nhóm.
+                      </p>
+                      <button 
+                        onClick={onOpenBreakoutModal}
+                        className="w-full py-4 rounded-2xl bg-teal-500 hover:bg-teal-400 text-white font-black text-sm transition-all shadow-xl shadow-teal-500/20"
+                      >
+                        Bắt đầu thiết lập
+                      </button>
+                    </div>
+                  )}
+                </div>
               )}
             </div>
           </motion.div>
@@ -180,7 +298,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                {isActive && (
                  <motion.div 
                     layoutId="activeTabIndicator"
-                    className={`absolute -right-[1px] w-[3px] h-6 ${tab.id === 'chat' ? 'bg-cyan-500' : tab.id === 'roster' ? 'bg-indigo-500' : tab.id === 'lobby' ? 'bg-emerald-500' : tab.id === 'polls' ? 'bg-rose-500' : tab.id === 'qa' ? 'bg-lime-500' : tab.id === 'permissions' ? 'bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)]' : 'bg-amber-500'} rounded-l-full shadow-[0_0_15px_currentColor]`}
+                    className={`absolute -right-[1px] w-[3px] h-6 ${tab.id === 'chat' ? 'bg-cyan-500' : tab.id === 'roster' ? 'bg-indigo-500' : tab.id === 'lobby' ? 'bg-emerald-500' : tab.id === 'polls' ? 'bg-rose-500' : tab.id === 'qa' ? 'bg-lime-500' : tab.id === 'breakout' ? 'bg-teal-500' : tab.id === 'permissions' ? 'bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)]' : 'bg-amber-500'} rounded-l-full shadow-[0_0_15px_currentColor]`}
                  />
                )}
              </button>
@@ -195,7 +313,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
           font-weight: 600 !important;
           text-align: center !important;
         }
-      `}} />
+      ` }} />
     </div>
   );
 };

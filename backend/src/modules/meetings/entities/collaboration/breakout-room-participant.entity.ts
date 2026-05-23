@@ -23,14 +23,14 @@ export class BreakoutRoomParticipant {
   @JoinColumn({ name: 'breakout_room_id' })
   breakoutRoom: BreakoutRoom;
 
-  @Column('uuid')
+  @Column({ name: 'breakout_room_id', type: 'uuid', nullable: true })
   breakoutRoomId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column('uuid')
+  @Column({ name: 'user_id', type: 'uuid', nullable: true })
   userId: string;
 
   @CreateDateColumn()

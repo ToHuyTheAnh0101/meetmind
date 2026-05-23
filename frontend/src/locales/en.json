@@ -16,7 +16,8 @@
     "anonymous": "Anonymous",
     "participant": "Participant",
     "upvote": "Upvote",
-    "dismiss": "Dismiss"
+    "dismiss": "Dismiss",
+    "empty": "Empty"
   },
   "calendar": {
     "days": {
@@ -280,6 +281,15 @@
       "grant_all": "Grant All",
       "revoke_all": "Revoke All",
       "bulk_success": "Successfully updated permissions for all participants"
-    }
+    },
+    "breakout_rooms_title": "Breakout Rooms",
+    "breakout_rooms_subtitle": "Manage and assign participants to discussion groups",
+    "auto_assign": "Auto Assign",
+    "add_room": "Add Room",
+    "unassigned_count": "{{count}} unassigned",
+    "unassigned": "Waiting List",
+    "room_n": "Room {{n}}",
+    "n_people_unassigned": "{{count}} unassigned",
+    "start_breakout": "Start Breakout"
   }
 }

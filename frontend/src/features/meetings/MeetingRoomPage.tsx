@@ -20,16 +20,22 @@ import MeetingMainStage from './components/room/MeetingMainStage'
 import MeetingSidebar from './components/room/MeetingSidebar'
 import PollModal from './components/room/PollModal'
 import QuestionDetailModal from './components/room/QuestionDetailModal'
-import { useDataChannel } from '@livekit/components-react'
+import BreakoutManagementModal from './components/room/BreakoutManagementModal'
+import ConfirmEndBreakoutModal from './components/room/ConfirmEndBreakoutModal'
+import { useDataChannel, useLocalParticipant, useParticipants } from '@livekit/components-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { Toaster } from 'react-hot-toast'
+import { showSuccessToast, showErrorToast } from '@/lib/toastUtils'
 
 interface JoinResponse {
-  meetingId: string
-  organizerId: string
-  token: string
-  liveKitUrl: string
-  participants: any[]
-  status?: string
+  meetingId: string;
+  organizerId: string;
+  token: string;
+  liveKitUrl: string;
+  participants: any[];
+  status?: string;
+  isBreakoutRoom?: boolean;
+  room?: string;
 }
 
 const DataHandler: React.FC<{ meetingId: string; onNotify: () => void }> = ({ meetingId, onNotify }) => {
@@ -48,11 +54,117 @@ const DataHandler: React.FC<{ meetingId: string; onNotify: () => void }> = ({ me
       if (data.type === 'MEETING_UPDATED') {
         window.dispatchEvent(new CustomEvent('refresh-meeting', { detail: { meetingId } }));
       }
+      if (data.type === 'BREAKOUT_STARTED') {
+        window.dispatchEvent(new CustomEvent('breakout-started', { detail: data }));
+      }
+      if (data.type === 'BREAKOUT_ENDED') {
+        window.dispatchEvent(new CustomEvent('breakout-ended', { detail: data }));
+      }
     } catch (e) {
       console.error("Failed to parse data message", e);
     }
   });
   return null;
+};
+
+const BreakoutSignalHandler: React.FC = () => {
+  const { localParticipant } = useLocalParticipant();
+  
+  useEffect(() => {
+    const handleStart = (e: any) => {
+      const rooms = e.detail;
+      const assignments = rooms.flatMap((r: any) => 
+        r.participants.map((p: any) => ({
+          userId: p.userId,
+          roomId: r.id,
+          roomName: r.name
+        }))
+      );
+      
+      const payload = JSON.stringify({
+        type: 'BREAKOUT_STARTED',
+        assignments
+      });
+      
+      localParticipant.publishData(new TextEncoder().encode(payload), { reliable: true });
+      
+      // Manually trigger for the sender (Host)
+      window.dispatchEvent(new CustomEvent('breakout-started', { detail: JSON.parse(payload) }));
+    };
+
+    const handleEnd = () => {
+      const payload = JSON.stringify({ type: 'BREAKOUT_ENDED' });
+      localParticipant.publishData(new TextEncoder().encode(payload), { reliable: true });
+      
+      // Manually trigger for the sender (Host)
+      window.dispatchEvent(new CustomEvent('breakout-ended', { detail: JSON.parse(payload) }));
+    };
+
+    window.addEventListener('send-breakout-start-signal', handleStart);
+    window.addEventListener('send-breakout-end-signal', handleEnd);
+    return () => {
+      window.removeEventListener('send-breakout-start-signal', handleStart);
+      window.removeEventListener('send-breakout-end-signal', handleEnd);
+    };
+  }, [localParticipant]);
+
+  return null;
+};
+
+const BreakoutModalWrapper: React.FC<{ 
+  isOpen: boolean; 
+  onClose: () => void; 
+  meetingId: string;
+  organizerId: string;
+}> = ({ isOpen, onClose, meetingId, organizerId }) => {
+  const { localParticipant } = useLocalParticipant();
+  const remoteParticipants = useParticipants();
+
+  return (
+    <BreakoutManagementModal 
+      isOpen={isOpen} 
+      onClose={onClose} 
+      meetingId={meetingId} 
+      participants={[
+        {
+          id: localParticipant.identity,
+          userId: localParticipant.identity,
+          displayName: localParticipant.name || localParticipant.identity,
+          metadata: localParticipant.metadata,
+          isOrganizer: localParticipant.identity === organizerId
+        },
+        ...remoteParticipants.map((p: any) => ({
+          id: p.identity,
+          userId: p.identity,
+          displayName: p.name || p.identity,
+          metadata: p.metadata,
+          isOrganizer: p.identity === organizerId
+        }))
+      ]}
+      onStart={async (roomsData) => {
+        try {
+          // 1. Setup rooms on backend
+          await apiClient.post(`/meetings/${meetingId}/breakout-rooms/setup`, {
+            rooms: roomsData.map(r => ({
+              name: r.name,
+              assignments: r.participants.map((p: any) => ({ userId: p.userId }))
+            }))
+          });
+
+          // 2. Start breakout on backend
+          await apiClient.post(`/meetings/${meetingId}/breakout-rooms/start`);
+
+          // 3. Dispatch signal to participants
+          window.dispatchEvent(new CustomEvent('send-breakout-start-signal', { detail: roomsData }));
+          
+          onClose();
+        } catch (err) {
+          console.error("Failed to start breakout", err);
+          showErrorToast("Không thể khởi động phòng họp nhỏ");
+        }
+      }}
+    />
+  );
 };
 
 const MeetingRoomPage: React.FC = () => {
@@ -91,6 +203,17 @@ const MeetingRoomPage: React.FC = () => {
   const [hasUnreadPolls, setHasUnreadPolls] = useState(false)
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false)
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(null)
+  const [isBreakoutModalOpen, setIsBreakoutModalOpen] = useState(false)
+  const [isConfirmEndOpen, setIsConfirmEndOpen] = useState(false)
+  const [originalJoinData, setOriginalJoinData] = useState<JoinResponse | null>(null)
+
+  // Lưu lại joinData gốc để quay lại phòng chính sau khi breakout kết thúc
+  useEffect(() => {
+    if (joinData && !originalJoinData && !joinData.token.includes('breakout')) {
+      setOriginalJoinData(joinData);
+    }
+  }, [joinData, originalJoinData]);
+
 
   // Derived Values
   const organizerId = useMemo(() => {
@@ -104,19 +227,19 @@ const MeetingRoomPage: React.FC = () => {
 
   const canManagePolls = useMemo(() => {
     if (!joinData || !user) return false;
-    const p = joinData.participants.find(part => part.id === user.id || part.userId === user.id);
+    const p = joinData.participants.find((part: any) => part.id === user.id || part.userId === user.id);
     return p?.isOrganizer || p?.permissions?.includes('manage_polls') || p?.permissions?.includes('co_host');
   }, [joinData, user]);
 
   const canManageQA = useMemo(() => {
     if (!joinData || !user) return false;
-    const p = joinData.participants.find(part => part.id === user.id || part.userId === user.id);
+    const p = joinData.participants.find((part: any) => part.id === user.id || part.userId === user.id);
     return p?.isOrganizer || p?.permissions?.includes('manage_qa') || p?.permissions?.includes('co_host');
   }, [joinData, user]);
 
   const isCoHost = useMemo(() => {
     if (!joinData || !user) return false;
-    const p = joinData.participants.find(part => part.id === user.id || part.userId === user.id);
+    const p = joinData.participants.find((part: any) => part.id === user.id || part.userId === user.id);
     return p?.permissions?.includes('co_host');
   }, [joinData, user]);
 
@@ -183,6 +306,8 @@ const MeetingRoomPage: React.FC = () => {
   const handleCloseSidebar = useCallback(() => setIsSidebarOpen(false), []);
   const handleOpenPollModal = useCallback(() => setIsPollModalOpen(true), []);
   const handleClosePollModal = useCallback(() => setIsPollModalOpen(false), []);
+  const handleOpenBreakoutModal = useCallback(() => setIsBreakoutModalOpen(true), []);
+  const handleCloseBreakoutModal = useCallback(() => setIsBreakoutModalOpen(false), []);
 
   const handleEndSession = useCallback(async () => {
     try {
@@ -235,6 +360,45 @@ const MeetingRoomPage: React.FC = () => {
       setIsLoading(false)
     }
   }, [id, password, t, localVideoTrack]);
+ 
+  const handleBreakoutStarted = useCallback(async (e?: any) => {
+    console.log("[BREAKOUT] Signal received:", e?.detail || "Manual/Mount check");
+    // Đợi 1.5 giây để chắc chắn Backend đã commit xong các bản ghi participants
+    await new Promise(resolve => setTimeout(resolve, 1500));
+    
+    try {
+      const resp = await apiClient.get(`/meetings/${id}/breakout-rooms/my-token`);
+      if (resp.data && resp.data.token) {
+          setJoinData((prev: any) => ({
+            ...prev!,
+            token: resp.data.token,
+            room: resp.data.roomName,
+            isBreakoutRoom: true
+          }));
+          showSuccessToast(`Đang chuyển sang ${resp.data.roomName}...`, '🚪');
+        } else {
+          console.log("[BREAKOUT] No token returned for this user. Staying in current room.");
+        }
+    } catch (err) {
+      console.error("Failed to join breakout room", err);
+    }
+  }, [id]);
+
+  const handleBreakoutEnded = useCallback(async () => {
+    console.log("[BREAKOUT] End signal received.");
+    showSuccessToast("Quay lại phòng chính", '🏠');
+    
+    if (originalJoinData) {
+      setJoinData(originalJoinData);
+    } else {
+      try {
+        const res = await apiClient.post(`/meetings/${id}/join`);
+        setJoinData((prev: any) => prev ? { ...prev, token: res.data.token, isBreakoutRoom: false } : res.data);
+      } catch (err) {
+        console.error("Failed to return to main room", err);
+      }
+    }
+  }, [id, originalJoinData]);
 
   // Effects
   useEffect(() => {
@@ -255,16 +419,48 @@ const MeetingRoomPage: React.FC = () => {
         queryClient.invalidateQueries({ queryKey: ['polls', id] });
       }
     };
-
     window.addEventListener('refresh-meeting', handleRefreshMeeting);
     window.addEventListener('refresh-qa', handleRefreshQA);
     window.addEventListener('refresh-polls', handleRefreshPolls);
+    window.addEventListener('breakout-started', handleBreakoutStarted);
+    window.addEventListener('breakout-ended', handleBreakoutEnded);
+
+    // Check breakout on mount
+    handleBreakoutStarted();
     return () => {
       window.removeEventListener('refresh-meeting', handleRefreshMeeting);
       window.removeEventListener('refresh-qa', handleRefreshQA);
       window.removeEventListener('refresh-polls', handleRefreshPolls);
+      window.removeEventListener('breakout-started', handleBreakoutStarted);
+      window.removeEventListener('breakout-ended', handleBreakoutEnded);
     };
-  }, [id, fetchMeetingDetails, queryClient]);
+  }, [id, fetchMeetingDetails, queryClient, handleBreakoutStarted, handleBreakoutEnded]);
+
+  useEffect(() => {
+    let interval: NodeJS.Timeout;
+    const isInBreakout = joinData?.isBreakoutRoom;
+    
+    if (isInBreakout && id) {
+      interval = setInterval(async () => {
+        try {
+          const resp = await apiClient.get(`/meetings/${id}/breakout-rooms/my-token`);
+          // Nếu không còn token breakout (phòng đã đóng), tự động quay về
+          if (!resp.data || !resp.data.token) {
+            console.log("[BREAKOUT] Room no longer active (from poll). Returning to main.");
+            handleBreakoutEnded();
+          }
+        } catch (err) {
+          console.error("Polling breakout status failed", err);
+          // Nếu lỗi 404 hoặc lỗi không tìm thấy phòng, cũng quay về
+          handleBreakoutEnded();
+        }
+      }, 5000);
+    }
+    
+    return () => {
+      if (interval) clearInterval(interval);
+    };
+  }, [id, joinData?.token, handleBreakoutEnded]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -408,6 +604,7 @@ const MeetingRoomPage: React.FC = () => {
   return (
     <div className="h-screen w-screen bg-[#020202] overflow-hidden font-sans lk-premium-theme flex items-center justify-center text-white">
       <LiveKitRoom
+        key={joinData.token}
         video={preJoinChoices.videoEnabled}
         audio={preJoinChoices.audioEnabled}
         token={joinData.token}
@@ -420,6 +617,7 @@ const MeetingRoomPage: React.FC = () => {
         <DataHandler meetingId={id!} onNotify={() => {
           if (activeTab !== 'polls' || !isSidebarOpen) setHasUnreadPolls(true);
         }} />
+        <BreakoutSignalHandler />
         <LayoutContextProvider>
            <motion.div layout className="flex-1 h-full min-w-0 overflow-hidden flex flex-col relative">
             <MeetingMainStage 
@@ -431,6 +629,8 @@ const MeetingRoomPage: React.FC = () => {
               onToggleSidebar={handleToggleSidebar}
               onEndSession={handleEndSession}
               onLeaveSession={handleLeaveSession}
+              onReturnToMain={handleBreakoutEnded}
+              isInBreakout={joinData.token.includes('breakout')}
             />
           </motion.div>
           <MeetingSidebar 
@@ -452,9 +652,19 @@ const MeetingRoomPage: React.FC = () => {
             canManageQA={canManageQA}
             onOpenCreateModal={handleOpenPollModal}
             onOpenQuestionModal={handleOpenQuestionModal}
+            onOpenBreakoutModal={handleOpenBreakoutModal}
+            onOpenConfirmEndModal={() => setIsConfirmEndOpen(true)}
+            onReturnToMain={handleBreakoutEnded}
+            isInBreakout={!!joinData?.isBreakoutRoom}
           />
         </LayoutContextProvider>
         <PollModal isOpen={isPollModalOpen} onClose={handleClosePollModal} meetingId={joinData.meetingId} />
+        <BreakoutModalWrapper 
+          isOpen={isBreakoutModalOpen} 
+          onClose={handleCloseBreakoutModal} 
+          meetingId={id || ''} 
+          organizerId={joinData.organizerId}
+        />
         <QuestionDetailModal 
           isOpen={isQuestionModalOpen} 
           onClose={handleCloseQuestionModal} 
@@ -463,6 +673,22 @@ const MeetingRoomPage: React.FC = () => {
           meetingId={id || ''} 
           isOrganizer={isOrganizer}
           isCoHost={isCoHost}
+        />
+        <ConfirmEndBreakoutModal
+          isOpen={isConfirmEndOpen}
+          onClose={() => setIsConfirmEndOpen(false)}
+          onConfirm={async () => {
+            try {
+              await apiClient.post(`/meetings/${id}/breakout-rooms/end`);
+              window.dispatchEvent(new CustomEvent('send-breakout-end-signal'));
+              showSuccessToast("Đã kết thúc thảo luận nhóm", '🏠');
+            } catch (err) {
+              console.error("Failed to end breakout", err);
+              showErrorToast("Không thể kết thúc chia phòng");
+            }
+          }}
+          title="Kết thúc thảo luận"
+          message="Bạn có chắc chắn muốn kết thúc tất cả các phòng thảo luận và thu hồi mọi người về phòng chính ngay bây giờ không?"
         />
       </LiveKitRoom>
       <style dangerouslySetInnerHTML={{ __html: `
@@ -475,6 +701,7 @@ const MeetingRoomPage: React.FC = () => {
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }
       `}} />
+      <Toaster position="top-center" reverseOrder={false} />
     </div>
   )
 }

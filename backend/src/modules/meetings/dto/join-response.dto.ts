@@ -4,6 +4,7 @@ export class ParticipantSummaryDto {
   id: string;
   firstName: string;
   lastName: string;
+  picture?: string;
   isOrganizer: boolean;
   permissions: MeetingPermission[];
   status: ParticipantStatus;

@@ -16,7 +16,8 @@
     "anonymous": "Ẩn danh",
     "participant": "Người tham gia",
     "upvote": "Bình chọn",
-    "dismiss": "Bỏ qua"
+    "dismiss": "Bỏ qua",
+    "empty": "Trống"
   },
   "calendar": {
     "days": {
@@ -307,6 +308,15 @@
       "grant_all": "Cấp cho tất cả",
       "revoke_all": "Thu hồi tất cả",
       "bulk_success": "Đã cập nhật quyền thành công cho toàn bộ thành viên"
-    }
+    },
+    "breakout_rooms_title": "Chia phòng họp nhỏ",
+    "breakout_rooms_subtitle": "Quản lý và phân bổ người tham gia vào các nhóm thảo luận",
+    "auto_assign": "Chia tự động",
+    "add_room": "Thêm phòng",
+    "unassigned_count": "{{count}} người chưa gán",
+    "unassigned": "Danh sách chờ",
+    "room_n": "Phòng {{n}}",
+    "n_people_unassigned": "{{count}} người chưa gán",
+    "start_breakout": "Bắt đầu chia phòng"
   }
 }

@@ -42,10 +42,14 @@ import { SummaryTemplateRepository } from './repositories/summary-template.repos
 import { AttachmentRepository } from './repositories/attachment.repository';
 import { TranscriptRepository } from './repositories/transcript.repository';
 import { MeetingRecordingRepository } from './repositories/meeting-recording.repository';
+import { BreakoutRoomRepository } from './repositories/breakout-room.repository';
+import { BreakoutRoomParticipantRepository } from './repositories/breakout-room-participant.repository';
 import { LiveKitModule } from '../../providers/livekit/livekit.module';
 import { UsersModule } from '../users/users.module';
 
 import { AiModule } from '../../providers/ai/ai.module';
+import { BreakoutRoomService } from './services/breakout-room.service';
+import { BreakoutRoomController } from './controllers/breakout-room.controller';
 
 @Module({
   imports: [
@@ -83,6 +87,8 @@ import { AiModule } from '../../providers/ai/ai.module';
     SummaryRepository,
     SummaryTemplateRepository,
     AttachmentRepository,
+    BreakoutRoomRepository,
+    BreakoutRoomParticipantRepository,
     // Services
     MeetingsService,
     EventService,
@@ -91,6 +97,7 @@ import { AiModule } from '../../providers/ai/ai.module';
     SummaryService,
     SummaryTemplateService,
     AttachmentService,
+    BreakoutRoomService,
   ],
   controllers: [
     MeetingsController,
@@ -100,6 +107,7 @@ import { AiModule } from '../../providers/ai/ai.module';
     SummaryController,
     SummaryTemplateController,
     AttachmentController,
+    BreakoutRoomController,
   ],
 })
 export class MeetingsModule {}

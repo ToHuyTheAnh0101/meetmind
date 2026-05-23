@@ -218,7 +218,7 @@ export class MeetingsService {
         if (displayName) {
           participant.displayName = displayName;
         }
-        
+
         // If participant already exists
         if (isOrganizer && !participant.isOrganizer) {
           // Upgrade existing record to organizer if they are the meeting owner
@@ -300,6 +300,7 @@ export class MeetingsService {
             id: p.user?.id || p.userId,
             firstName: p.user?.firstName || 'Unknown',
             lastName: p.user?.lastName || 'Participant',
+            picture: p.user?.picture,
             isOrganizer: p.isOrganizer,
             permissions: p.permissions,
             status: p.status,
@@ -544,55 +545,9 @@ export class MeetingsService {
     const realParticipants =
       await this.participantsRepository.findByMeetingId(id);
 
-    // Add 19 mock participants for demonstration (as requested: "mock 20 people")
-    const mockNames = [
-      { f: 'Nguyễn', l: 'An' },
-      { f: 'Trần', l: 'Bình' },
-      { f: 'Lê', l: 'Chi' },
-      { f: 'Phạm', l: 'Dũng' },
-      { f: 'Hoàng', l: 'Em' },
-      { f: 'Vũ', l: 'Giang' },
-      { f: 'Đặng', l: 'Hải' },
-      { f: 'Bùi', l: 'Hoa' },
-      { f: 'Đỗ', l: 'Khánh' },
-      { f: 'Hồ', l: 'Lan' },
-      { f: 'Ngô', l: 'Minh' },
-      { f: 'Dương', l: 'Nam' },
-      { f: 'Lý', l: 'Oanh' },
-      { f: 'Phan', l: 'Phúc' },
-      { f: 'Trương', l: 'Quân' },
-      { f: 'Lê', l: 'Thắng' },
-      { f: 'Phạm', l: 'Tú' },
-      { f: 'Nguyễn', l: 'Vân' },
-      { f: 'Đỗ', l: 'Yến' },
-    ];
-
-    const mocks = mockNames.map((n, i) => ({
-      id: `mock-${i}`,
-      meetingId: id,
-      userId: `user-mock-${i}`,
-      isOrganizer: false,
-      permissions: [],
-      status: ParticipantStatus.ADMITTED,
-      user: {
-        id: `user-mock-${i}`,
-        firstName: n.f,
-        lastName: n.l,
-        picture: `https://i.pravatar.cc/150?u=mock${i}`,
-        email: `mock${i}@example.com`,
-      },
-    }));
-
-    const allParticipants = [...realParticipants, ...mocks].sort((a, b) => {
-      if (a.isOrganizer && !b.isOrganizer) return -1;
-      if (!a.isOrganizer && b.isOrganizer) return 1;
-      return 0;
-    });
-
-    // Manual pagination for the demo
-    const total = allParticipants.length;
+    const total = realParticipants.length;
     const startIndex = (page - 1) * limit;
-    const items = allParticipants.slice(startIndex, startIndex + limit);
+    const items = realParticipants.slice(startIndex, startIndex + limit);
 
     return {
       items,
@@ -722,9 +677,15 @@ export class MeetingsService {
 
     const nextMinute = new Date(checkTime.getTime() + 60000);
 
-    const before = await this.meetingsRepository.findNearestBefore(userId, checkTime);
+    const before = await this.meetingsRepository.findNearestBefore(
+      userId,
+      checkTime,
+    );
     // For 'after', we want the first meeting that starts AFTER this minute window
-    const after = await this.meetingsRepository.findNearestAfter(userId, nextMinute);
+    const after = await this.meetingsRepository.findNearestAfter(
+      userId,
+      nextMinute,
+    );
     // For 'conflict', we want anything starting WITHIN this minute
     const exact = await this.meetingsRepository.findExactAt(userId, checkTime);
 

@@ -4,6 +4,10 @@ import { QuestionRepository } from '../repositories/question.repository';
 import { MeetingRepository } from '../repositories/meeting.repository';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
+import {
+  QuestionStatus,
+  QuestionType,
+} from '../entities/collaboration/meeting-question.entity';
 
 @Injectable()
 export class QuestionService {
@@ -26,7 +30,7 @@ export class QuestionService {
     const question = this.questionRepository.create({
       ...data,
       meetingId,
-      type: data.type || ('host_qa' as any), // Default to host_qa
+      type: data.type || QuestionType.HOST_QA,
       isAnonymous: false, // Discussion questions are never anonymous
     });
 
@@ -42,38 +46,20 @@ export class QuestionService {
     return question;
   }
 
-  async findByMeetingId(
-    meetingId: string,
-    userId?: string,
-    hasManagePrivilege: boolean = false,
-  ): Promise<MeetingQuestion[]> {
+  async findByMeetingId(meetingId: string): Promise<MeetingQuestion[]> {
     const questions = await this.questionRepository.findByMeetingId(meetingId);
 
     // Everyone can see all discussion (host_qa) questions
     // In this new flow, we primarily care about host_qa
-    return questions.filter((q) => q.type === 'host_qa');
-  }
-
-  async upvote(id: string, userId: string): Promise<MeetingQuestion> {
-    const question = await this.findById(id);
-    const upvoterIds = question.upvoterIds || [];
-
-    if (upvoterIds.includes(userId)) {
-      // Remove upvote if already exists
-      question.upvoterIds = upvoterIds.filter((id) => id !== userId);
-    } else {
-      question.upvoterIds = [...upvoterIds, userId];
-    }
-
-    return this.questionRepository.save(question);
+    return questions.filter((q) => q.type === QuestionType.HOST_QA);
   }
 
   async updateStatus(
     id: string,
-    status: 'answered' | 'dismissed' | 'pending',
+    status: QuestionStatus,
   ): Promise<MeetingQuestion> {
     const question = await this.findById(id);
-    question.status = status as any;
+    question.status = status;
     return this.questionRepository.save(question);
   }
 
@@ -93,8 +79,8 @@ export class QuestionService {
     const savedAnswer = await this.answerRepository.save(answer);
 
     // Update question status if it was pending and answered by moderator
-    if (question.status === 'pending') {
-      question.status = 'answered' as any;
+    if (question.status === QuestionStatus.PENDING) {
+      question.status = QuestionStatus.ANSWERED;
       await this.questionRepository.save(question);
     }
 
