@@ -25,21 +25,25 @@ export class MailService {
         timeStyle: 'short',
       }).format(startTime);
 
-      await this.mailQueue.add('send-invitation', {
-        to,
-        name: inviteeName,
-        title: meetingTitle,
-        date: formattedDate,
-        joinUrl,
-        password: password || 'Không có',
-      }, {
-        attempts: 3,
-        backoff: {
-          type: 'exponential',
-          delay: 5000,
+      await this.mailQueue.add(
+        'send-invitation',
+        {
+          to,
+          name: inviteeName,
+          title: meetingTitle,
+          date: formattedDate,
+          joinUrl,
+          password: password || 'Không có',
         },
-        removeOnComplete: true,
-      });
+        {
+          attempts: 3,
+          backoff: {
+            type: 'exponential',
+            delay: 5000,
+          },
+          removeOnComplete: true,
+        },
+      );
 
       this.logger.log(`Đã thêm job gửi thư mời họp tới: ${to}`);
     } catch (error) {

@@ -10,6 +10,12 @@ import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { LiveKitModule } from './providers/livekit/livekit.module';
 import { MeetingsModule } from './modules/meetings/meetings.module';
+import { QaModule } from './modules/qa/qa.module';
+import { PollsModule } from './modules/polls/polls.module';
+import { BreakoutRoomsModule } from './modules/breakout-rooms/breakout-rooms.module';
+import { SummariesModule } from './modules/summaries/summaries.module';
+import { AttachmentsModule } from './modules/attachments/attachments.module';
+import { EventsModule } from './modules/events/events.module';
 import { AiModule } from './providers/ai/ai.module';
 import { MailModule } from './providers/mail/mail.module';
 import { ScheduleModule } from '@nestjs/schedule';
@@ -60,6 +66,12 @@ import { ScheduleModule } from '@nestjs/schedule';
     AuthModule,
     LiveKitModule,
     MeetingsModule,
+    QaModule,
+    PollsModule,
+    BreakoutRoomsModule,
+    SummariesModule,
+    AttachmentsModule,
+    EventsModule,
     AiModule,
     MailModule,
   ],

@@ -11,16 +11,16 @@ import {
 } from 'typeorm';
 import { User } from '../../../users/user.entity';
 import { Participant } from './participant.entity';
-import { MeetingEvent } from '../collaboration/meeting-event.entity';
-import { MeetingQuestion } from '../collaboration/meeting-question.entity';
-import { MeetingPoll } from '../collaboration/meeting-poll.entity';
-import { Summary } from '../content/summary.entity';
-import { Attachment } from '../content/attachment.entity';
+import { MeetingEvent } from '../../../events/entities/meeting-event.entity';
+import { MeetingQuestion } from '../../../qa/entities/meeting-question.entity';
+import { MeetingPoll } from '../../../polls/entities/meeting-poll.entity';
+import { Summary } from '../../../summaries/entities/summary.entity';
+import { Attachment } from '../../../attachments/entities/attachment.entity';
 import { Notification } from '../scheduling/notification.entity';
-import { BreakoutRoom } from '../collaboration/breakout-room.entity';
+import { BreakoutRoom } from '../../../breakout-rooms/entities/breakout-room.entity';
 import { AccessRequest } from '../scheduling/access-request.entity';
 import { ChatHistory } from '../ai/chat-history.entity';
-import { SummaryTemplate } from '../content/summary-template.entity';
+import { SummaryTemplate } from '../../../summaries/entities/summary-template.entity';
 import { TranscriptChunk } from '../content/transcript-chunk.entity';
 
 export enum MeetingStatus {

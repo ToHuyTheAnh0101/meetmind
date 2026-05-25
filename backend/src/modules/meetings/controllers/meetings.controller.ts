@@ -50,7 +50,11 @@ export class MeetingsController {
     @Query('currentMeetingId') currentMeetingId: string,
     @Request() req: { user: { id: string } },
   ) {
-    return this.meetingsService.checkConflict(req.user.id, time, currentMeetingId);
+    return this.meetingsService.checkConflict(
+      req.user.id,
+      time,
+      currentMeetingId,
+    );
   }
 
   @Get(':id/public')
@@ -183,7 +187,12 @@ export class MeetingsController {
   @UseGuards(JwtAuthGuard)
   async updateBulkParticipantsPermissions(
     @Param('id') id: string,
-    @Body() dto: { userIds?: string[]; action: 'grant' | 'revoke'; permissions: MeetingPermission[] },
+    @Body()
+    dto: {
+      userIds?: string[];
+      action: 'grant' | 'revoke';
+      permissions: MeetingPermission[];
+    },
     @Request() req: { user: { id: string } },
   ): Promise<{ count: number }> {
     return this.meetingsService.updateBulkParticipantsPermissions(

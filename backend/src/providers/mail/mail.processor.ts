@@ -13,7 +13,7 @@ export class MailProcessor extends WorkerHost {
 
   async process(job: Job<any, any, string>): Promise<any> {
     this.logger.log(`Processing job ${job.id} of type ${job.name}...`);
-    
+
     switch (job.name) {
       case 'send-invitation':
         return this.handleSendInvitation(job.data);
