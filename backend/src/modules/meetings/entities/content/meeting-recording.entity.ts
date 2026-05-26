@@ -9,9 +9,10 @@ import {
 } from 'typeorm';
 import { Meeting } from '../core/meeting.entity';
 import { Participant } from '../core/participant.entity';
+import { MeetingSession } from '../core/meeting-session.entity';
 
 @Entity('meeting_recordings')
-@Index(['meetingId'])
+@Index(['sessionId'])
 export class MeetingRecording {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -22,6 +23,13 @@ export class MeetingRecording {
 
   @Column('uuid')
   meetingId: string;
+
+  @Column('uuid', { nullable: true })
+  sessionId?: string;
+
+  @ManyToOne(() => MeetingSession, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'session_id' })
+  session?: MeetingSession;
 
   @ManyToOne(() => Participant, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'participant_id' })

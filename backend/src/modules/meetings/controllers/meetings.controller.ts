@@ -17,7 +17,7 @@ import {
   UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
-import { Request as ExpressRequest } from 'express';
+// express Request import not needed
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MeetingsService } from '../services/meetings.service';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
@@ -152,6 +152,35 @@ export class MeetingsController {
     );
   }
 
+  @Post(':id/sessions/start')
+  @UseGuards(JwtAuthGuard)
+  async startSession(
+    @Param('id') id: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    return this.meetingsService.startSession(id, req.user.id);
+  }
+
+  @Post(':id/sessions/:sessionId/end')
+  @UseGuards(JwtAuthGuard)
+  async endSession(
+    @Param('id') id: string,
+    @Param('sessionId') sessionId: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    return this.meetingsService.endSession(id, sessionId, req.user.id);
+  }
+
+  @Post(':id/chat')
+  @UseGuards(JwtAuthGuard)
+  async chatWithAI(
+    @Param('id') id: string,
+    @Body('question') question: string,
+    @Request() req: { user: { id: string } },
+  ): Promise<{ answer: string }> {
+    return this.meetingsService.chatWithAI(id, question, req.user.id);
+  }
+
   @Post(':id/end')
   @UseGuards(JwtAuthGuard)
   async endMeeting(
@@ -243,32 +272,46 @@ export class MeetingsController {
   @Post('webhooks/livekit')
   async handleLiveKitWebhook(
     @Headers('authorization') authHeader: string,
-    @Req() req: any,
+    @Req() req: Request & { rawBody?: string },
   ) {
-    const event = await this.liveKitService.receiveWebhook(
-      req.rawBody || JSON.stringify(req.body),
+    const payload = String(req.rawBody || JSON.stringify(req.body));
+    const event = (await this.liveKitService.receiveWebhook(
+      payload,
       authHeader,
-    );
+    )) as Record<string, any>;
 
     if (event.event === 'egress_ended') {
-      const egressInfo = event.egressInfo as any;
-      if (egressInfo && egressInfo.fileResults?.[0]) {
-        const meetingId = egressInfo.roomName;
-        const fileResult = egressInfo.fileResults[0];
-        const participantIdentity = egressInfo.participantIdentity;
+      const egressInfo = event?.egressInfo as Record<string, any> | undefined;
+      if (
+        egressInfo &&
+        Array.isArray(egressInfo.fileResults) &&
+        egressInfo.fileResults.length > 0
+      ) {
+        const meetingId = String(egressInfo.roomName || '');
+        const fileResult = egressInfo.fileResults[0] as Record<string, any>;
+        const participantIdentity = String(
+          egressInfo.participantIdentity || '',
+        );
+
+        const location = String(fileResult.location || '');
+        const size = Number(fileResult.size || 0);
+        const duration = Number(fileResult.duration || 0) / 1000000000;
+        const startedAt = egressInfo.startedAt
+          ? Number(egressInfo.startedAt) / 1000000000
+          : 0;
 
         // Lưu thông tin bản ghi âm vào DB
         await this.meetingsService.saveAudioRecording(
           meetingId,
           participantIdentity,
-          fileResult.location,
-          Number(fileResult.size),
-          Number(fileResult.duration) / 1000000000, // Chuyển từ nano giây sang giây
-          egressInfo.startedAt ? Number(egressInfo.startedAt) / 1000000000 : 0,
+          location,
+          size,
+          duration,
+          startedAt,
         );
 
         console.log(
-          `LiveKit Egress Ended for room ${meetingId}. Audio saved at: ${fileResult.location}`,
+          `LiveKit Egress Ended for room ${meetingId}. Audio saved at: ${location}`,
         );
       }
     }
@@ -278,7 +321,10 @@ export class MeetingsController {
 
   @Post(':id/test-transcribe')
   @UseInterceptors(FileInterceptor('audio'))
-  async testTranscribe(@Param('id') id: string, @UploadedFile() file: any) {
+  async testTranscribe(
+    @Param('id') id: string,
+    @UploadedFile() file: any,
+  ): Promise<any> {
     if (!file) {
       throw new BadRequestException('No audio file provided');
     }

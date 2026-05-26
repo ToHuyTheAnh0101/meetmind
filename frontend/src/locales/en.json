@@ -69,7 +69,64 @@
     "page_info": "Page {{current}} / {{total}}",
     "no_upcoming": "No upcoming meetings in your timeline.",
     "loading_meetings": "Loading meetings...",
-    "no_meetings_date": "No meetings scheduled for this date."
+    "no_meetings_date": "No meetings scheduled for this date.",
+    "template_list_title_prefix": "Manage",
+    "template_list_title_highlight": "Meeting Templates",
+    "template_list_subtitle": "View, customize, and create your AI meeting summary layout structures.",
+    "new_template": "New Template"
+  },
+  "template": {
+    "name": "Template Name",
+    "description": "Template Description",
+    "purpose": "Template Purpose",
+    "sections": "Summary Sections Structure",
+    "add_section": "Add New Section",
+    "save": "Save Template",
+    "delete": "Delete Template",
+    "search_placeholder": "Search by template name or description...",
+    "no_matches": "No matching templates found",
+    "empty_hub": "No templates yet",
+    "empty_hub_desc": "You don't have any custom meeting templates yet. Start by creating your very first template.",
+    "sections_subtitle": "Define the data sections that the AI will automatically analyze and extract from your meetings.",
+    "section_name_label": "Section Code (Machine Key - e.g. key_points)",
+    "section_display_label": "Display Name (e.g. Key Points)",
+    "section_desc_placeholder": "Provide hints or guidelines on what the AI should summarize in this section...",
+    "purpose_options": {
+      "interview": "Interview",
+      "report": "Report",
+      "project_discussion": "Project Discussion",
+      "team_meeting": "Team Meeting",
+      "custom": "Custom"
+    },
+    "is_system": "System",
+    "is_custom": "Custom",
+    "section_order": "Order",
+    "actions": "Actions",
+    "delete_confirm": "Are you sure you want to delete this template? This action cannot be undone.",
+    "creation_success": "Template created successfully",
+    "update_success": "Template updated successfully",
+    "deletion_success": "Template deleted successfully"
+  },
+  "profile": {
+    "title_prefix": "Account",
+    "title_highlight": "Settings",
+    "subtitle": "Manage your personal profile and customize your virtual meeting room preferences.",
+    "google_active": "Active Google Account",
+    "timezone_label": "Timezone & Region",
+    "auth_method_label": "Sign-in Method",
+    "google_oauth": "Google OAuth 2.0",
+    "meetings_count": "Meetings",
+    "templates_count": "Summary Templates",
+    "browser_label": "Browser",
+    "bgr_config_title": "Default Virtual Background",
+    "bgr_config_subtitle": "Customize your background when turning on camera to join a meeting.",
+    "bgr_none": "None",
+    "bgr_blur": "Blur",
+    "bgr_office": "Office",
+    "bgr_livingroom": "Cozy Room",
+    "bgr_studio": "Studio",
+    "bgr_space": "Space",
+    "bgr_gradient": "Gradient"
   },
   "meeting": {
     "join": "Join",
@@ -266,6 +323,7 @@
       "no_results": "No participants found matching your search.",
       "tab_general": "General settings",
       "tab_permissions": "Permissions",
+      "tab_summary": "AI Summary & Q&A",
       "list": {
         "edit_meeting_info": { "label": "Edit meeting info", "desc": "Allows changing title, description, and time" },
         "manage_polls": { "label": "Manage polls", "desc": "Create and close surveys" },
@@ -290,6 +348,21 @@
     "unassigned": "Waiting List",
     "room_n": "Room {{n}}",
     "n_people_unassigned": "{{count}} unassigned",
-    "start_breakout": "Start Breakout"
+    "start_breakout": "Start Breakout",
+    "summary_tab": {
+      "tab_name": "AI Summary & Q&A",
+      "title": "Meeting AI Intelligence",
+      "subtitle": "View intelligent meeting summary and interact with the AI assistant.",
+      "no_summary_yet": "Meeting summary has not been generated yet.",
+      "generate_summary_btn": "Generate AI Summary",
+      "generating": "Analyzing meeting...",
+      "summary_card_title": "AI Meeting Summary",
+      "chatbot_card_title": "AI Q&A Assistant",
+      "chat_placeholder": "Ask AI assistant anything about this meeting...",
+      "suggested_questions": "Suggested Questions",
+      "preset_q1": "Summarize this meeting briefly?",
+      "preset_q2": "What are the next actions/tasks to do?",
+      "preset_q3": "Were there any important decisions made?"
+    }
   }
 }

@@ -7,15 +7,17 @@ import {
 import { MeetingPoll, PollType } from '../entities/meeting-poll.entity';
 import { MeetingPermission } from '../../meetings/entities';
 import { PollRepository } from '../repositories/poll.repository';
-import { MeetingRepository } from '../../meetings/repositories/meeting.repository';
+import { MeetingSessionRepository } from '../../meetings/repositories/meeting-session.repository';
 import { ParticipantRepository } from '../../meetings/repositories/participant.repository';
+import { MeetingsService } from '../../meetings/services/meetings.service';
 
 @Injectable()
 export class PollService {
   constructor(
     private pollRepository: PollRepository,
-    private meetingRepository: MeetingRepository,
+    private sessionRepository: MeetingSessionRepository,
     private participantRepository: ParticipantRepository,
+    private meetingsService: MeetingsService,
   ) {}
 
   async create(
@@ -23,13 +25,11 @@ export class PollService {
     userId: string,
     data: Partial<MeetingPoll>,
   ): Promise<MeetingPoll> {
-    const meeting = await this.meetingRepository.findById(meetingId);
-    if (!meeting) {
-      throw new NotFoundException('Meeting not found');
-    }
+    // Auto-ensure session exists (will create if needed)
+    const session = await this.meetingsService.ensureSessionForMeeting(meetingId);
 
     const participant = await this.participantRepository.findByMeetingAndUser(
-      meetingId,
+      session.meetingId,
       userId,
     );
     if (
@@ -44,7 +44,7 @@ export class PollService {
 
     const poll = this.pollRepository.create({
       ...data,
-      meetingId,
+      sessionId: session.id,
       createdByUserId: userId,
       options: (data.options || []).map((opt) => ({
         ...opt,
@@ -63,8 +63,8 @@ export class PollService {
     return poll;
   }
 
-  async findByMeetingId(meetingId: string): Promise<MeetingPoll[]> {
-    return this.pollRepository.findByMeetingId(meetingId);
+  async findBySessionId(sessionId: string): Promise<MeetingPoll[]> {
+    return this.pollRepository.findBySessionId(sessionId);
   }
 
   async vote(
@@ -129,8 +129,13 @@ export class PollService {
   async close(id: string, userId: string): Promise<MeetingPoll> {
     const poll = await this.findById(id);
 
+    const session = await this.sessionRepository.findById(poll.sessionId);
+    if (!session) {
+      throw new NotFoundException('Meeting session not found');
+    }
+
     const participant = await this.participantRepository.findByMeetingAndUser(
-      poll.meetingId,
+      session.meetingId,
       userId,
     );
     if (

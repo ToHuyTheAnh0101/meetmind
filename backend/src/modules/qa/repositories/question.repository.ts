@@ -37,6 +37,20 @@ export class QuestionRepository {
     });
   }
 
+  async findBySessionId(sessionId: string): Promise<MeetingQuestion[]> {
+    return this.repo.find({
+      where: { sessionId },
+      relations: [
+        'askedByUser',
+        'askedByParticipant',
+        'answers',
+        'answers.answeredByUser',
+        'answers.answeredByParticipant',
+      ],
+      order: { createdAt: 'DESC' },
+    });
+  }
+
   create(data: Partial<MeetingQuestion>): MeetingQuestion {
     return this.repo.create(data);
   }

@@ -40,6 +40,12 @@ export class SummaryController {
     return this.summaryService.findOverallSummary(meetingId);
   }
 
+  @Post('generate')
+  @UseGuards(JwtAuthGuard)
+  async generate(@Param('meetingId') meetingId: string): Promise<Summary> {
+    return this.summaryService.generateAiSummary(meetingId);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard)
   async create(

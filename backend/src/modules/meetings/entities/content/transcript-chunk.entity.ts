@@ -4,12 +4,14 @@ import {
   Column,
   CreateDateColumn,
   ManyToOne,
+  JoinColumn,
   Index,
 } from 'typeorm';
 import { Meeting } from '../core/meeting.entity';
+import { MeetingSession } from '../core/meeting-session.entity';
 
 @Entity('transcript_chunks')
-@Index(['meetingId'])
+@Index(['sessionId'])
 export class TranscriptChunk {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -21,6 +23,13 @@ export class TranscriptChunk {
     onDelete: 'CASCADE',
   })
   meeting: Meeting;
+
+  @Column('uuid', { nullable: true })
+  sessionId?: string;
+
+  @ManyToOne(() => MeetingSession, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'session_id' })
+  session?: MeetingSession;
 
   @Column('text')
   content: string;

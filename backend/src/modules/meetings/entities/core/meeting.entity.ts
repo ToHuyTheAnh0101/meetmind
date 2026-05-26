@@ -5,16 +5,11 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  OneToOne,
   OneToMany,
   JoinColumn,
 } from 'typeorm';
 import { User } from '../../../users/user.entity';
 import { Participant } from './participant.entity';
-import { MeetingEvent } from '../../../events/entities/meeting-event.entity';
-import { MeetingQuestion } from '../../../qa/entities/meeting-question.entity';
-import { MeetingPoll } from '../../../polls/entities/meeting-poll.entity';
-import { Summary } from '../../../summaries/entities/summary.entity';
 import { Attachment } from '../../../attachments/entities/attachment.entity';
 import { Notification } from '../scheduling/notification.entity';
 import { BreakoutRoom } from '../../../breakout-rooms/entities/breakout-room.entity';
@@ -22,6 +17,7 @@ import { AccessRequest } from '../scheduling/access-request.entity';
 import { ChatHistory } from '../ai/chat-history.entity';
 import { SummaryTemplate } from '../../../summaries/entities/summary-template.entity';
 import { TranscriptChunk } from '../content/transcript-chunk.entity';
+import { MeetingSession } from './meeting-session.entity';
 
 export enum MeetingStatus {
   SCHEDULED = 'scheduled',
@@ -88,9 +84,6 @@ export class Meeting {
   @Column({ nullable: true })
   endTime: Date;
 
-  @Column({ nullable: true })
-  recordingUrl: string;
-
   @ManyToOne(() => User, (user) => user.organizedMeetings)
   organizer: User;
 
@@ -107,21 +100,6 @@ export class Meeting {
   })
   participants: Participant[];
 
-  @OneToMany(() => MeetingEvent, (event) => event.meeting, {
-    cascade: true,
-  })
-  events: MeetingEvent[];
-
-  @OneToMany(() => MeetingQuestion, (question) => question.meeting, {
-    cascade: true,
-  })
-  qaQuestions: MeetingQuestion[];
-
-  @OneToMany(() => MeetingPoll, (poll) => poll.meeting, {
-    cascade: true,
-  })
-  polls: MeetingPoll[];
-
   @ManyToOne(() => SummaryTemplate, { nullable: true, onDelete: 'SET NULL' })
   @JoinColumn({ name: 'template_id' })
   template: SummaryTemplate;
@@ -129,10 +107,10 @@ export class Meeting {
   @Column('uuid', { nullable: true })
   templateId: string;
 
-  @OneToOne(() => Summary, (summary) => summary.meeting, {
+  @OneToMany(() => MeetingSession, (session) => session.meeting, {
     cascade: true,
   })
-  summary: Summary;
+  sessions: MeetingSession[];
 
   @OneToMany(() => Attachment, (attachment) => attachment.meeting, {
     cascade: true,

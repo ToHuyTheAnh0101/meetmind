@@ -13,10 +13,65 @@ import {
   Settings,
   Monitor,
   Info,
-  ChevronDown
+  ChevronDown,
+  Check,
+  Sparkles
 } from 'lucide-react';
 import { LocalVideoTrack } from 'livekit-client';
 import { LocalUserChoices, useMediaDevices } from '@livekit/components-react';
+
+// --- Virtual Background Options ---
+const VIRTUAL_BACKGROUNDS = [
+  { 
+    id: 'none', 
+    label: 'Không có', 
+    type: 'none', 
+    url: '', 
+    preview: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80' 
+  },
+  { 
+    id: 'blur', 
+    label: 'Làm mờ', 
+    type: 'blur', 
+    url: '', 
+    preview: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=150&q=80&blur=10' 
+  },
+  {
+    id: 'office',
+    label: 'Văn phòng',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
+    preview: 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=150&q=80'
+  },
+  {
+    id: 'livingroom',
+    label: 'Phòng ấm',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=800&q=80',
+    preview: 'https://images.unsplash.com/photo-1586023492125-27b2c045efd7?auto=format&fit=crop&w=150&q=80'
+  },
+  {
+    id: 'studio',
+    label: 'Studio',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=800&q=80',
+    preview: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=150&q=80'
+  },
+  {
+    id: 'space',
+    label: 'Vũ trụ',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?auto=format&fit=crop&w=800&q=80',
+    preview: 'https://images.unsplash.com/photo-1506318137071-a8e063b4bec0?auto=format&fit=crop&w=150&q=80'
+  },
+  {
+    id: 'gradient',
+    label: 'Gradient',
+    type: 'image',
+    url: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=800&q=80',
+    preview: 'https://images.unsplash.com/photo-1618005182384-a83a8bd57fbe?auto=format&fit=crop&w=150&q=80'
+  }
+];
 
 interface MeetingLobbyProps {
   username: string;
@@ -98,6 +153,23 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
   const devices = useMediaDevices({ kind: 'videoinput' });
   const audioDevices = useMediaDevices({ kind: 'audioinput' });
 
+  // Virtual Background State
+  const [activeBgr, setActiveBgr] = useState<string>('none');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('meetmind_virtual_bgr');
+    if (saved) {
+      setActiveBgr(saved);
+    }
+  }, []);
+
+  const handleSelectBgr = (id: string) => {
+    setActiveBgr(id);
+    localStorage.setItem('meetmind_virtual_bgr', id);
+  };
+
+  const selectedBg = VIRTUAL_BACKGROUNDS.find(bg => bg.id === activeBgr);
+
   return (
     <div className="relative min-h-screen flex flex-col bg-[#050505] overflow-hidden font-vietnam selection:bg-cyan-500/30">
       {/* Dynamic Animated Mesh Background */}
@@ -123,7 +195,7 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
            <span className="text-xs font-bold text-slate-300 tracking-wide">Hệ thống sẵn sàng</span>
         </div>
       </header>
-
+      
       <main className="relative z-10 flex-1 flex items-center justify-center p-2 lg:p-4 overflow-hidden">
         <div className="w-full max-w-[85rem] grid lg:grid-cols-[1fr,360px] xl:grid-cols-[1fr,400px] gap-6 xl:gap-8 items-center origin-center lg:scale-[0.9] xl:scale-100 transition-transform">
           
@@ -135,12 +207,22 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                 
                 <div className="relative aspect-video rounded-[3rem] overflow-hidden border border-white/20 bg-[#0a0a0b] shadow-2xl">
                    {isCamOn && localVideoTrack ? (
-                    <video 
-                      ref={(node) => node && localVideoTrack.attach(node)} 
-                      autoPlay 
-                      playsInline 
-                      className="w-full h-full object-cover transform scale-x-[-1]" 
-                    />
+                     <div className="relative w-full h-full">
+                       {/* Camera Feed */}
+                       <video 
+                         ref={(node) => node && localVideoTrack.attach(node)} 
+                         autoPlay 
+                         playsInline 
+                         className={`w-full h-full object-cover transform scale-x-[-1] transition-all duration-500 ${
+                           activeBgr === 'blur' ? 'filter blur-[4px]' : ''
+                         }`} 
+                       />
+                       
+                       {/* Virtual Background simulated overlay when image is active */}
+                       {selectedBg && selectedBg.type === 'image' && (
+                         <div className="absolute inset-0 bg-cover bg-center opacity-30 mix-blend-screen pointer-events-none transform scale-x-[-1]" style={{ backgroundImage: `url(${selectedBg.url})` }} />
+                       )}
+                     </div>
                   ) : (
                     <div className="absolute inset-0 flex flex-col items-center justify-center bg-[#0a0a0b]">
                        <div className="relative">
@@ -153,6 +235,14 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                             </div>
                           )}
                        </div>
+                    </div>
+                  )}
+
+                  {/* Top Right: Selected Virtual Background Badge */}
+                  {isCamOn && selectedBg && selectedBg.id !== 'none' && (
+                    <div className="absolute top-6 right-6 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600/90 text-white text-[10px] font-black tracking-wide border border-cyan-400 shadow-lg backdrop-blur-md">
+                      <Sparkles size={10} />
+                      <span>NỀN ẢO: {selectedBg.label.toUpperCase()}</span>
                     </div>
                   )}
 
@@ -187,28 +277,85 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                 </div>
              </div>
 
-             {/* Device Settings Panel (Inline) */}
+             {/* Device Settings & Virtual Background Panel */}
              <AnimatePresence>
                {showSettings && (
                  <motion.div 
                     initial={{ opacity: 0, y: -20 }}
                     animate={{ opacity: 1, y: 0 }}
                     exit={{ opacity: 0, y: -20 }}
-                    className="grid grid-cols-2 gap-3"
+                    className="space-y-4"
                  >
-                    <div className="glass-card p-3.5 rounded-[1.5rem]">
-                       <label className="text-[9px] font-black text-cyan-400 block mb-1.5">Máy ảnh</label>
-                       <div className="flex items-center justify-between text-xs text-white font-medium">
-                          <span className="truncate">{devices.find((d: MediaDeviceInfo) => d.deviceId === 'default')?.label || 'Camera'}</span>
-                          <ChevronDown className="h-3 w-3 text-white/40 ml-1" />
-                       </div>
+                    {/* Cameras / Mics inputs */}
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="glass-card p-3.5 rounded-[1.5rem]">
+                         <label className="text-[9px] font-black text-cyan-400 block mb-1.5">Máy ảnh</label>
+                         <div className="flex items-center justify-between text-xs text-white font-medium">
+                            <span className="truncate">{devices.find((d: MediaDeviceInfo) => d.deviceId === 'default')?.label || 'Camera'}</span>
+                            <ChevronDown className="h-3 w-3 text-white/40 ml-1" />
+                         </div>
+                      </div>
+                      <div className="glass-card p-3.5 rounded-[1.5rem]">
+                         <label className="text-[9px] font-black text-indigo-400 block mb-1.5">Microphone</label>
+                         <div className="flex items-center justify-between text-xs text-white font-medium">
+                            <span className="truncate">{audioDevices.find((d: MediaDeviceInfo) => d.deviceId === 'default')?.label || 'Mic'}</span>
+                            <ChevronDown className="h-3 w-3 text-white/40 ml-1" />
+                         </div>
+                      </div>
                     </div>
-                    <div className="glass-card p-3.5 rounded-[1.5rem]">
-                       <label className="text-[9px] font-black text-indigo-400 block mb-1.5">Microphone</label>
-                       <div className="flex items-center justify-between text-xs text-white font-medium">
-                          <span className="truncate">{audioDevices.find((d: MediaDeviceInfo) => d.deviceId === 'default')?.label || 'Mic'}</span>
-                          <ChevronDown className="h-3 w-3 text-white/40 ml-1" />
-                       </div>
+
+                    {/* Virtual Background Picker inside pre-join Lobby */}
+                    <div className="glass-card p-4 rounded-[1.8rem] space-y-3">
+                      <div className="flex items-center gap-2">
+                        <Sparkles className="h-3.5 w-3.5 text-cyan-400" />
+                        <span className="text-[10px] font-black text-cyan-400 uppercase tracking-wider">Cấu hình ảnh nền ảo</span>
+                      </div>
+                      
+                      <div className="grid gap-2 grid-cols-4 sm:grid-cols-7">
+                        {VIRTUAL_BACKGROUNDS.map((bg) => {
+                          const isSelected = activeBgr === bg.id
+                          return (
+                            <button
+                              key={bg.id}
+                              onClick={() => handleSelectBgr(bg.id)}
+                              className={`group relative h-12 rounded-xl border overflow-hidden transition-all duration-300 text-left outline-none flex flex-col justify-end ${
+                                isSelected
+                                  ? 'border-cyan-500 ring-2 ring-cyan-500/20 shadow-lg'
+                                  : 'border-white/10 hover:border-cyan-500/30'
+                              }`}
+                            >
+                              {bg.type === 'blur' ? (
+                                <div className="absolute inset-0 bg-slate-900 flex items-center justify-center text-white/20">
+                                  <Sparkles size={12} />
+                                </div>
+                              ) : bg.type === 'none' ? (
+                                <div className="absolute inset-0 bg-white/5 flex items-center justify-center text-white/20">
+                                  <Video size={12} />
+                                </div>
+                              ) : (
+                                <img
+                                  src={bg.preview}
+                                  alt=""
+                                  className="absolute inset-0 h-full w-full object-cover"
+                                />
+                              )}
+
+                              <div className="absolute inset-0 bg-black/40" />
+
+                              {/* Selected check */}
+                              {isSelected && (
+                                <div className="absolute inset-0 bg-cyan-600/30 flex items-center justify-center text-white">
+                                  <Check className="h-3.5 w-3.5" />
+                                </div>
+                              )}
+
+                              <span className="relative z-10 px-1.5 py-0.5 text-[8px] font-black text-white/95 truncate w-full">
+                                {bg.label}
+                              </span>
+                            </button>
+                          )
+                        })}
+                      </div>
                     </div>
                  </motion.div>
                )}
@@ -298,7 +445,7 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                          <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-indigo-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
                          <div className="relative flex h-14 w-full items-center justify-center rounded-xl bg-white font-black text-slate-950 transition-all hover:bg-slate-50 active:scale-95 disabled:opacity-50">
                             {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : t('meeting.enter_space')}
-                         </div>
+                          </div>
                       </button>
                    </div>
                 </div>

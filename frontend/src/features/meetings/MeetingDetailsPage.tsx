@@ -37,6 +37,7 @@ import { useTimeTheme } from '@/hooks/useTimeTheme'
 import { useAuth } from '@/features/auth/AuthContext'
 
 import MeetingPermissionsTab from './components/details/MeetingPermissionsTab'
+import { MeetingSummaryTab } from './components/details/MeetingSummaryTab'
 
 const MeetingDetailsPage: React.FC = () => {
   const { t } = useTranslation()
@@ -50,7 +51,7 @@ const MeetingDetailsPage: React.FC = () => {
   const isNew = location.pathname === '/meetings/new'
   const [copied, setCopied] = useState(false)
   const [isInstant, setIsInstant] = useState(true)
-  const [activeTab, setActiveTab] = useState<'general' | 'permissions'>('general')
+  const [activeTab, setActiveTab] = useState<'general' | 'permissions' | 'summary'>('general')
   
   const [formData, setFormData] = useState({
     title: '',
@@ -370,6 +371,15 @@ const MeetingDetailsPage: React.FC = () => {
                 <motion.div layoutId="tab-bg" className="absolute inset-0 bg-white shadow-sm border border-slate-300 rounded-xl" />
               )}
               <span className="relative z-10">{t('meeting.permissions.tab_permissions')}</span>
+            </button>
+            <button 
+              onClick={() => setActiveTab('summary')}
+              className={`relative px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'summary' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+            >
+              {activeTab === 'summary' && (
+                <motion.div layoutId="tab-bg" className="absolute inset-0 bg-white shadow-sm border border-slate-300 rounded-xl" />
+              )}
+              <span className="relative z-10">{t('meeting.permissions.tab_summary')}</span>
             </button>
           </div>
         )}
@@ -833,7 +843,7 @@ const MeetingDetailsPage: React.FC = () => {
               )}
             </div>
           </motion.div>
-        ) : (
+        ) : activeTab === 'permissions' ? (
           <motion.div
             key="permissions"
             initial={{ opacity: 0, x: 20 }}
@@ -841,6 +851,15 @@ const MeetingDetailsPage: React.FC = () => {
             exit={{ opacity: 0, x: -20 }}
           >
             <MeetingPermissionsTab meetingId={id!} variant="details" />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="summary"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <MeetingSummaryTab meetingId={id!} />
           </motion.div>
         )}
       </AnimatePresence>

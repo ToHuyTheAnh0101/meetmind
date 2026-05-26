@@ -17,10 +17,10 @@ export class EventRepository {
     });
   }
 
-  async findByMeetingId(meetingId: string): Promise<MeetingEvent[]> {
+  async findBySessionId(sessionId: string): Promise<MeetingEvent[]> {
     return this.repo.find({
-      where: { meetingId },
-      relations: ['triggeredByUser', 'agendaItem'],
+      where: { sessionId },
+      relations: ['triggeredByUser'],
       order: { createdAt: 'DESC' },
     });
   }

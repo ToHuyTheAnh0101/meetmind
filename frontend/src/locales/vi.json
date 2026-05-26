@@ -69,7 +69,64 @@
     "page_info": "Trang {{current}} / {{total}}",
     "no_upcoming": "Không có cuộc họp sắp tới nào trong lịch trình của bạn.",
     "loading_meetings": "Đang Tải Danh Sách Cuộc Họp...",
-    "no_meetings_date": "Không có cuộc họp nào được lên lịch vào ngày này."
+    "no_meetings_date": "Không có cuộc họp nào được lên lịch vào ngày này.",
+    "template_list_title_prefix": "Quản Lý",
+    "template_list_title_highlight": "Mẫu Cuộc Họp",
+    "template_list_subtitle": "Xem, tùy chỉnh và tạo các cấu trúc tóm tắt cuộc họp AI của bạn.",
+    "new_template": "Mẫu Mới"
+  },
+  "template": {
+    "name": "Tên mẫu",
+    "description": "Mô tả mẫu",
+    "purpose": "Mục đích sử dụng",
+    "sections": "Cấu trúc phần tóm tắt",
+    "add_section": "Thêm phần mới",
+    "save": "Lưu mẫu",
+    "delete": "Xóa mẫu",
+    "search_placeholder": "Tìm kiếm theo tên mẫu hoặc mô tả...",
+    "no_matches": "Không tìm thấy mẫu nào phù hợp",
+    "empty_hub": "Chưa có mẫu nào",
+    "empty_hub_desc": "Bạn chưa có mẫu cuộc họp nào tự tạo. Hãy bắt đầu tạo mẫu đầu tiên của riêng bạn.",
+    "sections_subtitle": "Xác định các phần dữ liệu mà AI sẽ tự động phân tích và trích xuất.",
+    "section_name_label": "Mã phần (Machine Key - v.d. key_points)",
+    "section_display_label": "Tên hiển thị (v.d. Các điểm cốt lõi)",
+    "section_desc_placeholder": "Gợi ý hoặc hướng dẫn nội dung cần tóm tắt trong phần này...",
+    "purpose_options": {
+      "interview": "Phỏng vấn",
+      "report": "Báo cáo",
+      "project_discussion": "Thảo luận dự án",
+      "team_meeting": "Họp nhóm",
+      "custom": "Tùy chỉnh"
+    },
+    "is_system": "Hệ thống",
+    "is_custom": "Cá nhân",
+    "section_order": "Thứ tự",
+    "actions": "Thao tác",
+    "delete_confirm": "Bạn có chắc chắn muốn xóa mẫu này không? Hành động này không thể hoàn tác.",
+    "creation_success": "Đã tạo mẫu thành công",
+    "update_success": "Đã cập nhật mẫu thành công",
+    "deletion_success": "Đã xóa mẫu thành công"
+  },
+  "profile": {
+    "title_prefix": "Thiết Lập",
+    "title_highlight": "Tài Khoản",
+    "subtitle": "Quản lý hồ sơ cá nhân và tùy chỉnh trải nghiệm phòng họp ảo của bạn.",
+    "google_active": "Tài khoản Google hoạt động",
+    "timezone_label": "Múi giờ & Khu vực",
+    "auth_method_label": "Phương thức đăng nhập",
+    "google_oauth": "Google OAuth 2.0",
+    "meetings_count": "Cuộc họp",
+    "templates_count": "Mẫu tóm tắt",
+    "browser_label": "Trình duyệt",
+    "bgr_config_title": "Cấu hình ảnh nền ảo mặc định",
+    "bgr_config_subtitle": "Tùy chỉnh hậu cảnh của bạn khi bật camera tham gia cuộc họp.",
+    "bgr_none": "Không có",
+    "bgr_blur": "Làm mờ",
+    "bgr_office": "Văn phòng",
+    "bgr_livingroom": "Phòng ấm",
+    "bgr_studio": "Studio",
+    "bgr_space": "Vũ trụ",
+    "bgr_gradient": "Gradient"
   },
   "meeting": {
     "join": "Tham gia",
@@ -269,6 +326,7 @@
       "no_results": "Không tìm thấy thành viên nào khớp với tìm kiếm.",
       "tab_general": "Thiết lập chung",
       "tab_permissions": "Phân quyền",
+      "tab_summary": "Tóm tắt & Hỏi đáp AI",
       "list": {
         "edit_meeting_info": {
           "label": "Sửa thông tin họp",
@@ -317,6 +375,21 @@
     "unassigned": "Danh sách chờ",
     "room_n": "Phòng {{n}}",
     "n_people_unassigned": "{{count}} người chưa gán",
-    "start_breakout": "Bắt đầu chia phòng"
+    "start_breakout": "Bắt đầu chia phòng",
+    "summary_tab": {
+      "tab_name": "Tóm tắt & Hỏi đáp AI",
+      "title": "Trí Tuệ Nhân Tạo Cuộc Họp",
+      "subtitle": "Xem tóm tắt cuộc họp thông minh và tương tác với Trợ lý AI.",
+      "no_summary_yet": "Bản tóm tắt cuộc họp chưa được khởi tạo.",
+      "generate_summary_btn": "Khởi tạo Tóm tắt AI",
+      "generating": "Đang phân tích cuộc họp...",
+      "summary_card_title": "Tóm Tắt Cuộc Họp AI",
+      "chatbot_card_title": "Trợ Lý Hỏi Đáp AI",
+      "chat_placeholder": "Hỏi trợ lý AI bất kỳ điều gì về cuộc họp...",
+      "suggested_questions": "Câu hỏi gợi ý",
+      "preset_q1": "Tóm tắt ngắn gọn cuộc họp này?",
+      "preset_q2": "Những hành động/công việc cần làm tiếp theo là gì?",
+      "preset_q3": "Có quyết định quan trọng nào được thông qua không?"
+    }
   }
 }

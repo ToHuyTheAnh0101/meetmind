@@ -6,6 +6,13 @@ import {
   Part,
 } from '@google/generative-ai';
 
+type TranscriptionSegment = {
+  speaker: string;
+  text: string;
+  startTime: number;
+  endTime: number;
+};
+
 @Injectable()
 export class AiService {
   private genAI: GoogleGenerativeAI;
@@ -35,11 +42,39 @@ export class AiService {
       `;
 
       const result = await this.model.generateContent(prompt);
-      const response = await result.response;
+      const response = result.response;
       return response.text();
     } catch (error) {
       console.error('Error answering question:', error);
       throw new Error('Failed to answer question');
+    }
+  }
+
+  /**
+   * Tạo bản tóm tắt cuộc họp thông minh dựa trên transcript
+   */
+  async generateSummary(title: string, transcript: string): Promise<string> {
+    try {
+      const prompt = `
+        Bạn là một trợ lý cuộc họp chuyên nghiệp. Hãy phân tích đoạn hội thoại/nội dung cuộc họp "${title}" sau đây:
+        
+        ${transcript}
+        
+        Hãy tạo một bản tóm tắt cuộc họp cực kỳ chuyên nghiệp bằng tiếng Việt, có cấu trúc rõ ràng sử dụng Markdown bao gồm các mục chính:
+        1. **Tổng quan cuộc họp** (Tóm tắt ngắn gọn mục đích và không khí cuộc họp)
+        2. **Các chủ đề thảo luận chính** (Chi tiết thảo luận từng phần)
+        3. **Quyết định quan trọng** (Các quyết định đã thống nhất)
+        4. **Hành động tiếp theo (Action Items)** (Công việc cần làm, người phụ trách và thời hạn nếu có)
+
+        Hãy trình bày thật ngắn gọn, súc tích, trực quan và dễ đọc.
+      `;
+
+      const result = await this.model.generateContent(prompt);
+      const response = result.response;
+      return response.text();
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      throw new Error('Failed to generate summary');
     }
   }
 
@@ -63,7 +98,7 @@ export class AiService {
         'Hãy dịch đoạn âm thanh này sang tiếng Việt một cách chính xác. Trả về văn bản thuần túy.',
       ]);
 
-      const response = await result.response;
+      const response = result.response;
       return response.text().trim();
     } catch (error) {
       console.error('Error transcribing audio:', error);
@@ -81,7 +116,7 @@ export class AiService {
       speaker: string;
       startTime: number;
     }[],
-  ): Promise<any[]> {
+  ): Promise<TranscriptionSegment[]> {
     try {
       const parts: Part[] = [];
 
@@ -119,14 +154,35 @@ export class AiService {
       });
 
       const result = await this.model.generateContent(parts);
-      const response = await result.response;
+      const response = result.response;
       const responseText = response.text();
 
       // Trích xuất JSON từ phản hồi của AI
       const jsonMatch = responseText.match(/\[[\s\S]*\]/);
       const cleanJson = jsonMatch ? jsonMatch[0] : responseText;
 
-      return JSON.parse(cleanJson);
+      const parsed = JSON.parse(cleanJson) as unknown;
+      if (!Array.isArray(parsed)) {
+        return [];
+      }
+
+      return parsed
+        .filter(
+          (item): item is Record<string, unknown> =>
+            typeof item === 'object' && item !== null,
+        )
+        .map((item) => ({
+          speaker: typeof item.speaker === 'string' ? item.speaker : 'Unknown',
+          text: typeof item.text === 'string' ? item.text : '',
+          startTime:
+            typeof item.startTime === 'number'
+              ? item.startTime
+              : Number(item.startTime) || 0,
+          endTime:
+            typeof item.endTime === 'number'
+              ? item.endTime
+              : Number(item.endTime) || 0,
+        }));
     } catch (error) {
       console.error('Error in multi-track transcription:', error);
       // Trả về mảng rỗng nếu có lỗi để tránh crash hệ thống

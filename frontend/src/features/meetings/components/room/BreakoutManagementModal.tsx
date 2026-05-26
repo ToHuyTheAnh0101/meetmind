@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, 
@@ -7,7 +7,6 @@ import {
   Trash2, 
   Shuffle, 
   Play, 
-  ChevronRight,
   UserPlus,
   Grid2X2
 } from 'lucide-react';

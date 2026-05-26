@@ -7,7 +7,7 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import { Meeting } from '../../meetings/entities';
+import { MeetingSession } from '../../meetings/entities';
 import { User } from '../../users/user.entity';
 
 export enum EventType {
@@ -24,19 +24,19 @@ export enum EventType {
 }
 
 @Entity('meeting-events')
-@Index(['meetingId'])
+@Index(['sessionId'])
 export class MeetingEvent {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @ManyToOne(() => Meeting, (meeting) => meeting.events, {
+  @ManyToOne(() => MeetingSession, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'meeting_id' })
-  meeting: Meeting;
+  @JoinColumn({ name: 'session_id' })
+  session: MeetingSession;
 
-  @Column('uuid')
-  meetingId: string;
+  @Column('uuid', { name: 'session_id' })
+  sessionId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'triggered_by_user_id' })

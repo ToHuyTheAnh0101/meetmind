@@ -9,11 +9,13 @@ import { SummaryTemplateService } from './services/summary-template.service';
 import { SummaryRepository } from './repositories/summary.repository';
 import { SummaryTemplateRepository } from './repositories/summary-template.repository';
 import { MeetingsModule } from '../meetings/meetings.module';
+import { AiModule } from '../../providers/ai/ai.module';
 
 @Module({
   imports: [
     TypeOrmModule.forFeature([Summary, SummaryTemplate]),
     MeetingsModule,
+    AiModule,
   ],
   providers: [
     SummaryRepository,

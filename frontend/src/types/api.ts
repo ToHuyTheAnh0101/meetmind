@@ -80,3 +80,30 @@ export interface PaginatedResponse<T> {
   items: T[]
   meta: PaginationMeta
 }
+
+export enum SummaryTemplatePurpose {
+  INTERVIEW = 'interview',
+  REPORT = 'report',
+  PROJECT_DISCUSSION = 'project_discussion',
+  TEAM_MEETING = 'team_meeting',
+  CUSTOM = 'custom',
+}
+
+export interface TemplateSectionDef {
+  name: string
+  label: string
+  description?: string
+  order: number
+}
+
+export interface SummaryTemplate {
+  id: string
+  name: string
+  description?: string
+  purpose: SummaryTemplatePurpose
+  sections: TemplateSectionDef[]
+  isSystem: boolean
+  createdByUserId?: string
+  createdAt?: string
+  updatedAt?: string
+}

@@ -13,7 +13,6 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '@/lib/apiClient';
-import { showSuccessToast, showErrorToast } from '@/lib/toastUtils';
 
 // Tab Components
 import CustomChat from './CustomChat';
@@ -23,7 +22,6 @@ import InRoomSettings from './InRoomSettings';
 import MeetingPermissionsTab from '../details/MeetingPermissionsTab';
 import PollTab from './PollTab';
 import QATab from './QATab';
-import ConfirmEndBreakoutModal from './ConfirmEndBreakoutModal';
 
 interface MeetingSidebarProps {
   isOpen: boolean;

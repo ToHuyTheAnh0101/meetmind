@@ -17,4 +17,14 @@ export class TranscriptRepository extends Repository<TranscriptChunk> {
       order: { startTime: 'ASC' },
     });
   }
+
+  /**
+   * Lấy toàn bộ bản dịch của một phiên họp thực tế sắp xếp theo thời gian
+   */
+  async findBySessionId(sessionId: string): Promise<TranscriptChunk[]> {
+    return this.find({
+      where: { sessionId },
+      order: { startTime: 'ASC' },
+    });
+  }
 }

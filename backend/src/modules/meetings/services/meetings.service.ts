@@ -6,10 +6,12 @@ import {
   UnauthorizedException,
   Logger,
 } from '@nestjs/common';
-import * as bcrypt from 'bcrypt';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ConfigService } from '@nestjs/config';
+import { Inject } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import {
   Meeting,
   MeetingStatus,
@@ -17,7 +19,7 @@ import {
   ParticipantStatus,
   MeetingPermission,
   MeetingAccessType,
-  TranscriptChunk,
+  // TranscriptChunk removed (unused in this service)
   MeetingRecording,
 } from '../entities';
 import {
@@ -34,6 +36,8 @@ import {
   JoinResponseDto,
   ParticipantSummaryDto,
 } from '../dto/join-response.dto';
+import { MeetingSession, MeetingSessionStatus } from '../entities';
+import { MeetingSessionRepository } from '../repositories/meeting-session.repository';
 import { MeetingRepository } from '../repositories/meeting.repository';
 import { ParticipantRepository } from '../repositories/participant.repository';
 import { TranscriptRepository } from '../repositories/transcript.repository';
@@ -50,12 +54,91 @@ export class MeetingsService {
     private participantsRepository: ParticipantRepository,
     private transcriptRepository: TranscriptRepository,
     private recordingRepository: MeetingRecordingRepository,
+    private sessionRepository: MeetingSessionRepository,
     private liveKitService: LiveKitService,
     private usersService: UsersService,
     private configService: ConfigService,
     private aiService: AiService,
     private mailService: MailService,
+    @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
+
+  // Phase 1: start a session when host starts recording
+  async startSession(
+    meetingId: string,
+    userId: string,
+  ): Promise<MeetingSession> {
+    const meeting = await this.findOne(meetingId);
+    if (!meeting) throw new Error('Meeting not found');
+
+    // Only organizer can start session/record by default
+    if (meeting.organizerId !== userId) {
+      throw new Error('Only organizer can start session');
+    }
+
+    // If an active session exists, return it
+    const active = await this.sessionRepository.findActiveByMeeting(meetingId);
+    if (active) return active;
+
+    const session = this.sessionRepository.create({
+      meetingId,
+      actualStartTime: new Date(),
+      status: MeetingSessionStatus.ONGOING,
+    });
+
+    return this.sessionRepository.save(session);
+  }
+
+  async endSession(
+    meetingId: string,
+    sessionId: string,
+    userId: string,
+  ): Promise<MeetingSession> {
+    const meeting = await this.findOne(meetingId);
+    if (!meeting) throw new Error('Meeting not found');
+    if (meeting.organizerId !== userId)
+      throw new Error('Only organizer can end session');
+
+    const session = await this.sessionRepository.findById(sessionId);
+    if (!session) throw new Error('Session not found');
+
+    session.actualEndTime = new Date();
+    session.status = MeetingSessionStatus.COMPLETED;
+
+    const saved = await this.sessionRepository.save(session);
+
+    // Clear cache when session ends
+    const cacheKey = `session:${meetingId}`;
+    await this.cacheManager.del(cacheKey);
+
+    return saved;
+  }
+
+  /**
+   * Ensure session exists for a meeting, auto-create if not
+   * Uses cache to avoid repeated DB queries
+   */
+  async ensureSessionForMeeting(meetingId: string): Promise<MeetingSession> {
+    const cacheKey = `session:${meetingId}`;
+
+    // Check cache first
+    const cachedSession = await this.cacheManager.get<MeetingSession>(cacheKey);
+    if (cachedSession) {
+      return cachedSession;
+    }
+
+    // Query DB for active session
+    let session = await this.sessionRepository.findActiveByMeeting(meetingId);
+    if (!session) {
+      // Auto-create session if none exists
+      const meeting = await this.findOne(meetingId);
+      session = await this.startSession(meetingId, meeting.organizerId);
+    }
+
+    // Cache the session
+    await this.cacheManager.set(cacheKey, session, 0);
+    return session;
+  }
 
   async create(dto: CreateMeetingDto, userId: string): Promise<Meeting> {
     const { password, ...meetingData } = dto;
@@ -102,7 +185,8 @@ export class MeetingsService {
       // Gửi email mời họp và lên lịch nhắc nhở cho danh sách khách mời
       if (savedMeeting.inviteeEmails && savedMeeting.inviteeEmails.length > 0) {
         const frontendUrl =
-          this.configService.get('FRONTEND_URL') || 'http://localhost:3001';
+          this.configService.get<string>('FRONTEND_URL') ||
+          'http://localhost:3001';
         const joinUrl = `${frontendUrl}/room/${savedMeeting.id}`;
 
         for (const email of savedMeeting.inviteeEmails) {
@@ -204,7 +288,7 @@ export class MeetingsService {
             ? ParticipantStatus.WAITING
             : ParticipantStatus.ADMITTED;
 
-        participant = await this.participantsRepository.save({
+        const newParticipant = this.participantsRepository.create({
           meetingId: id,
           userId,
           displayName: displayName, // Save the name from lobby
@@ -213,6 +297,9 @@ export class MeetingsService {
           isInMeeting: initialStatus === ParticipantStatus.ADMITTED,
           permissions: isOrganizer ? organizerPermissions : [],
         });
+        participant = (await this.participantsRepository.save(
+          newParticipant,
+        )) as Participant;
       } else {
         // If participant already exists, update their displayName if provided
         if (displayName) {
@@ -244,7 +331,9 @@ export class MeetingsService {
           participant.isInMeeting = true;
         }
 
-        await this.participantsRepository.save(participant);
+        participant = (await this.participantsRepository.save(
+          participant,
+        )) as Participant;
       }
 
       const user = await this.usersService.findById(userId);
@@ -404,9 +493,10 @@ export class MeetingsService {
       await this.liveKitService.deleteRoom(
         meeting.livekitRoomName || meeting.id,
       );
-    } catch (e) {
-      console.warn(
+    } catch (err) {
+      this.logger.warn(
         `Could not delete LiveKit room ${meeting.livekitRoomName}, might already be gone.`,
+        err,
       );
     }
 
@@ -427,7 +517,12 @@ export class MeetingsService {
       await this.liveKitService.deleteRoom(
         meeting.livekitRoomName || meeting.id,
       );
-    } catch (e) {}
+    } catch (err) {
+      this.logger.warn(
+        `Could not delete LiveKit room ${meeting.livekitRoomName}`,
+        err,
+      );
+    }
 
     return this.meetingsRepository.save(meeting);
   }
@@ -498,7 +593,8 @@ export class MeetingsService {
       dto.inviteeEmails
     ) {
       const frontendUrl =
-        this.configService.get('FRONTEND_URL') || 'http://localhost:3001';
+        this.configService.get<string>('FRONTEND_URL') ||
+        'http://localhost:3001';
       const joinUrl = `${frontendUrl}/room/${updatedMeeting.id}`;
 
       for (const email of updatedMeeting.inviteeEmails || []) {
@@ -522,7 +618,17 @@ export class MeetingsService {
             );
         } else {
           // Nếu reminderMinutes = 0, hủy job nhắc lịch cũ
-          this.mailService.removeMeetingReminder(updatedMeeting.id, email);
+          try {
+            await this.mailService.removeMeetingReminder(
+              updatedMeeting.id,
+              email,
+            );
+          } catch (err) {
+            this.logger.error(
+              `Failed to remove meeting reminder for ${email}:`,
+              err,
+            );
+          }
         }
       }
     }
@@ -571,15 +677,24 @@ export class MeetingsService {
     if (!fs.existsSync(uploadsDir))
       fs.mkdirSync(uploadsDir, { recursive: true });
 
-    const fileName = `${meetingId}-${Date.now()}-${file.originalname || 'test.webm'}`;
+    const f = file as {
+      originalname?: string;
+      buffer?: Buffer | Uint8Array | string;
+      mimetype?: string;
+    };
+    const originalname =
+      typeof f.originalname === 'string' ? f.originalname : 'test.webm';
+    const buffer = Buffer.isBuffer(f.buffer)
+      ? f.buffer
+      : Buffer.from(f.buffer || '');
+    const mimetype = typeof f.mimetype === 'string' ? f.mimetype : 'audio/webm';
+
+    const fileName = `${meetingId}-${Date.now()}-${originalname}`;
     const filePath = path.join(uploadsDir, fileName);
-    fs.writeFileSync(filePath, file.buffer);
+    fs.writeFileSync(filePath, buffer);
 
     try {
-      const transcript = await this.aiService.transcribeAudio(
-        file.buffer,
-        file.mimetype || 'audio/webm',
-      );
+      const transcript = await this.aiService.transcribeAudio(buffer, mimetype);
       return {
         meetingId,
         fileName,
@@ -727,7 +842,10 @@ export class MeetingsService {
 
     // Cập nhật quyền
     participant.permissions = permissions;
-    return this.participantsRepository.save(participant);
+    const saved = (await this.participantsRepository.save(
+      participant,
+    )) as Participant;
+    return saved;
   }
 
   /**
@@ -788,5 +906,29 @@ export class MeetingsService {
     }
 
     return { count: participants.length };
+  }
+
+  async chatWithAI(
+    meetingId: string,
+    question: string,
+    _userId: string,
+  ): Promise<{ answer: string }> {
+    this.logger.log(`User ${_userId} chatting with AI in meeting ${meetingId}`);
+    const meeting = await this.meetingsRepository.findById(meetingId);
+    if (!meeting) {
+      throw new NotFoundException('Meeting not found');
+    }
+
+    const transcriptChunks =
+      await this.transcriptRepository.findByMeetingId(meetingId);
+    const transcriptText =
+      transcriptChunks.map((c) => c.content).join('\n') ||
+      `Không có bản dịch thoại trực tiếp. Đây là cuộc họp "${meeting.title}" với mô tả: ${meeting.description || 'Không có mô tả'}.`;
+
+    const answer = await this.aiService.answerQuestion(
+      question,
+      transcriptText,
+    );
+    return { answer };
   }
 }

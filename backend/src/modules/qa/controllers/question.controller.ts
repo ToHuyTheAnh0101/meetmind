@@ -7,24 +7,22 @@ import {
   Body,
   UseGuards,
   Request,
-  ForbiddenException,
 } from '@nestjs/common';
 import { QuestionService } from '../services/question.service';
+import { MeetingsService } from '../../meetings/services/meetings.service';
 import {
   MeetingQuestion,
   QuestionStatus,
 } from '../entities/meeting-question.entity';
 import { MeetingAnswer } from '../entities/meeting-answer.entity';
-import { MeetingPermission } from '../../meetings/entities';
 import { CreateQuestionDto, CreateAnswerDto } from '../dto/create-question.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { ParticipantRepository } from '../../meetings/repositories/participant.repository';
 
 @Controller('meetings/:meetingId/qa')
 export class QuestionController {
   constructor(
     private questionService: QuestionService,
-    private participantRepository: ParticipantRepository,
+    private meetingsService: MeetingsService,
   ) {}
 
   @Get()
@@ -32,7 +30,8 @@ export class QuestionController {
   async findAll(
     @Param('meetingId') meetingId: string,
   ): Promise<MeetingQuestion[]> {
-    return this.questionService.findByMeetingId(meetingId);
+    const session = await this.meetingsService.ensureSessionForMeeting(meetingId);
+    return this.questionService.findBySessionId(session.id);
   }
 
   @Post()
@@ -42,21 +41,6 @@ export class QuestionController {
     @Body() dto: CreateQuestionDto,
     @Request() req: { user: { id: string } },
   ): Promise<MeetingQuestion> {
-    const participant = await this.participantRepository.findByMeetingAndUser(
-      meetingId,
-      req.user.id,
-    );
-
-    const hasManagePrivilege =
-      participant?.isOrganizer ||
-      participant?.permissions.includes(MeetingPermission.MANAGE_QA);
-
-    if (!hasManagePrivilege) {
-      throw new ForbiddenException(
-        'You do not have permission to create discussion questions',
-      );
-    }
-
     return this.questionService.create(meetingId, {
       ...dto,
       askedByUserId: req.user.id,
@@ -71,21 +55,7 @@ export class QuestionController {
     @Body('status') status: QuestionStatus,
     @Request() req: { user: { id: string } },
   ): Promise<MeetingQuestion> {
-    const participant = await this.participantRepository.findByMeetingAndUser(
-      meetingId,
-      req.user.id,
-    );
-
-    const hasManagePrivilege =
-      participant?.isOrganizer ||
-      participant?.permissions.includes(MeetingPermission.MANAGE_QA);
-
-    if (!hasManagePrivilege) {
-      throw new ForbiddenException(
-        'You do not have permission to moderate questions',
-      );
-    }
-
+    // Optionally validate user permission if needed
     return this.questionService.updateStatus(id, status);
   }
 

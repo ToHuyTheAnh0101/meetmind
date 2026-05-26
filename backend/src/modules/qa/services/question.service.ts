@@ -6,7 +6,8 @@ import {
 } from '../entities/meeting-question.entity';
 import { MeetingAnswer } from '../entities/meeting-answer.entity';
 import { QuestionRepository } from '../repositories/question.repository';
-import { MeetingRepository } from '../../meetings/repositories/meeting.repository';
+import { MeetingSessionRepository } from '../../meetings/repositories/meeting-session.repository';
+import { MeetingsService } from '../../meetings/services/meetings.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -14,7 +15,8 @@ import { Repository } from 'typeorm';
 export class QuestionService {
   constructor(
     private questionRepository: QuestionRepository,
-    private meetingRepository: MeetingRepository,
+    private sessionRepository: MeetingSessionRepository,
+    private meetingsService: MeetingsService,
     @InjectRepository(MeetingAnswer)
     private answerRepository: Repository<MeetingAnswer>,
   ) {}
@@ -23,14 +25,13 @@ export class QuestionService {
     meetingId: string,
     data: Partial<MeetingQuestion>,
   ): Promise<MeetingQuestion> {
-    const meeting = await this.meetingRepository.findById(meetingId);
-    if (!meeting) {
-      throw new NotFoundException('Meeting not found');
-    }
+    // Auto-ensure session exists (will create if needed)
+    const session = await this.meetingsService.ensureSessionForMeeting(meetingId);
 
     const question = this.questionRepository.create({
       ...data,
-      meetingId,
+      sessionId: session.id,
+      meetingId: session.meetingId,
       type: data.type || QuestionType.HOST_QA,
       isAnonymous: false, // Discussion questions are never anonymous
     });
@@ -47,11 +48,16 @@ export class QuestionService {
     return question;
   }
 
-  async findByMeetingId(meetingId: string): Promise<MeetingQuestion[]> {
-    const questions = await this.questionRepository.findByMeetingId(meetingId);
+  async findBySessionId(sessionId: string): Promise<MeetingQuestion[]> {
+    const questions = await this.questionRepository.findBySessionId(sessionId);
 
     // Everyone can see all discussion (host_qa) questions
     // In this new flow, we primarily care about host_qa
+    return questions.filter((q) => q.type === QuestionType.HOST_QA);
+  }
+
+  async findByMeetingId(meetingId: string): Promise<MeetingQuestion[]> {
+    const questions = await this.questionRepository.findByMeetingId(meetingId);
     return questions.filter((q) => q.type === QuestionType.HOST_QA);
   }
 

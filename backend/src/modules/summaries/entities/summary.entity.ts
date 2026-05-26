@@ -6,24 +6,33 @@ import {
   UpdateDateColumn,
   JoinColumn,
   OneToOne,
+  ManyToOne,
   Index,
 } from 'typeorm';
-import { Meeting } from '../../meetings/entities';
+import { Meeting, MeetingSession } from '../../meetings/entities';
 
 @Entity('summaries')
-@Index(['meetingId'])
+@Index(['sessionId'])
 export class Summary {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @OneToOne(() => Meeting, (meeting) => meeting.summary, {
+  @ManyToOne(() => Meeting, {
     onDelete: 'CASCADE',
+    nullable: true,
   })
   @JoinColumn({ name: 'meeting_id' })
-  meeting: Meeting;
+  meeting?: Meeting;
 
-  @Column('uuid')
-  meetingId: string;
+  @Column('uuid', { nullable: true })
+  meetingId?: string;
+
+  @Column('uuid', { name: 'session_id', nullable: true })
+  sessionId?: string;
+
+  @OneToOne(() => MeetingSession, { onDelete: 'CASCADE', nullable: true })
+  @JoinColumn({ name: 'session_id' })
+  session?: MeetingSession;
 
   @Column({ type: 'text', nullable: true })
   summaryText: string;
