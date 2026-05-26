@@ -3,6 +3,25 @@ import { Job } from 'bullmq';
 import { MailerService } from '@nestjs-modules/mailer';
 import { Logger } from '@nestjs/common';
 
+interface InvitationJobData {
+  to: string;
+  name: string;
+  title: string;
+  date: string;
+  joinUrl: string;
+  password?: string;
+}
+
+interface ReminderJobData {
+  to: string;
+  name: string;
+  title: string;
+  date: string;
+  joinUrl: string;
+  password?: string;
+  reminderMinutes: number;
+}
+
 @Processor('mail-queue')
 export class MailProcessor extends WorkerHost {
   private readonly logger = new Logger(MailProcessor.name);
@@ -11,20 +30,22 @@ export class MailProcessor extends WorkerHost {
     super();
   }
 
-  async process(job: Job<any, any, string>): Promise<any> {
+  async process(
+    job: Job<InvitationJobData | ReminderJobData, any, string>,
+  ): Promise<any> {
     this.logger.log(`Processing job ${job.id} of type ${job.name}...`);
 
     switch (job.name) {
       case 'send-invitation':
-        return this.handleSendInvitation(job.data);
+        return this.handleSendInvitation(job.data as InvitationJobData);
       case 'send-reminder':
-        return this.handleSendReminder(job.data);
+        return this.handleSendReminder(job.data as ReminderJobData);
       default:
         this.logger.warn(`Unknown job type: ${job.name}`);
     }
   }
 
-  private async handleSendInvitation(data: any) {
+  private async handleSendInvitation(data: InvitationJobData) {
     try {
       await this.mailerService.sendMail({
         to: data.to,
@@ -40,12 +61,13 @@ export class MailProcessor extends WorkerHost {
       });
       this.logger.log(`Invitation sent to ${data.to}`);
     } catch (error) {
-      this.logger.error(`Failed to send invitation to ${data.to}`, error.stack);
+      const err = error as { stack?: string };
+      this.logger.error(`Failed to send invitation to ${data.to}`, err.stack);
       throw error;
     }
   }
 
-  private async handleSendReminder(data: any) {
+  private async handleSendReminder(data: ReminderJobData) {
     try {
       await this.mailerService.sendMail({
         to: data.to,
@@ -62,7 +84,8 @@ export class MailProcessor extends WorkerHost {
       });
       this.logger.log(`Reminder sent to ${data.to}`);
     } catch (error) {
-      this.logger.error(`Failed to send reminder to ${data.to}`, error.stack);
+      const err = error as { stack?: string };
+      this.logger.error(`Failed to send reminder to ${data.to}`, err.stack);
       throw error;
     }
   }

@@ -23,7 +23,8 @@ export class PollController {
   @Get()
   @UseGuards(JwtAuthGuard)
   async findAll(@Param('meetingId') meetingId: string): Promise<MeetingPoll[]> {
-    const session = await this.meetingsService.ensureSessionForMeeting(meetingId);
+    const session =
+      await this.meetingsService.ensureSessionForMeeting(meetingId);
     return this.pollService.findBySessionId(session.id);
   }
 

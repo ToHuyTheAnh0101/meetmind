@@ -26,7 +26,8 @@ export class QuestionService {
     data: Partial<MeetingQuestion>,
   ): Promise<MeetingQuestion> {
     // Auto-ensure session exists (will create if needed)
-    const session = await this.meetingsService.ensureSessionForMeeting(meetingId);
+    const session =
+      await this.meetingsService.ensureSessionForMeeting(meetingId);
 
     const question = this.questionRepository.create({
       ...data,

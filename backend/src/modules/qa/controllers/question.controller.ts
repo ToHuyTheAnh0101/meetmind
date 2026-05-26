@@ -30,7 +30,8 @@ export class QuestionController {
   async findAll(
     @Param('meetingId') meetingId: string,
   ): Promise<MeetingQuestion[]> {
-    const session = await this.meetingsService.ensureSessionForMeeting(meetingId);
+    const session =
+      await this.meetingsService.ensureSessionForMeeting(meetingId);
     return this.questionService.findBySessionId(session.id);
   }
 
@@ -53,7 +54,6 @@ export class QuestionController {
     @Param('meetingId') meetingId: string,
     @Param('id') id: string,
     @Body('status') status: QuestionStatus,
-    @Request() req: { user: { id: string } },
   ): Promise<MeetingQuestion> {
     // Optionally validate user permission if needed
     return this.questionService.updateStatus(id, status);
