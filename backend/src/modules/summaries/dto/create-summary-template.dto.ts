@@ -20,6 +20,18 @@ class TemplateSectionDefDto {
   @IsString()
   description?: string;
 
+  @IsOptional()
+  @IsString()
+  blockType?: string;
+
+  @IsOptional()
+  @IsString()
+  aiInstructions?: string;
+
+  @IsOptional()
+  @IsString()
+  placeholders?: string;
+
   @IsNumber()
   order: number;
 }
@@ -39,4 +51,12 @@ export class CreateSummaryTemplateDto {
   @ValidateNested({ each: true })
   @Type(() => TemplateSectionDefDto)
   sections: TemplateSectionDefDto[];
+
+  @IsOptional()
+  @IsString()
+  summaryStyle?: string;
+
+  @IsOptional()
+  @IsString()
+  globalRules?: string;
 }

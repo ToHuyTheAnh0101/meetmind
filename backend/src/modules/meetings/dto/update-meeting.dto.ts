@@ -66,4 +66,8 @@ export class UpdateMeetingDto {
   @IsBoolean()
   @IsOptional()
   isAnonymousAllowed?: boolean;
+
+  @IsString()
+  @IsOptional()
+  templateId?: string;
 }

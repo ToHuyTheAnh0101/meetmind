@@ -24,7 +24,7 @@ import BreakoutManagementModal from './components/room/BreakoutManagementModal'
 import ConfirmEndBreakoutModal from './components/room/ConfirmEndBreakoutModal'
 import { useDataChannel, useLocalParticipant, useParticipants } from '@livekit/components-react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { Toaster } from 'react-hot-toast'
+import { Toaster, toast } from 'react-hot-toast'
 import { showSuccessToast, showErrorToast } from '@/lib/toastUtils'
 
 interface JoinResponse {
@@ -86,7 +86,11 @@ const BreakoutSignalHandler: React.FC = () => {
         assignments
       });
       
-      localParticipant.publishData(new TextEncoder().encode(payload), { reliable: true });
+      try {
+        localParticipant.publishData(new TextEncoder().encode(payload), { reliable: true });
+      } catch (err) {
+        console.error("Failed to publish BREAKOUT_STARTED", err);
+      }
       
       // Manually trigger for the sender (Host)
       window.dispatchEvent(new CustomEvent('breakout-started', { detail: JSON.parse(payload) }));
@@ -94,7 +98,11 @@ const BreakoutSignalHandler: React.FC = () => {
 
     const handleEnd = () => {
       const payload = JSON.stringify({ type: 'BREAKOUT_ENDED' });
-      localParticipant.publishData(new TextEncoder().encode(payload), { reliable: true });
+      try {
+        localParticipant.publishData(new TextEncoder().encode(payload), { reliable: true });
+      } catch (err) {
+        console.error("Failed to publish BREAKOUT_ENDED", err);
+      }
       
       // Manually trigger for the sender (Host)
       window.dispatchEvent(new CustomEvent('breakout-ended', { detail: JSON.parse(payload) }));
@@ -142,6 +150,14 @@ const BreakoutModalWrapper: React.FC<{
         }))
       ]}
       onStart={async (roomsData) => {
+        const startToastId = toast.loading("Đang khởi tạo các phòng thảo luận...", {
+          style: {
+            background: '#111115',
+            color: '#fff',
+            border: '1px solid rgba(255, 255, 255, 0.1)',
+            borderRadius: '1rem',
+          }
+        });
         try {
           // 1. Setup rooms on backend
           await apiClient.post(`/meetings/${meetingId}/breakout-rooms/setup`, {
@@ -157,9 +173,12 @@ const BreakoutModalWrapper: React.FC<{
           // 3. Dispatch signal to participants
           window.dispatchEvent(new CustomEvent('send-breakout-start-signal', { detail: roomsData }));
           
+          toast.dismiss(startToastId);
+          showSuccessToast("Đã bắt đầu chia phòng họp nhỏ!");
           onClose();
         } catch (err) {
           console.error("Failed to start breakout", err);
+          toast.dismiss(startToastId);
           showErrorToast("Không thể khởi động phòng họp nhỏ");
         }
       }}
@@ -310,12 +329,31 @@ const MeetingRoomPage: React.FC = () => {
   const handleCloseBreakoutModal = useCallback(() => setIsBreakoutModalOpen(false), []);
 
   const handleEndSession = useCallback(async () => {
+    const summaryToastId = toast.loading("Đang kết thúc phòng và gửi bản ghi âm cho AI tóm tắt...", {
+      style: {
+        background: '#111115',
+        color: '#fff',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '1rem',
+      }
+    });
+
     try {
-      await apiClient.post(`/meetings/${id}/end`)
-      navigate('/')
+      await apiClient.post(`/meetings/${id}/end`);
+      
+      // Silently trigger background AI summary generation
+      apiClient.post(`/meetings/${id}/summaries/generate`).then(() => {
+        showSuccessToast("AI đã tóm tắt cuộc họp thành công!");
+      }).catch((err) => {
+        console.error("AI summary generation error:", err);
+      });
+
+      toast.dismiss(summaryToastId);
+      navigate('/');
     } catch (err) {
-      console.error("Failed to end meeting", err)
-      navigate('/')
+      console.error("Failed to end meeting", err);
+      toast.dismiss(summaryToastId);
+      navigate('/');
     }
   }, [id, navigate]);
 
@@ -363,39 +401,86 @@ const MeetingRoomPage: React.FC = () => {
  
   const handleBreakoutStarted = useCallback(async (e?: any) => {
     console.log("[BREAKOUT] Signal received:", e?.detail || "Manual/Mount check");
-    // Đợi 1.5 giây để chắc chắn Backend đã commit xong các bản ghi participants
+    
+    // Show a persisting loading toast
+    const loadingToastId = toast.loading(
+      "Đang chuẩn bị phòng thảo luận...",
+      {
+        style: {
+          background: '#111115',
+          color: '#fff',
+          border: '1px solid rgba(255, 255, 255, 0.1)',
+          borderRadius: '1rem',
+        }
+      }
+    );
+    
+    // Wait 1.5 seconds to make sure backend commits are done
     await new Promise(resolve => setTimeout(resolve, 1500));
     
     try {
       const resp = await apiClient.get(`/meetings/${id}/breakout-rooms/my-token`);
       if (resp.data && resp.data.token) {
+          toast.loading(`Đang di chuyển sang ${resp.data.roomName}...`, { id: loadingToastId });
           setJoinData((prev: any) => ({
             ...prev!,
             token: resp.data.token,
             room: resp.data.roomName,
             isBreakoutRoom: true
           }));
-          showSuccessToast(`Đang chuyển sang ${resp.data.roomName}...`, '🚪');
+          
+          setTimeout(() => {
+            toast.dismiss(loadingToastId);
+            showSuccessToast(`Đã tham gia ${resp.data.roomName}`, '🚪');
+          }, 3500);
         } else {
           console.log("[BREAKOUT] No token returned for this user. Staying in current room.");
+          toast.dismiss(loadingToastId);
         }
     } catch (err) {
       console.error("Failed to join breakout room", err);
+      toast.dismiss(loadingToastId);
+      showErrorToast("Không thể chuyển sang phòng thảo luận");
     }
   }, [id]);
 
   const handleBreakoutEnded = useCallback(async () => {
     console.log("[BREAKOUT] End signal received.");
-    showSuccessToast("Quay lại phòng chính", '🏠');
+    
+    const loadingToastId = toast.loading("Đang di chuyển về phòng chính...", {
+      style: {
+        background: '#111115',
+        color: '#fff',
+        border: '1px solid rgba(255, 255, 255, 0.1)',
+        borderRadius: '1rem',
+      }
+    });
+
+    // Notify backend that this user is leaving the breakout room
+    try {
+      await apiClient.post(`/meetings/${id}/breakout-rooms/leave`);
+    } catch (err) {
+      console.error("Failed to clear breakout room assignment on backend", err);
+    }
     
     if (originalJoinData) {
       setJoinData(originalJoinData);
+      setTimeout(() => {
+        toast.dismiss(loadingToastId);
+        showSuccessToast("Đã quay lại phòng chính", '🏠');
+      }, 3500);
     } else {
       try {
         const res = await apiClient.post(`/meetings/${id}/join`);
         setJoinData((prev: any) => prev ? { ...prev, token: res.data.token, isBreakoutRoom: false } : res.data);
+        setTimeout(() => {
+          toast.dismiss(loadingToastId);
+          showSuccessToast("Đã quay lại phòng chính", '🏠');
+        }, 3500);
       } catch (err) {
         console.error("Failed to return to main room", err);
+        toast.dismiss(loadingToastId);
+        showErrorToast("Lỗi khi quay lại phòng chính");
       }
     }
   }, [id, originalJoinData]);
@@ -682,6 +767,7 @@ const MeetingRoomPage: React.FC = () => {
               await apiClient.post(`/meetings/${id}/breakout-rooms/end`);
               window.dispatchEvent(new CustomEvent('send-breakout-end-signal'));
               showSuccessToast("Đã kết thúc thảo luận nhóm", '🏠');
+              setIsConfirmEndOpen(false);
             } catch (err) {
               console.error("Failed to end breakout", err);
               showErrorToast("Không thể kết thúc chia phòng");

@@ -5,6 +5,12 @@ import {
   GenerativeModel,
   Part,
 } from '@google/generative-ai';
+import {
+  ANSWER_QUESTION_PROMPT,
+  DEFAULT_SUMMARY_PROMPT,
+  compileSummaryTemplatePrompt,
+  PromptTemplateInput,
+} from './prompts';
 
 type TranscriptionSegment = {
   speaker: string;
@@ -33,14 +39,7 @@ export class AiService {
    */
   async answerQuestion(question: string, context: string): Promise<string> {
     try {
-      const prompt = `
-        Bạn là một trợ lý cuộc họp thông minh. Dựa trên nội dung cuộc họp sau đây:
-        
-        ${context}
-        
-        Hãy trả lời câu hỏi: ${question}
-      `;
-
+      const prompt = ANSWER_QUESTION_PROMPT(question, context);
       const result = await this.model.generateContent(prompt);
       const response = result.response;
       return response.text();
@@ -55,26 +54,32 @@ export class AiService {
    */
   async generateSummary(title: string, transcript: string): Promise<string> {
     try {
-      const prompt = `
-        Bạn là một trợ lý cuộc họp chuyên nghiệp. Hãy phân tích đoạn hội thoại/nội dung cuộc họp "${title}" sau đây:
-        
-        ${transcript}
-        
-        Hãy tạo một bản tóm tắt cuộc họp cực kỳ chuyên nghiệp bằng tiếng Việt, có cấu trúc rõ ràng sử dụng Markdown bao gồm các mục chính:
-        1. **Tổng quan cuộc họp** (Tóm tắt ngắn gọn mục đích và không khí cuộc họp)
-        2. **Các chủ đề thảo luận chính** (Chi tiết thảo luận từng phần)
-        3. **Quyết định quan trọng** (Các quyết định đã thống nhất)
-        4. **Hành động tiếp theo (Action Items)** (Công việc cần làm, người phụ trách và thời hạn nếu có)
-
-        Hãy trình bày thật ngắn gọn, súc tích, trực quan và dễ đọc.
-      `;
-
+      const prompt = DEFAULT_SUMMARY_PROMPT(title, transcript);
       const result = await this.model.generateContent(prompt);
       const response = result.response;
       return response.text();
     } catch (error) {
       console.error('Error generating summary:', error);
       throw new Error('Failed to generate summary');
+    }
+  }
+
+  /**
+   * Tạo bản tóm tắt cuộc họp dựa trên mẫu tóm tắt (Template) cấu trúc
+   */
+  async generateSummaryWithTemplate(
+    title: string,
+    transcript: string,
+    template: PromptTemplateInput,
+  ): Promise<string> {
+    try {
+      const prompt = compileSummaryTemplatePrompt(title, transcript, template);
+      const result = await this.model.generateContent(prompt);
+      const response = result.response;
+      return response.text();
+    } catch (error) {
+      console.error('Error generating summary with template:', error);
+      throw new Error('Failed to generate summary with template');
     }
   }
 

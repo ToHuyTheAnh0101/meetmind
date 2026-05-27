@@ -1,0 +1,36 @@
+{
+  "name": "Thảo luận ý tưởng & Sáng tạo",
+  "description": "Mẫu tối ưu cho các buổi họp Brainstorming, tìm kiếm giải pháp mới và ghi nhận ý tưởng đột phá.",
+  "purpose": "brainstorming",
+  "summaryStyle": "detailed",
+  "globalRules": "Không bị ảo giác hóa, chỉ lấy những ý tưởng thực tế được đề xuất và thảo luận trong cuộc họp.",
+  "sections": [
+    {
+      "name": "brainstorm_context",
+      "label": "Ý tưởng trung tâm & Bối cảnh",
+      "blockType": "executive_summary",
+      "description": "Chủ đề sáng tạo chính và mục tiêu cốt lõi",
+      "aiInstructions": "Tóm tắt ngắn gọn chủ đề sáng tạo chính và mục tiêu cốt lõi của buổi thảo luận.",
+      "placeholders": "[Bối cảnh thảo luận ý tưởng]",
+      "order": 1
+    },
+    {
+      "name": "proposed_ideas",
+      "label": "Danh sách ý tưởng đề xuất",
+      "blockType": "custom",
+      "description": "Danh sách chi tiết các ý kiến sáng tạo",
+      "aiInstructions": "Liệt kê tất cả các ý tưởng đã được thảo luận, ghi chú rõ người đề xuất và ưu/nhược điểm sơ bộ nếu có.",
+      "placeholders": "- **[Tên ý tưởng]** (Đề xuất bởi: [Tên người]):\n  * Chi tiết: [Mô tả ngắn]\n  * Đánh giá: [Ưu điểm / Nhược điểm]",
+      "order": 2
+    },
+    {
+      "name": "action_plan",
+      "label": "Kế hoạch thử nghiệm ý tưởng",
+      "blockType": "action_items",
+      "description": "Các bước hành động tiếp theo để triển khai ý tưởng",
+      "aiInstructions": "Nêu rõ các bước hành động tiếp theo để thử nghiệm và triển khai các ý tưởng khả thi nhất.",
+      "placeholders": "- [ ] [Bước hành động cụ thể] - [Người thực hiện]",
+      "order": 3
+    }
+  ]
+}

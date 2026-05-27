@@ -17,17 +17,14 @@ import {
   UploadedFile,
   BadRequestException,
 } from '@nestjs/common';
-// express Request import not needed
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MeetingsService } from '../services/meetings.service';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
-import { Meeting, Participant, MeetingPermission } from '../entities';
+import { Meeting } from '../entities';
 import { CreateMeetingDto } from '../dto/create-meeting.dto';
 import { UpdateMeetingDto } from '../dto/update-meeting.dto';
 import { ListMeetingsDto } from '../dto/list-meetings.dto';
 import { PaginatedResult } from '../../../common/interfaces/paginated-result.interface';
-import { JoinResponseDto } from '../dto/join-response.dto';
-import { JoinMeetingDto } from '../dto/join-meeting.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { MailService } from '../../../providers/mail/mail.service';
 import { Inject } from '@nestjs/common';
@@ -83,7 +80,6 @@ export class MeetingsController {
       createdAt: meeting.createdAt,
     };
 
-    // Lưu vào cache trong 5 phút (300000ms)
     await this.cacheManager.set(cacheKey, publicInfo, 300000);
     return publicInfo;
   }
@@ -120,7 +116,6 @@ export class MeetingsController {
     @Request() req: { user: { id: string } },
   ): Promise<Meeting> {
     const result = await this.meetingsService.update(id, dto, req.user.id);
-    // Xóa cache khi update
     await this.cacheManager.del(`meeting_public:${id}`);
     return result;
   }
@@ -133,52 +128,7 @@ export class MeetingsController {
     @Request() req: { user: { id: string } },
   ): Promise<void> {
     await this.meetingsService.remove(id, req.user.id);
-    // Xóa cache khi delete
     await this.cacheManager.del(`meeting_public:${id}`);
-  }
-
-  @Post(':id/join')
-  @UseGuards(JwtAuthGuard)
-  async joinMeeting(
-    @Param('id') id: string,
-    @Body() dto: JoinMeetingDto,
-    @Request() req: { user: { id: string } },
-  ): Promise<JoinResponseDto> {
-    return this.meetingsService.joinMeeting(
-      id,
-      req.user.id,
-      dto.password,
-      dto.displayName,
-    );
-  }
-
-  @Post(':id/sessions/start')
-  @UseGuards(JwtAuthGuard)
-  async startSession(
-    @Param('id') id: string,
-    @Request() req: { user: { id: string } },
-  ) {
-    return this.meetingsService.startSession(id, req.user.id);
-  }
-
-  @Post(':id/sessions/:sessionId/end')
-  @UseGuards(JwtAuthGuard)
-  async endSession(
-    @Param('id') id: string,
-    @Param('sessionId') sessionId: string,
-    @Request() req: { user: { id: string } },
-  ) {
-    return this.meetingsService.endSession(id, sessionId, req.user.id);
-  }
-
-  @Post(':id/chat')
-  @UseGuards(JwtAuthGuard)
-  async chatWithAI(
-    @Param('id') id: string,
-    @Body('question') question: string,
-    @Request() req: { user: { id: string } },
-  ): Promise<{ answer: string }> {
-    return this.meetingsService.chatWithAI(id, question, req.user.id);
   }
 
   @Post(':id/end')
@@ -190,83 +140,14 @@ export class MeetingsController {
     return this.meetingsService.endMeeting(id, req.user.id);
   }
 
-  @Post(':id/admit/:userId')
+  @Post(':id/chat')
   @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async admitParticipant(
+  async chatWithAI(
     @Param('id') id: string,
-    @Param('userId') userId: string,
+    @Body('question') question: string,
     @Request() req: { user: { id: string } },
-  ): Promise<void> {
-    return this.meetingsService.admitParticipant(id, userId, req.user.id);
-  }
-
-  @Post(':id/reject/:userId')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async rejectParticipant(
-    @Param('id') id: string,
-    @Param('userId') userId: string,
-    @Request() req: { user: { id: string } },
-  ): Promise<void> {
-    return this.meetingsService.rejectParticipant(id, userId, req.user.id);
-  }
-
-  @Put(':id/participants/permissions/bulk')
-  @UseGuards(JwtAuthGuard)
-  async updateBulkParticipantsPermissions(
-    @Param('id') id: string,
-    @Body()
-    dto: {
-      userIds?: string[];
-      action: 'grant' | 'revoke';
-      permissions: MeetingPermission[];
-    },
-    @Request() req: { user: { id: string } },
-  ): Promise<{ count: number }> {
-    return this.meetingsService.updateBulkParticipantsPermissions(
-      id,
-      dto.userIds,
-      dto.action,
-      dto.permissions,
-      req.user.id,
-    );
-  }
-
-  @Put(':id/participants/:userId/permissions')
-  @UseGuards(JwtAuthGuard)
-  async updateParticipantPermissions(
-    @Param('id') id: string,
-    @Param('userId') userId: string,
-    @Body('permissions') permissions: MeetingPermission[],
-    @Request() req: { user: { id: string } },
-  ): Promise<Participant> {
-    return this.meetingsService.updateParticipantPermissions(
-      id,
-      userId,
-      permissions,
-      req.user.id,
-    );
-  }
-
-  @Post(':id/leave')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async leaveMeeting(
-    @Param('id') id: string,
-    @Request() req: { user: { id: string } },
-  ): Promise<void> {
-    return this.meetingsService.leaveMeeting(id, req.user.id);
-  }
-
-  @Get(':id/participants')
-  @UseGuards(JwtAuthGuard)
-  async getParticipants(
-    @Param('id') id: string,
-    @Query('page') page: number = 1,
-    @Query('limit') limit: number = 10,
-  ): Promise<any> {
-    return this.meetingsService.getParticipants(id, page, limit);
+  ): Promise<{ answer: string }> {
+    return this.meetingsService.chatWithAI(id, question, req.user.id);
   }
 
   @Post('webhooks/livekit')
@@ -300,7 +181,6 @@ export class MeetingsController {
           ? Number(egressInfo.startedAt) / 1000000000
           : 0;
 
-        // Lưu thông tin bản ghi âm vào DB
         await this.meetingsService.saveAudioRecording(
           meetingId,
           participantIdentity,
@@ -331,6 +211,19 @@ export class MeetingsController {
     return this.meetingsService.testTranscribe(id, file);
   }
 
+  @Post(':id/transcribe')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('audio'))
+  async transcribeAndSave(
+    @Param('id') id: string,
+    @UploadedFile() file: any,
+  ): Promise<any> {
+    if (!file) {
+      throw new BadRequestException('No audio file provided');
+    }
+    return await this.meetingsService.transcribeAndSave(id, file);
+  }
+
   @Post('test-mail')
   async testMail(@Body('email') email: string) {
     const mockDate = new Date();
@@ -351,7 +244,7 @@ export class MeetingsController {
       'demo-meeting-id',
       '[Demo] Cuộc họp tổng kết Q2 - MeetMind',
       mockDate,
-      10, // Nhắc trước 10 phút
+      10,
       'http://localhost:3001/room/demo-id-123',
       'meetmind2024',
     );

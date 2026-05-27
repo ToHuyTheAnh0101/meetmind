@@ -14,6 +14,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '@/lib/apiClient';
 
+import { useParticipants } from '@livekit/components-react';
+
 // Tab Components
 import CustomChat from './CustomChat';
 import CustomParticipantList from './CustomParticipantList';
@@ -66,6 +68,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
 }) => {
   const { t } = useTranslation();
   const [breakoutRooms, setBreakoutRooms] = useState<any[]>([]);
+  const participants = useParticipants();
   
   const fetchBreakoutRooms = useCallback(async () => {
     try {
@@ -76,11 +79,14 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
     }
   }, [meetingId]);
 
+  // Track room participants to refresh breakout rooms in real-time
+  const participantsKey = participants.map(p => p.identity).join(',');
+
   useEffect(() => {
     if (activeTab === 'breakout' && isOpen) {
       fetchBreakoutRooms();
     }
-  }, [activeTab, isOpen, fetchBreakoutRooms]);
+  }, [participantsKey, activeTab, isOpen, fetchBreakoutRooms]);
 
   useEffect(() => {
     window.addEventListener('breakout-started', fetchBreakoutRooms);
@@ -136,7 +142,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
 
             {/* Tab Body */}
             <div className="flex-1 overflow-hidden flex flex-col bg-slate-900/30">
-              {activeTab === 'chat' && <CustomChat />}
+              {activeTab === 'chat' && <CustomChat meetingId={meetingId} isInBreakout={isInBreakout} />}
               {activeTab === 'roster' && (
                 <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col">
                    <CustomParticipantList organizerId={organizerId} />
@@ -201,20 +207,30 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {room.participants?.length > 0 ? (
-                              room.participants.map((p: any) => (
-                                <div key={p.id} className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/5">
-                                  <div className="w-4 h-4 rounded-md bg-teal-500/20 flex items-center justify-center text-[8px] text-teal-400 overflow-hidden">
-                                    <img 
-                                      src={p.user?.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.user?.firstName || 'U')}&background=random&color=fff`} 
-                                      alt="" 
-                                      className="w-full h-full object-cover" 
-                                    />
+                              room.participants.map((p: any) => {
+                                const isConnecting = room.status === 'active' && !p.isOnline;
+                                return (
+                                  <div 
+                                    key={p.id} 
+                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/5 transition-all duration-300 ${isConnecting ? 'opacity-40 saturate-[0.25]' : ''}`}
+                                    title={isConnecting ? 'Đang kết nối...' : 'Đã kết nối'}
+                                  >
+                                    <div className="w-4 h-4 rounded-md bg-teal-500/20 flex items-center justify-center text-[8px] text-teal-400 overflow-hidden relative">
+                                      <img 
+                                        src={p.user?.picture || `https://ui-avatars.com/api/?name=${encodeURIComponent(p.user?.firstName || 'U')}&background=random&color=fff`} 
+                                        alt="" 
+                                        className="w-full h-full object-cover" 
+                                      />
+                                      {room.status === 'active' && (
+                                        <div className={`absolute bottom-0 right-0 w-1 h-1 rounded-full ${p.isOnline ? 'bg-emerald-500 animate-pulse shadow-[0_0_4px_rgba(16,185,129,0.8)]' : 'bg-slate-400'}`} />
+                                      )}
+                                    </div>
+                                    <span className="text-[10px] text-slate-300 truncate max-w-[60px]">
+                                      {p.user?.firstName || 'Người dùng'}
+                                    </span>
                                   </div>
-                                  <span className="text-[10px] text-slate-300 truncate max-w-[60px]">
-                                    {p.user?.firstName || 'Người dùng'}
-                                  </span>
-                                </div>
-                              ))
+                                );
+                              })
                             ) : (
                               <span className="text-[10px] text-slate-500 italic">Chưa có người tham gia</span>
                             )}

@@ -9,7 +9,7 @@ import { MeetingPermission } from '../../meetings/entities';
 import { PollRepository } from '../repositories/poll.repository';
 import { MeetingSessionRepository } from '../../meetings/repositories/meeting-session.repository';
 import { ParticipantRepository } from '../../meetings/repositories/participant.repository';
-import { MeetingsService } from '../../meetings/services/meetings.service';
+import { MeetingSessionsService } from '../../meetings/services/meeting-sessions.service';
 
 @Injectable()
 export class PollService {
@@ -17,7 +17,7 @@ export class PollService {
     private pollRepository: PollRepository,
     private sessionRepository: MeetingSessionRepository,
     private participantRepository: ParticipantRepository,
-    private meetingsService: MeetingsService,
+    private sessionsService: MeetingSessionsService,
   ) {}
 
   async create(
@@ -27,7 +27,7 @@ export class PollService {
   ): Promise<MeetingPoll> {
     // Auto-ensure session exists (will create if needed)
     const session =
-      await this.meetingsService.ensureSessionForMeeting(meetingId);
+      await this.sessionsService.ensureSessionForMeeting(meetingId);
 
     const participant = await this.participantRepository.findByMeetingAndUser(
       session.meetingId,

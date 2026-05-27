@@ -86,6 +86,10 @@ export class SummaryTemplateService {
   ): Promise<SummaryTemplate> {
     const template = await this.findById(id);
 
+    if (template.isSystem) {
+      throw new BadRequestException('Cannot edit system templates');
+    }
+
     if (data.isSystem !== undefined) {
       throw new BadRequestException('Cannot modify isSystem flag');
     }

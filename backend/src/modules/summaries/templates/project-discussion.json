@@ -1,0 +1,36 @@
+{
+  "name": "Họp dự án & Phân công",
+  "description": "Dành cho các buổi họp định kỳ, tổng kết tiến độ dự án và cập nhật nhiệm vụ mới.",
+  "purpose": "project_discussion",
+  "summaryStyle": "detailed",
+  "globalRules": "Không bị ảo giác hóa, những nội dung nào nếu không tìm thấy trong tóm tắt hay transcript cuộc họp thì không tự chế, chỉ cần trả lời khôn khéo như không có hoặc không được nhắc đến trong cuộc họp.",
+  "sections": [
+    {
+      "name": "executive_summary",
+      "label": "Tóm tắt điều hành",
+      "blockType": "executive_summary",
+      "description": "Tóm tắt bối cảnh và diễn biến chính cuộc họp",
+      "aiInstructions": "Tóm tắt ngắn gọn 2-3 câu bối cảnh, diễn biến chính và không khí buổi họp cập nhật tiến độ.",
+      "placeholders": "[AI tự động phân tích bối cảnh cuộc họp]",
+      "order": 1
+    },
+    {
+      "name": "todo_table",
+      "label": "Bảng phân công nhiệm vụ",
+      "blockType": "todo_table",
+      "description": "Bảng chi tiết nhiệm vụ giao cho các thành viên",
+      "aiInstructions": "Trích xuất tất cả các đầu việc được giao, người thực hiện và hạn chót. Trình bày dưới dạng bảng Markdown.",
+      "placeholders": "| Nhiệm vụ | Người phụ trách | Hạn chót | Trạng thái |\n| :--- | :--- | :--- | :--- |\n| [Tên nhiệm vụ cụ thể] | [Tên người được giao] | [Hạn hoàn thành] | Chưa bắt đầu |",
+      "order": 2
+    },
+    {
+      "name": "decisions",
+      "label": "Các quyết định thống nhất",
+      "blockType": "decisions",
+      "description": "Quyết định quan trọng đã thống nhất",
+      "aiInstructions": "Liệt kê tất cả các quyết định, chính sách, hoặc giải pháp kỹ thuật đã thống nhất trong cuộc họp.",
+      "placeholders": "- Quyết định 1: [Nội dung quyết định]\n- Quyết định 2: [Nội dung quyết định]",
+      "order": 3
+    }
+  ]
+}

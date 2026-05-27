@@ -1,0 +1,36 @@
+{
+  "name": "Gặp gỡ khách hàng & Sales Pitch",
+  "description": "Dành cho các buổi gặp gỡ đối tác, tìm hiểu nhu cầu khách hàng và đề xuất giải pháp.",
+  "purpose": "sales_pitch",
+  "summaryStyle": "detailed",
+  "globalRules": "Trích xuất chính xác các mong muốn hoặc phàn nàn của khách hàng để làm căn cứ follow-up.",
+  "sections": [
+    {
+      "name": "customer_pain_points",
+      "label": "Nhu cầu & Nỗi đau của khách hàng",
+      "blockType": "custom",
+      "description": "Nhu cầu cụ thể và các khó khăn khách hàng đang gặp phải",
+      "aiInstructions": "Phân tích và trích xuất những khó khăn, mong đợi, hoặc nhu cầu cốt lõi mà khách hàng đã chia sẻ.",
+      "placeholders": "- **[Nhu cầu 1]**: [Mô tả nỗi đau hoặc mong muốn của đối tác]\n- **[Nhu cầu 2]**: [Mô tả nỗi đau hoặc mong muốn của đối tác]",
+      "order": 1
+    },
+    {
+      "name": "proposed_solution",
+      "label": "Giải pháp đề xuất & Cam kết giá trị",
+      "blockType": "decisions",
+      "description": "Lộ trình hợp tác và đề xuất giá trị từ phía ta",
+      "aiInstructions": "Liệt kê các giải pháp, tính năng, hoặc lộ trình hợp tác mà phía ta đã đề xuất và khách hàng tỏ ý đồng tình.",
+      "placeholders": "- Đề xuất 1: [Chi tiết giải pháp đề xuất]\n- Đề xuất 2: [Chi tiết giải pháp đề xuất]",
+      "order": 2
+    },
+    {
+      "name": "sales_next_steps",
+      "label": "Các bước theo sát & Hẹn gặp tiếp theo",
+      "blockType": "action_items",
+      "description": "Kế hoạch theo dõi (follow-up) và gửi báo giá tiếp theo",
+      "aiInstructions": "Xác định các việc cần theo sát (follow-up) sau cuộc họp để thúc đẩy tiến độ ký hợp đồng.",
+      "placeholders": "- [ ] [Gửi tài liệu báo giá/đề xuất] - Hạn chót: [Thời gian]\n- [ ] [Lên lịch buổi demo tiếp theo]",
+      "order": 3
+    }
+  ]
+}

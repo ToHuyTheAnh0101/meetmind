@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useRef, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import { 
   useTracks, 
@@ -18,9 +18,13 @@ import {
   ChevronDown, 
   ChevronUp, 
   LogOut,
-  Users as UsersIcon
+  Users as UsersIcon,
+  Mic,
+  Radio
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import apiClient from '@/lib/apiClient';
+import { showSuccessToast, showErrorToast } from '@/lib/toastUtils';
 
 interface MeetingMainStageProps {
   meetingId: string;
@@ -113,6 +117,130 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   const { t } = useTranslation();
   const [isControlsExpanded, setIsControlsExpanded] = useState(true);
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+
+  // Background Media Recording states & refs
+  const [isRecording, setIsRecording] = useState(false);
+  const isRecordingRef = useRef(false);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const chunkIndexRef = useRef(0);
+
+  const stopRecording = () => {
+    isRecordingRef.current = false;
+    setIsRecording(false);
+
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
+    }
+
+    if (recorderRef.current && recorderRef.current.state === 'recording') {
+      recorderRef.current.stop();
+    }
+
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach(track => track.stop());
+      streamRef.current = null;
+    }
+
+    showSuccessToast("Đã tạm dừng trợ lý ghi chép AI.");
+  };
+
+  const startRecording = async () => {
+    try {
+      // 1. Ensure meeting session is active on the backend
+      try {
+        await apiClient.post(`/meetings/${meetingId}/sessions/start`);
+      } catch (err) {
+        console.error("Failed to start session on backend, but proceeding anyway", err);
+      }
+
+      // 2. Request mic permission and get stream
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      streamRef.current = stream;
+
+      isRecordingRef.current = true;
+      setIsRecording(true);
+      chunkIndexRef.current = 0;
+
+      // Helper function to start a recorder instance
+      const startNewRecorder = () => {
+        if (!streamRef.current || !streamRef.current.active || !isRecordingRef.current) return;
+        
+        let options = {};
+        if (MediaRecorder.isTypeSupported('audio/webm;codecs=opus')) {
+          options = { mimeType: 'audio/webm;codecs=opus' };
+        } else if (MediaRecorder.isTypeSupported('audio/ogg;codecs=opus')) {
+          options = { mimeType: 'audio/ogg;codecs=opus' };
+        }
+
+        const recorder = new MediaRecorder(streamRef.current, options);
+        recorderRef.current = recorder;
+
+        recorder.ondataavailable = async (e) => {
+          if (e.data && e.data.size > 0 && isRecordingRef.current) {
+            const audioBlob = e.data;
+            const chunkIndex = chunkIndexRef.current++;
+            console.log(`Uploading audio chunk ${chunkIndex}, size: ${audioBlob.size} bytes`);
+            
+            const formData = new FormData();
+            formData.append('audio', audioBlob, `chunk_${chunkIndex}.webm`);
+
+            try {
+              await apiClient.post(`/meetings/${meetingId}/transcribe`, formData, {
+                headers: {
+                  'Content-Type': 'multipart/form-data',
+                },
+              });
+              console.log(`Successfully uploaded chunk ${chunkIndex}`);
+            } catch (err) {
+              console.error(`Failed to upload chunk ${chunkIndex}`, err);
+            }
+          }
+        };
+
+        recorder.onstop = () => {
+          if (isRecordingRef.current) {
+            startNewRecorder();
+          }
+        };
+
+        recorder.start();
+
+        timeoutRef.current = setTimeout(() => {
+          if (recorder.state === 'recording') {
+            recorder.stop();
+          }
+        }, 15000);
+      };
+
+      startNewRecorder();
+      showSuccessToast("Đã kích hoạt trợ lý ghi chép AI!");
+    } catch (err) {
+      console.error("Failed to start MediaRecorder", err);
+      showErrorToast("Không thể bắt đầu ghi âm. Vui lòng cấp quyền micro.");
+      setIsRecording(false);
+      isRecordingRef.current = false;
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      // Clean up recording on unmount
+      isRecordingRef.current = false;
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+      if (recorderRef.current && recorderRef.current.state === 'recording') {
+        recorderRef.current.stop();
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach(track => track.stop());
+      }
+    };
+  }, []);
+
   const tracks = useTracks([
     { source: Track.Source.Camera, withPlaceholder: true },
     { source: Track.Source.ScreenShare, withPlaceholder: false }
@@ -161,12 +289,40 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
           <div className="flex items-center gap-4">
             <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
             <span className="text-lg font-medium text-white/90">{t('meeting.live_session')}: {meetingId?.slice(0, 8)}</span>
+            {isRecording && (
+              <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+                <div className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
+                <span className="text-xs font-bold text-cyan-400 tracking-wider animate-pulse">Trợ lý AI đang ghi chép...</span>
+              </div>
+            )}
           </div>
           <div className="flex items-center gap-3">
             {isOrganizer && (
-              <button onClick={() => setShowEndConfirmation(true)} className="px-6 py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-medium transition-all shadow-lg shadow-rose-500/20">
-                {t('meeting.end_session')}
-              </button>
+              <>
+                <button 
+                  onClick={isRecording ? stopRecording : startRecording} 
+                  className={`px-5 py-3 rounded-2xl flex items-center gap-2.5 font-semibold text-sm transition-all tracking-tight active:scale-95 border ${
+                    isRecording 
+                      ? 'bg-cyan-500/15 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]' 
+                      : 'bg-white/5 border-white/10 hover:bg-white/10 text-white/80'
+                  }`}
+                >
+                  {isRecording ? (
+                    <>
+                      <Radio className="h-4 w-4 animate-pulse text-cyan-400" />
+                      <span>Dừng trợ lý ghi chép</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="h-4 w-4 text-white/60" />
+                      <span>Trợ lý ghi chép AI</span>
+                    </>
+                  )}
+                </button>
+                <button onClick={() => setShowEndConfirmation(true)} className="px-6 py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-medium transition-all shadow-lg shadow-rose-500/20">
+                  {t('meeting.end_session')}
+                </button>
+              </>
             )}
           </div>
       </div>

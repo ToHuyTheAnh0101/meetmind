@@ -7,7 +7,7 @@ import {
 import { MeetingAnswer } from '../entities/meeting-answer.entity';
 import { QuestionRepository } from '../repositories/question.repository';
 import { MeetingSessionRepository } from '../../meetings/repositories/meeting-session.repository';
-import { MeetingsService } from '../../meetings/services/meetings.service';
+import { MeetingSessionsService } from '../../meetings/services/meeting-sessions.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 
@@ -16,7 +16,7 @@ export class QuestionService {
   constructor(
     private questionRepository: QuestionRepository,
     private sessionRepository: MeetingSessionRepository,
-    private meetingsService: MeetingsService,
+    private sessionsService: MeetingSessionsService,
     @InjectRepository(MeetingAnswer)
     private answerRepository: Repository<MeetingAnswer>,
   ) {}
@@ -27,7 +27,7 @@ export class QuestionService {
   ): Promise<MeetingQuestion> {
     // Auto-ensure session exists (will create if needed)
     const session =
-      await this.meetingsService.ensureSessionForMeeting(meetingId);
+      await this.sessionsService.ensureSessionForMeeting(meetingId);
 
     const question = this.questionRepository.create({
       ...data,

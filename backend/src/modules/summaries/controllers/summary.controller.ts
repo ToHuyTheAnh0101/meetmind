@@ -26,18 +26,18 @@ export class SummaryController {
     return this.summaryService.findByMeetingId(meetingId);
   }
 
-  @Get(':id')
-  @UseGuards(JwtAuthGuard)
-  async findOne(@Param('id') id: string): Promise<Summary> {
-    return this.summaryService.findById(id);
-  }
-
   @Get('overall')
   @UseGuards(JwtAuthGuard)
   async getOverallSummary(
     @Param('meetingId') meetingId: string,
   ): Promise<Summary | null> {
     return this.summaryService.findOverallSummary(meetingId);
+  }
+
+  @Get(':id')
+  @UseGuards(JwtAuthGuard)
+  async findOne(@Param('id') id: string): Promise<Summary> {
+    return this.summaryService.findById(id);
   }
 
   @Post('generate')

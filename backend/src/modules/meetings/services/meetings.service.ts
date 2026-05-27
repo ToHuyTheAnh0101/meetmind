@@ -3,7 +3,6 @@ import {
   NotFoundException,
   ForbiddenException,
   BadRequestException,
-  UnauthorizedException,
   Logger,
 } from '@nestjs/common';
 import * as fs from 'fs';
@@ -15,33 +14,24 @@ import type { Cache } from 'cache-manager';
 import {
   Meeting,
   MeetingStatus,
-  Participant,
+  MeetingRecording,
+  MeetingAccessType,
   ParticipantStatus,
   MeetingPermission,
-  MeetingAccessType,
-  // TranscriptChunk removed (unused in this service)
-  MeetingRecording,
+  MeetingSessionStatus,
 } from '../entities';
-import {
-  LiveKitService,
-  LiveKitTokenGrants,
-} from '../../../providers/livekit/livekit.service';
+import { LiveKitService } from '../../../providers/livekit/livekit.service';
 import { UsersService } from '../../users/users.service';
 import { CreateMeetingDto } from '../dto/create-meeting.dto';
 import { UpdateMeetingDto } from '../dto/update-meeting.dto';
 import { ListMeetingsDto } from '../dto/list-meetings.dto';
 import { PaginatedResult } from '../../../common/interfaces/paginated-result.interface';
 import { PaginationHelper } from '../../../common/utils/pagination.helper';
-import {
-  JoinResponseDto,
-  ParticipantSummaryDto,
-} from '../dto/join-response.dto';
-import { MeetingSession, MeetingSessionStatus } from '../entities';
-import { MeetingSessionRepository } from '../repositories/meeting-session.repository';
 import { MeetingRepository } from '../repositories/meeting.repository';
 import { ParticipantRepository } from '../repositories/participant.repository';
 import { TranscriptRepository } from '../repositories/transcript.repository';
 import { MeetingRecordingRepository } from '../repositories/meeting-recording.repository';
+import { MeetingSessionRepository } from '../repositories/meeting-session.repository';
 import { MailService } from '../../../providers/mail/mail.service';
 import { AiService } from '../../../providers/ai/ai.service';
 
@@ -62,83 +52,6 @@ export class MeetingsService {
     private mailService: MailService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
-
-  // Phase 1: start a session when host starts recording
-  async startSession(
-    meetingId: string,
-    userId: string,
-  ): Promise<MeetingSession> {
-    const meeting = await this.findOne(meetingId);
-    if (!meeting) throw new Error('Meeting not found');
-
-    // Only organizer can start session/record by default
-    if (meeting.organizerId !== userId) {
-      throw new Error('Only organizer can start session');
-    }
-
-    // If an active session exists, return it
-    const active = await this.sessionRepository.findActiveByMeeting(meetingId);
-    if (active) return active;
-
-    const session = this.sessionRepository.create({
-      meetingId,
-      actualStartTime: new Date(),
-      status: MeetingSessionStatus.ONGOING,
-    });
-
-    return this.sessionRepository.save(session);
-  }
-
-  async endSession(
-    meetingId: string,
-    sessionId: string,
-    userId: string,
-  ): Promise<MeetingSession> {
-    const meeting = await this.findOne(meetingId);
-    if (!meeting) throw new Error('Meeting not found');
-    if (meeting.organizerId !== userId)
-      throw new Error('Only organizer can end session');
-
-    const session = await this.sessionRepository.findById(sessionId);
-    if (!session) throw new Error('Session not found');
-
-    session.actualEndTime = new Date();
-    session.status = MeetingSessionStatus.COMPLETED;
-
-    const saved = await this.sessionRepository.save(session);
-
-    // Clear cache when session ends
-    const cacheKey = `session:${meetingId}`;
-    await this.cacheManager.del(cacheKey);
-
-    return saved;
-  }
-
-  /**
-   * Ensure session exists for a meeting, auto-create if not
-   * Uses cache to avoid repeated DB queries
-   */
-  async ensureSessionForMeeting(meetingId: string): Promise<MeetingSession> {
-    const cacheKey = `session:${meetingId}`;
-
-    // Check cache first
-    const cachedSession = await this.cacheManager.get<MeetingSession>(cacheKey);
-    if (cachedSession) {
-      return cachedSession;
-    }
-
-    // Query DB for active session
-    let session = await this.sessionRepository.findActiveByMeeting(meetingId);
-    if (!session) {
-      // Auto-create session if none exists
-      const meeting = await this.findOne(meetingId);
-      session = await this.startSession(meetingId, meeting.organizerId);
-    }
-
-    // Cache the session
-    await this.cacheManager.set(cacheKey, session, 0);
-    return session;
-  }
 
   async create(dto: CreateMeetingDto, userId: string): Promise<Meeting> {
     const { password, ...meetingData } = dto;
@@ -231,245 +144,6 @@ export class MeetingsService {
     return this.findOne(savedMeeting.id);
   }
 
-  async joinMeeting(
-    id: string,
-    userId: string,
-    password?: string,
-    displayName?: string,
-  ): Promise<JoinResponseDto> {
-    console.log(
-      `[MeetingsService] Attempting to join meeting: ${id} for user: ${userId}`,
-    );
-    try {
-      const meeting = await this.findOne(id);
-
-      if (
-        meeting.status === MeetingStatus.COMPLETED ||
-        meeting.status === MeetingStatus.CANCELLED
-      ) {
-        throw new BadRequestException(
-          'Cannot join a completed or cancelled meeting',
-        );
-      }
-
-      let participant = await this.participantsRepository.findByMeetingAndUser(
-        id,
-        userId,
-      );
-
-      const isOrganizer =
-        participant?.isOrganizer || meeting.organizerId === userId;
-
-      // Password Validation
-      if (meeting.password && !isOrganizer) {
-        if (!password) {
-          throw new UnauthorizedException('Password required for this meeting');
-        }
-
-        if (password !== meeting.password) {
-          throw new UnauthorizedException('Invalid meeting password');
-        }
-      }
-
-      const organizerPermissions = [
-        MeetingPermission.EDIT_SUMMARY,
-        MeetingPermission.CHAT_WITH_AI,
-        MeetingPermission.UPDATE_PERMISSIONS,
-        MeetingPermission.VIEW_TRANSCRIPT,
-        MeetingPermission.DOWNLOAD_RECORDING,
-        MeetingPermission.EDIT_MEETING_INFO,
-        MeetingPermission.MANAGE_POLLS,
-      ];
-
-      if (!participant) {
-        // If waiting room is enabled and user is not organizer, they start as WAITING
-        const initialStatus =
-          meeting.waitingRoomEnabled && !isOrganizer
-            ? ParticipantStatus.WAITING
-            : ParticipantStatus.ADMITTED;
-
-        const newParticipant = this.participantsRepository.create({
-          meetingId: id,
-          userId,
-          displayName: displayName, // Save the name from lobby
-          isOrganizer: isOrganizer,
-          status: initialStatus,
-          isInMeeting: initialStatus === ParticipantStatus.ADMITTED,
-          permissions: isOrganizer ? organizerPermissions : [],
-        });
-        participant = (await this.participantsRepository.save(
-          newParticipant,
-        )) as Participant;
-      } else {
-        // If participant already exists, update their displayName if provided
-        if (displayName) {
-          participant.displayName = displayName;
-        }
-
-        // If participant already exists
-        if (isOrganizer && !participant.isOrganizer) {
-          // Upgrade existing record to organizer if they are the meeting owner
-          participant.isOrganizer = true;
-          participant.status = ParticipantStatus.ADMITTED;
-          participant.permissions = organizerPermissions;
-        }
-
-        // Refined Waiting Room Logic:
-        // If room is protected, and user is not in the meeting (new join, re-join, or was denied)
-        // Put them back to WAITING to be admitted again
-        if (
-          meeting.waitingRoomEnabled &&
-          !isOrganizer &&
-          (!participant.isInMeeting ||
-            participant.status === ParticipantStatus.DENIED)
-        ) {
-          participant.status = ParticipantStatus.WAITING;
-        }
-
-        // If they are ADMITTED (or just became admitted), mark as in meeting
-        if (participant.status === ParticipantStatus.ADMITTED) {
-          participant.isInMeeting = true;
-        }
-
-        participant = (await this.participantsRepository.save(
-          participant,
-        )) as Participant;
-      }
-
-      const user = await this.usersService.findById(userId);
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
-      const fullName = displayName || `${user.firstName} ${user.lastName}`;
-
-      // If user is WAITING or DENIED, do not generate token
-      if (!participant || participant.status !== ParticipantStatus.ADMITTED) {
-        return {
-          meetingId: meeting.id,
-          organizerId: meeting.organizerId,
-          status: participant?.status || ParticipantStatus.DENIED,
-          token: '',
-          liveKitUrl: '',
-          participants: [],
-        };
-      }
-
-      // Safety check for livekit room name
-      const roomName = meeting.livekitRoomName || meeting.id;
-
-      const grants: LiveKitTokenGrants = {
-        roomJoin: true,
-        room: roomName,
-        canPublish: true,
-        canSubscribe: true,
-        canPublishData: true,
-        roomRecord: isOrganizer,
-      };
-
-      const metadata = JSON.stringify({ avatar: user.picture });
-
-      const token = await this.liveKitService.generateToken(
-        roomName,
-        userId,
-        fullName,
-        grants,
-        metadata,
-      );
-
-      if (meeting.status === MeetingStatus.SCHEDULED) {
-        meeting.status = MeetingStatus.ONGOING;
-        await this.meetingsRepository.save(meeting);
-      }
-
-      const participantsData = await this.getParticipants(id, 1, 100);
-      const participantSummaries: ParticipantSummaryDto[] =
-        participantsData.items
-          .filter((p) => p && p.user)
-          .map((p) => ({
-            id: p.user?.id || p.userId,
-            firstName: p.user?.firstName || 'Unknown',
-            lastName: p.user?.lastName || 'Participant',
-            picture: p.user?.picture,
-            isOrganizer: p.isOrganizer,
-            permissions: p.permissions,
-            status: p.status,
-          }));
-
-      return {
-        meetingId: meeting.id,
-        organizerId: meeting.organizerId,
-        status: ParticipantStatus.ADMITTED,
-        token,
-        liveKitUrl: this.configService.get<string>('LIVEKIT_URL') || '',
-        participants: participantSummaries,
-      };
-    } catch (error) {
-      console.error('CRITICAL ERROR in joinMeeting:', error);
-      throw error;
-    }
-  }
-
-  async admitParticipant(
-    id: string,
-    userId: string,
-    hostId: string,
-  ): Promise<void> {
-    console.log(
-      `[MeetingsService] Admitting user ${userId} to meeting ${id} by host ${hostId}`,
-    );
-    const meeting = await this.findOne(id);
-    if (meeting.organizerId !== hostId) {
-      throw new ForbiddenException('Only the organizer can admit participants');
-    }
-
-    const participant = await this.participantsRepository.findByMeetingAndUser(
-      id,
-      userId,
-    );
-    if (!participant) {
-      throw new NotFoundException('Participant not found');
-    }
-
-    participant.status = ParticipantStatus.ADMITTED;
-    participant.isInMeeting = true;
-    await this.participantsRepository.save(participant);
-  }
-
-  async rejectParticipant(
-    id: string,
-    userId: string,
-    hostId: string,
-  ): Promise<void> {
-    const meeting = await this.findOne(id);
-    if (meeting.organizerId !== hostId) {
-      throw new ForbiddenException(
-        'Only the organizer can reject participants',
-      );
-    }
-
-    const participant = await this.participantsRepository.findByMeetingAndUser(
-      id,
-      userId,
-    );
-    if (!participant) {
-      throw new NotFoundException('Participant not found');
-    }
-
-    participant.status = ParticipantStatus.DENIED;
-    await this.participantsRepository.save(participant);
-  }
-
-  async leaveMeeting(id: string, userId: string): Promise<void> {
-    const participant = await this.participantsRepository.findByMeetingAndUser(
-      id,
-      userId,
-    );
-    if (participant) {
-      participant.isInMeeting = false;
-      await this.participantsRepository.save(participant);
-    }
-  }
-
   async endMeeting(id: string, userId: string): Promise<Meeting> {
     const meeting = await this.findOne(id);
 
@@ -479,14 +153,23 @@ export class MeetingsService {
       );
     }
 
-    if (meeting.status === MeetingStatus.COMPLETED) {
-      throw new BadRequestException('Meeting is already completed');
-    }
-
     const now = new Date();
 
-    meeting.status = MeetingStatus.COMPLETED;
-    meeting.endTime = now;
+    // Reset meeting status to SCHEDULED so that the meeting link can be reused for future sessions
+    meeting.status = MeetingStatus.SCHEDULED;
+    meeting.endTime = null as unknown as Date;
+
+    // End the active session if one exists
+    const activeSession = await this.sessionRepository.findActiveByMeeting(id);
+    if (activeSession) {
+      activeSession.actualEndTime = now;
+      activeSession.status = MeetingSessionStatus.COMPLETED;
+      await this.sessionRepository.save(activeSession);
+
+      // Clear session cache so a new session is auto-created next time
+      const cacheKey = `session:${id}`;
+      await this.cacheManager.del(cacheKey);
+    }
 
     // Delete the room so all users are booted
     try {
@@ -508,10 +191,20 @@ export class MeetingsService {
    */
   async autoComplete(id: string): Promise<Meeting> {
     const meeting = await this.findOne(id);
-    if (meeting.status === MeetingStatus.COMPLETED) return meeting;
 
-    meeting.status = MeetingStatus.COMPLETED;
-    meeting.endTime = new Date();
+    meeting.status = MeetingStatus.SCHEDULED;
+    meeting.endTime = null as unknown as Date;
+
+    const activeSession = await this.sessionRepository.findActiveByMeeting(id);
+    if (activeSession) {
+      activeSession.actualEndTime = new Date();
+      activeSession.status = MeetingSessionStatus.COMPLETED;
+      await this.sessionRepository.save(activeSession);
+
+      // Clear session cache
+      const cacheKey = `session:${id}`;
+      await this.cacheManager.del(cacheKey);
+    }
 
     try {
       await this.liveKitService.deleteRoom(
@@ -645,25 +338,6 @@ export class MeetingsService {
 
     await this.liveKitService.deleteRoom(meeting.livekitRoomName);
     await this.meetingsRepository.remove(meeting);
-  }
-
-  async getParticipants(id: string, page: number = 1, limit: number = 10) {
-    const realParticipants =
-      await this.participantsRepository.findByMeetingId(id);
-
-    const total = realParticipants.length;
-    const startIndex = (page - 1) * limit;
-    const items = realParticipants.slice(startIndex, startIndex + limit);
-
-    return {
-      items,
-      meta: {
-        total,
-        page,
-        limit,
-        totalPages: Math.ceil(total / limit),
-      },
-    };
   }
 
   /**
@@ -813,101 +487,6 @@ export class MeetingsService {
     return result;
   }
 
-  /**
-   * Cập nhật quyền hạn cho thành viên tham gia cuộc họp
-   */
-  async updateParticipantPermissions(
-    meetingId: string,
-    targetUserId: string,
-    permissions: MeetingPermission[],
-    requesterId: string,
-  ): Promise<Participant> {
-    const meeting = await this.findOne(meetingId);
-
-    // Chỉ chủ phòng mới có quyền thay đổi phân quyền
-    if (meeting.organizerId !== requesterId) {
-      throw new ForbiddenException(
-        'Only the organizer can update participant permissions',
-      );
-    }
-
-    const participant = await this.participantsRepository.findByMeetingAndUser(
-      meetingId,
-      targetUserId,
-    );
-
-    if (!participant) {
-      throw new NotFoundException('Participant not found in this meeting');
-    }
-
-    // Cập nhật quyền
-    participant.permissions = permissions;
-    const saved = (await this.participantsRepository.save(
-      participant,
-    )) as Participant;
-    return saved;
-  }
-
-  /**
-   * Cập nhật quyền hạn hàng loạt cho thành viên
-   */
-  async updateBulkParticipantsPermissions(
-    meetingId: string,
-    userIds: string[] | undefined,
-    action: 'grant' | 'revoke',
-    permissions: MeetingPermission[],
-    requesterId: string,
-  ): Promise<{ count: number }> {
-    this.logger.log(
-      `Bulk update: meetingId=${meetingId}, action=${action}, permissions=${JSON.stringify(permissions)}`,
-    );
-    const meeting = await this.findOne(meetingId);
-
-    if (meeting.organizerId !== requesterId) {
-      throw new ForbiddenException(
-        'Only the organizer can update participant permissions',
-      );
-    }
-
-    const query = this.participantsRepository
-      .createQueryBuilder('participant')
-      .where('participant.meetingId = :meetingId', { meetingId })
-      .andWhere('participant.isOrganizer = false');
-
-    if (userIds && userIds.length > 0) {
-      query.andWhere('participant.userId IN (:...userIds)', { userIds });
-    }
-
-    const participants = await query.getMany();
-    this.logger.log(`Updating ${participants.length} participants`);
-
-    for (const participant of participants) {
-      const currentPermissions = participant.permissions || [];
-      let newPermissions: MeetingPermission[];
-
-      if (action === 'grant') {
-        newPermissions = Array.from(
-          new Set([...currentPermissions, ...permissions]),
-        );
-      } else {
-        newPermissions = currentPermissions.filter(
-          (p) => !permissions.includes(p),
-        );
-      }
-
-      participant.permissions = newPermissions;
-    }
-
-    if (participants.length > 0) {
-      await this.participantsRepository.save(participants);
-      this.logger.log(
-        `Successfully updated permissions for ${participants.length} participants`,
-      );
-    }
-
-    return { count: participants.length };
-  }
-
   async chatWithAI(
     meetingId: string,
     question: string,
@@ -930,5 +509,62 @@ export class MeetingsService {
       transcriptText,
     );
     return { answer };
+  }
+
+  /**
+   * Dịch ngầm lát âm thanh và lưu trữ TranscriptChunk
+   */
+  async transcribeAndSave(meetingId: string, file: any): Promise<any> {
+    const meeting = await this.findOne(meetingId);
+    if (!meeting) throw new NotFoundException('Meeting not found');
+
+    // 1. Khởi tạo/Tìm kiếm meeting session đang hoạt động
+    let session = await this.sessionRepository.findActiveByMeeting(meetingId);
+    if (!session) {
+      session = this.sessionRepository.create({
+        meetingId,
+        actualStartTime: new Date(),
+        status: MeetingSessionStatus.ONGOING,
+      });
+      session = await this.sessionRepository.save(session);
+    }
+
+    // 2. Chuyển đổi âm thanh sang văn bản qua Gemini
+    const f = file as {
+      originalname?: string;
+      buffer?: Buffer | Uint8Array | string;
+      mimetype?: string;
+    };
+    const buffer = Buffer.isBuffer(f.buffer)
+      ? f.buffer
+      : Buffer.from(f.buffer || '');
+    const mimetype = typeof f.mimetype === 'string' ? f.mimetype : 'audio/webm';
+
+    const transcriptText = await this.aiService.transcribeAudio(
+      buffer,
+      mimetype,
+    );
+
+    if (!transcriptText || !transcriptText.trim()) {
+      return { success: true, message: 'No speech detected' };
+    }
+
+    // 3. Lưu trữ TranscriptChunk vào cơ sở dữ liệu
+    const chunk = this.transcriptRepository.create({
+      meetingId,
+      sessionId: session.id,
+      content: transcriptText.trim(),
+    });
+
+    await this.transcriptRepository.save(chunk);
+
+    this.logger.log(
+      `Saved transcript chunk for meeting ${meetingId}: ${transcriptText.slice(0, 50)}...`,
+    );
+
+    return {
+      success: true,
+      transcript: transcriptText.trim(),
+    };
   }
 }

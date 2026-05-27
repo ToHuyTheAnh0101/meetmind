@@ -2,14 +2,14 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { MeetingEvent, EventType } from '../entities/meeting-event.entity';
 import { EventRepository } from '../repositories/event.repository';
 import { MeetingSessionRepository } from '../../meetings/repositories/meeting-session.repository';
-import { MeetingsService } from '../../meetings/services/meetings.service';
+import { MeetingSessionsService } from '../../meetings/services/meeting-sessions.service';
 
 @Injectable()
 export class EventService {
   constructor(
     private eventRepository: EventRepository,
     private sessionRepository: MeetingSessionRepository,
-    private meetingsService: MeetingsService,
+    private sessionsService: MeetingSessionsService,
   ) {}
 
   async create(
@@ -18,7 +18,7 @@ export class EventService {
   ): Promise<MeetingEvent> {
     // Auto-ensure session exists (will create if needed)
     const session =
-      await this.meetingsService.ensureSessionForMeeting(meetingId);
+      await this.sessionsService.ensureSessionForMeeting(meetingId);
 
     const event = this.eventRepository.create({
       ...data,

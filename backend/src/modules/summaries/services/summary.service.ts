@@ -1,6 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { Summary } from '../entities/summary.entity';
 import { SummaryRepository } from '../repositories/summary.repository';
+import { SummaryTemplateRepository } from '../repositories/summary-template.repository';
 import { MeetingRepository } from '../../meetings/repositories/meeting.repository';
 import { TranscriptRepository } from '../../meetings/repositories/transcript.repository';
 import { AiService } from '../../../providers/ai/ai.service';
@@ -11,6 +12,7 @@ export class SummaryService {
     private summaryRepository: SummaryRepository,
     private meetingRepository: MeetingRepository,
     private transcriptRepository: TranscriptRepository,
+    private summaryTemplateRepository: SummaryTemplateRepository,
     private aiService: AiService,
   ) {}
 
@@ -67,10 +69,37 @@ export class SummaryService {
       transcriptChunks.map((c) => c.content).join('\n') ||
       `Không có bản dịch thoại trực tiếp. Đây là cuộc họp "${meeting.title}" với mô tả: ${meeting.description || 'Không có mô tả'}.`;
 
-    const summaryText = await this.aiService.generateSummary(
-      meeting.title,
-      transcriptText,
-    );
+    let summaryText: string;
+
+    if (meeting.templateId) {
+      try {
+        const template = await this.summaryTemplateRepository.findById(
+          meeting.templateId,
+        );
+        if (template) {
+          summaryText = await this.aiService.generateSummaryWithTemplate(
+            meeting.title,
+            transcriptText,
+            template,
+          );
+        } else {
+          summaryText = await this.aiService.generateSummary(
+            meeting.title,
+            transcriptText,
+          );
+        }
+      } catch {
+        summaryText = await this.aiService.generateSummary(
+          meeting.title,
+          transcriptText,
+        );
+      }
+    } else {
+      summaryText = await this.aiService.generateSummary(
+        meeting.title,
+        transcriptText,
+      );
+    }
 
     let summary =
       await this.summaryRepository.findOverallByMeetingId(meetingId);

@@ -42,4 +42,20 @@ export class BreakoutRoomParticipantRepository {
   async removeAllForRoom(breakoutRoomId: string): Promise<void> {
     await this.repo.delete({ breakoutRoomId });
   }
+
+  async removeForUserInMeeting(
+    userId: string,
+    meetingId: string,
+  ): Promise<void> {
+    const records = await this.repo
+      .createQueryBuilder('p')
+      .innerJoin('p.breakoutRoom', 'r')
+      .where('p.userId = :userId', { userId })
+      .andWhere('r.meetingId = :meetingId', { meetingId })
+      .getMany();
+
+    if (records.length > 0) {
+      await this.repo.remove(records);
+    }
+  }
 }

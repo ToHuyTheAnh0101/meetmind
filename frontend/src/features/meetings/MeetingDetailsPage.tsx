@@ -21,7 +21,8 @@ import {
   EyeOff,
   Search,
   User,
-  MicOff
+  MicOff,
+  Sparkles
 } from 'lucide-react'
 import { 
   useQuery, 
@@ -35,12 +36,13 @@ import SettingToggle from './components/details/SettingToggle'
 import EmailTagInput from './components/details/EmailTagInput'
 import { useTimeTheme } from '@/hooks/useTimeTheme'
 import { useAuth } from '@/features/auth/AuthContext'
+import { generateDefaultMeetingTitle, getOrganizerDisplayName } from '@/lib/meetingTitleHelper'
 
 import MeetingPermissionsTab from './components/details/MeetingPermissionsTab'
 import { MeetingSummaryTab } from './components/details/MeetingSummaryTab'
 
 const MeetingDetailsPage: React.FC = () => {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const theme = useTimeTheme()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -71,8 +73,22 @@ const MeetingDetailsPage: React.FC = () => {
       'steve.jobs@apple.me', 'tony.stark@stark.id'
     ],
     reminderMinutes: 10,
-    password: ''
+    password: '',
+    templateId: ''
   })
+  
+  // Compute default title preview based on startTime
+  const previewDefaultTitle = React.useMemo(() => {
+    try {
+      // Use startTime if available, otherwise use current time
+      const timeToUse = formData.startTime || new Date().toISOString()
+      const startDate = new Date(timeToUse)
+      const organizerName = user ? getOrganizerDisplayName(user.firstName, user.lastName) : ''
+      return generateDefaultMeetingTitle(startDate, organizerName, i18n.language)
+    } catch {
+      return null
+    }
+  }, [formData.startTime, user, i18n.language])
   
   const [initialData, setInitialData] = useState<string>('')
   const [isDirty, setIsDirty] = useState(false)
@@ -141,6 +157,15 @@ const MeetingDetailsPage: React.FC = () => {
     enabled: !!id && !isNew
   })
 
+  // Fetch available tóm tắt templates
+  const { data: templates = [] } = useQuery<any[]>({
+    queryKey: ['summary-templates'],
+    queryFn: async () => {
+      const response = await apiClient.get('/summary-templates')
+      return response.data
+    }
+  })
+
   const isOrganizer = isNew || (meeting && meeting.organizerId === user?.id)
   const isCoHost = React.useMemo(() => {
     if (!meeting || !user) return false;
@@ -196,7 +221,8 @@ const MeetingDetailsPage: React.FC = () => {
         allowDisplayNameEdit: meeting.allowDisplayNameEdit ?? true,
         inviteeEmails: meeting.inviteeEmails || [],
         reminderMinutes: meeting.reminderMinutes || 10,
-        password: meeting.password || ''
+        password: meeting.password || '',
+        templateId: meeting.templateId || ''
       }
       
       setFormData(loadedData)
@@ -207,6 +233,19 @@ const MeetingDetailsPage: React.FC = () => {
       setIsInstant(true)
     }
   }, [meeting, isNew])
+
+  // Auto-fill title with default title for new meetings when preview is ready
+  useEffect(() => {
+    if (isNew && previewDefaultTitle) {
+      // Always auto-fill title with preview for new meetings
+      setFormData(prev => {
+        if (prev.title !== previewDefaultTitle) {
+          return { ...prev, title: previewDefaultTitle }
+        }
+        return prev
+      })
+    }
+  }, [isNew, previewDefaultTitle])
 
   // 3. Create or Update Mutation
   const mutation = useMutation({
@@ -223,7 +262,8 @@ const MeetingDetailsPage: React.FC = () => {
         allowDisplayNameEdit: data.allowDisplayNameEdit,
         inviteeEmails: data.inviteeEmails,
         reminderMinutes: data.reminderMinutes,
-        password: data.password
+        password: data.password,
+        templateId: data.templateId || null
       }
       
       if (isNew) {
@@ -363,15 +403,17 @@ const MeetingDetailsPage: React.FC = () => {
               )}
               <span className="relative z-10">{t('meeting.permissions.tab_general')}</span>
             </button>
-            <button 
-              onClick={() => setActiveTab('permissions')}
-              className={`relative px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'permissions' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
-            >
-              {activeTab === 'permissions' && (
-                <motion.div layoutId="tab-bg" className="absolute inset-0 bg-white shadow-sm border border-slate-300 rounded-xl" />
-              )}
-              <span className="relative z-10">{t('meeting.permissions.tab_permissions')}</span>
-            </button>
+            {isOrganizer && (
+              <button 
+                onClick={() => setActiveTab('permissions')}
+                className={`relative px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'permissions' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
+              >
+                {activeTab === 'permissions' && (
+                  <motion.div layoutId="tab-bg" className="absolute inset-0 bg-white shadow-sm border border-slate-300 rounded-xl" />
+                )}
+                <span className="relative z-10">{t('meeting.permissions.tab_permissions')}</span>
+              </button>
+            )}
             <button 
               onClick={() => setActiveTab('summary')}
               className={`relative px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${activeTab === 'summary' ? 'text-indigo-600' : 'text-slate-500 hover:text-slate-700'}`}
@@ -411,7 +453,16 @@ const MeetingDetailsPage: React.FC = () => {
                     {isNew && (
                       <div className="flex p-1 rounded-xl bg-slate-100/80 border border-slate-200">
                         <button 
-                          onClick={() => setIsInstant(false)}
+                          onClick={() => {
+                            setIsInstant(false)
+                            // Auto-set start time to next hour when switching to Schedule mode
+                            if (!formData.startTime) {
+                              const nextHour = new Date()
+                              nextHour.setHours(nextHour.getHours() + 1, 0, 0, 0)
+                              const localISO = new Date(nextHour.getTime() - nextHour.getTimezoneOffset() * 60000).toISOString().slice(0, 16)
+                              setFormData(prev => ({ ...prev, startTime: localISO }))
+                            }
+                          }}
                            className={`px-4 py-2 rounded-lg text-sm font-black transition-all ${!isInstant ? 'bg-white shadow-sm text-indigo-600 border border-indigo-100' : 'text-slate-500 hover:text-slate-700'}`}
                         >
                           {t('meeting.schedule_session')}
@@ -427,7 +478,7 @@ const MeetingDetailsPage: React.FC = () => {
                   </div>
 
                   <div className="space-y-6">
-                    <div className="space-y-2">
+                    <div className="space-y-3">
                       <label className="text-[14px] font-bold text-slate-500">{t('meeting.title')}</label>
                       <input
                         type="text"
@@ -437,6 +488,30 @@ const MeetingDetailsPage: React.FC = () => {
                         value={formData.title}
                         onChange={e => setFormData({ ...formData, title: e.target.value })}
                       />
+                      
+                      {/* Default Title Preview */}
+                      {!formData.title && previewDefaultTitle && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -8 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          className="mt-2 flex items-center justify-between gap-3 p-3 rounded-xl bg-gradient-to-r from-cyan-50 to-indigo-50 border border-cyan-100"
+                        >
+                          <div className="flex-1">
+                            <p className="text-xs font-bold text-slate-400 mb-1">{t('meeting.default_title_preview')}</p>
+                            <p className="text-sm font-bold text-cyan-700 italic">{previewDefaultTitle}</p>
+                          </div>
+                          {canEdit && (
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, title: previewDefaultTitle })}
+                              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white text-cyan-600 hover:bg-cyan-50 font-bold text-xs transition-all whitespace-nowrap shadow-sm border border-cyan-100"
+                            >
+                              <Sparkles className="h-3.5 w-3.5" />
+                              {t('common.save') === 'Lưu' ? 'Sử Dụng' : 'Use'}
+                            </button>
+                          )}
+                        </motion.div>
+                      )}
                     </div>
 
                     <div className="space-y-2">
@@ -679,6 +754,28 @@ const MeetingDetailsPage: React.FC = () => {
                                 <option value="60">1h</option>
                              </select>
                           </div>
+
+                          <div className="p-5 rounded-2xl bg-white/40 border border-slate-200 flex flex-col gap-4">
+                              <div className="flex items-center gap-4">
+                                 <div className="h-10 w-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 flex-shrink-0">
+                                    <Sparkles className="h-4 w-4" />
+                                 </div>
+                                 <div>
+                                    <h4 className="text-sm font-black text-slate-900 tracking-tight">Mẫu tóm tắt AI</h4>
+                                    <p className="text-xs font-medium text-slate-500 leading-tight mt-1">Chọn mẫu cấu trúc tóm tắt cuộc họp</p>
+                                 </div>
+                              </div>
+                              <select 
+                                 value={formData.templateId}
+                                 onChange={(e) => setFormData({ ...formData, templateId: e.target.value })}
+                                 className="w-full bg-white/80 backdrop-blur-sm px-4 py-3 rounded-xl text-xs font-black border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/5 transition-all cursor-pointer hover:bg-white"
+                              >
+                                 <option value="">-- Mẫu mặc định (Standard) --</option>
+                                 {templates.map((t: any) => (
+                                    <option key={t.id} value={t.id}>{t.name}</option>
+                                 ))}
+                              </select>
+                           </div>
                        </div>
                     </section>
                   </>
@@ -713,18 +810,12 @@ const MeetingDetailsPage: React.FC = () => {
                     {!isNew && (
                       <>
                         <button 
-                          disabled={meeting?.status === 'completed'}
                           onClick={() => navigate(`/room/${id}`)}
-                          className={`flex w-full items-center justify-center gap-3 rounded-2xl py-4 text-sm font-black text-white shadow-xl transition group ${meeting?.status === 'completed' ? 'bg-slate-400 cursor-not-allowed opacity-70' : 'bg-slate-900 hover:scale-[1.05] active:scale-95'}`}
+                          className="flex w-full items-center justify-center gap-3 rounded-2xl py-4 text-sm font-black text-white shadow-xl transition group bg-slate-900 hover:scale-[1.05] active:scale-95"
                         >
                           <Video className="h-5 w-5 transition-transform group-hover:rotate-12" />
-                          {meeting?.status === 'completed' ? t('meeting.status.completed') : t('meeting.join_workspace')}
+                          {t('meeting.join_workspace')}
                         </button>
-                        {meeting?.status === 'completed' && (
-                           <p className="text-xs font-bold text-rose-500 text-center mt-2 px-4 leading-relaxed">
-                              {t('meeting.meeting_ended_note')}
-                           </p>
-                        )}
                       </>
                     )}
 

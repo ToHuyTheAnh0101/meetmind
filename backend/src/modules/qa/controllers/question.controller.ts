@@ -9,7 +9,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { QuestionService } from '../services/question.service';
-import { MeetingsService } from '../../meetings/services/meetings.service';
+import { MeetingSessionsService } from '../../meetings/services/meeting-sessions.service';
 import {
   MeetingQuestion,
   QuestionStatus,
@@ -22,7 +22,7 @@ import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 export class QuestionController {
   constructor(
     private questionService: QuestionService,
-    private meetingsService: MeetingsService,
+    private sessionsService: MeetingSessionsService,
   ) {}
 
   @Get()
@@ -31,7 +31,7 @@ export class QuestionController {
     @Param('meetingId') meetingId: string,
   ): Promise<MeetingQuestion[]> {
     const session =
-      await this.meetingsService.ensureSessionForMeeting(meetingId);
+      await this.sessionsService.ensureSessionForMeeting(meetingId);
     return this.questionService.findBySessionId(session.id);
   }
 

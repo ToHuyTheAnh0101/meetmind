@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
 import { Clock, ChevronRight, Calendar, MoreVertical } from 'lucide-react'
 import type { Meeting, MeetingStatus } from '@/types/api'
+import { generateDefaultMeetingTitle, getOrganizerDisplayName } from '@/lib/meetingTitleHelper'
 
 interface MeetingCardProps {
   meeting: Meeting
@@ -79,6 +80,14 @@ const MeetingCard: React.FC<MeetingCardProps> = ({ meeting, onClick }) => {
     year: startTime.getFullYear() !== new Date().getFullYear() ? 'numeric' : undefined
   })
 
+  // Get display title - use actual title or generate default
+  const displayTitle = meeting.title || generateDefaultMeetingTitle(
+    meeting.startTime,
+    getOrganizerDisplayName(meeting.organizer?.firstName, meeting.organizer?.lastName),
+    i18n.language
+  )
+  const isDefaultTitle = !meeting.title
+
   return (
     <motion.div
       layout
@@ -95,8 +104,12 @@ const MeetingCard: React.FC<MeetingCardProps> = ({ meeting, onClick }) => {
         {/* Header: Title & Status */}
         <div className="flex items-start justify-between gap-4">
           <div className="flex-1">
-            <h3 className="line-clamp-1 text-lg font-bold text-slate-900 group-hover:text-cyan-700 transition-colors sm:text-xl">
-              {meeting.title}
+            <h3 className={`line-clamp-1 text-lg font-bold transition-colors sm:text-xl ${
+              isDefaultTitle 
+                ? 'text-slate-400 group-hover:text-cyan-600 italic' 
+                : 'text-slate-900 group-hover:text-cyan-700'
+            }`}>
+              {displayTitle}
             </h3>
             <div className="mt-2 flex flex-wrap items-center gap-x-4 gap-y-2 text-sm font-medium text-slate-500">
               <div className="flex items-center gap-1.5">

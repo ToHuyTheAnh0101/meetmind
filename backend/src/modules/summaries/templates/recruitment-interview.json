@@ -1,0 +1,36 @@
+{
+  "name": "Đánh giá Phỏng vấn Tuyển dụng",
+  "description": "Mẫu tóm tắt và đánh giá năng lực ứng viên dành cho hội đồng phỏng vấn và bộ phận nhân sự.",
+  "purpose": "interview",
+  "summaryStyle": "detailed",
+  "globalRules": "Không bị ảo giác hóa, ghi nhận trung thực các phản hồi, câu trả lời và đánh giá kỹ năng của ứng viên có thực tế trong transcript cuộc họp phỏng vấn.",
+  "sections": [
+    {
+      "name": "candidate_profile",
+      "label": "Thông tin ứng viên & Ấn tượng đầu tiên",
+      "blockType": "executive_summary",
+      "description": "Tóm tắt thông tin ứng viên và cảm nhận ban đầu",
+      "aiInstructions": "Tóm tắt ngắn gọn 2-3 câu về vị trí ứng tuyển, lý lịch sơ lược của ứng viên và cảm nhận ban đầu của hội đồng phỏng vấn về tác phong giao tiếp.",
+      "placeholders": "[AI phân tích ấn tượng ban đầu về ứng viên]",
+      "order": 1
+    },
+    {
+      "name": "technical_evaluation",
+      "label": "Đánh giá chuyên môn & Kỹ năng kỹ thuật",
+      "blockType": "todo_table",
+      "description": "Bảng chi tiết các kỹ năng chuyên môn được kiểm tra",
+      "aiInstructions": "Trích xuất các câu hỏi kỹ thuật hoặc bài kiểm tra năng lực đã trao đổi. Trình bày dưới dạng bảng gồm kỹ năng, nhận xét của người phỏng vấn và đánh giá kết quả (Đạt / Chưa đạt / Xuất sắc).",
+      "placeholders": "| Kỹ năng kiểm tra | Chi tiết câu hỏi / Tình huống | Nhận xét chuyên môn | Đánh giá |\n| :--- | :--- | :--- | :--- |\n| [Kỹ năng 1] | [Câu hỏi/Tình huống đưa ra] | [Tóm tắt câu trả lời & khả năng của ứng viên] | Đạt |",
+      "order": 2
+    },
+    {
+      "name": "interview_conclusion",
+      "label": "Kết luận & Đề xuất hành động tiếp theo",
+      "blockType": "decisions",
+      "description": "Kết quả phỏng vấn chung và bước tiếp theo",
+      "aiInstructions": "Nêu rõ kết luận chung của buổi phỏng vấn (Đồng ý tuyển dụng / Cân nhắc vòng sau / Từ chối) và các bước tiếp theo cần thực hiện (ví dụ: gửi bài test, hẹn gặp vòng 2, hoặc chuẩn bị Offer letter).",
+      "placeholders": "- Quyết định đề xuất: [Nhận tuyển dụng / Cân nhắc / Từ chối]\n- Hành động tiếp theo: [Gửi Offer Letter / Hẹn phỏng vấn vòng 2 / Gửi thư từ chối khách sáo] - Phụ trách: [Tên người]",
+      "order": 3
+    }
+  ]
+}

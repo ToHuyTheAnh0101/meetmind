@@ -55,6 +55,8 @@ export interface Meeting {
   reminderMinutes?: number
   password?: string
   organizerId?: string
+  templateId?: string | null
+  template?: SummaryTemplate | null
 }
 
 export interface Participant {
@@ -86,6 +88,10 @@ export enum SummaryTemplatePurpose {
   REPORT = 'report',
   PROJECT_DISCUSSION = 'project_discussion',
   TEAM_MEETING = 'team_meeting',
+  BRAINSTORMING = 'brainstorming',
+  TRAINING = 'training',
+  RETROSPECTIVE = 'retrospective',
+  SALES_PITCH = 'sales_pitch',
   CUSTOM = 'custom',
 }
 
@@ -93,6 +99,9 @@ export interface TemplateSectionDef {
   name: string
   label: string
   description?: string
+  blockType?: string
+  aiInstructions?: string
+  placeholders?: string
   order: number
 }
 
@@ -102,6 +111,8 @@ export interface SummaryTemplate {
   description?: string
   purpose: SummaryTemplatePurpose
   sections: TemplateSectionDef[]
+  summaryStyle?: string
+  globalRules?: string
   isSystem: boolean
   createdByUserId?: string
   createdAt?: string

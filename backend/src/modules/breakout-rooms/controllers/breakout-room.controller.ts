@@ -43,6 +43,14 @@ export class BreakoutRoomController {
     return this.breakoutRoomService.endBreakout(id, req.user.id);
   }
 
+  @Post('leave')
+  async leave(
+    @Param('id') id: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    return this.breakoutRoomService.leaveBreakoutRoom(id, req.user.id);
+  }
+
   @Get('my-token')
   async getMyToken(
     @Param('id') id: string,

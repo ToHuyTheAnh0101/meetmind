@@ -10,6 +10,8 @@ interface SettingToggleProps {
   noBorder?: boolean;
   className?: string;
   disabled?: boolean;
+  labelClassName?: string;
+  descriptionClassName?: string;
 }
 
 const SettingToggle: React.FC<SettingToggleProps> = ({ 
@@ -20,7 +22,9 @@ const SettingToggle: React.FC<SettingToggleProps> = ({
   icon,
   noBorder,
   className,
-  disabled
+  disabled,
+  labelClassName,
+  descriptionClassName
 }) => {
   return (
     <div className={`flex items-center justify-between py-3.5 transition-all ${!noBorder ? 'border-b border-white/5 last:border-0' : ''} ${className || ''} ${disabled ? 'opacity-60 pointer-events-none' : ''}`}>
@@ -31,8 +35,8 @@ const SettingToggle: React.FC<SettingToggleProps> = ({
           </div>
         )}
         <div className="flex flex-col">
-          <h4 className="text-sm font-bold text-slate-900 tracking-tight">{label}</h4>
-          <p className="text-xs font-medium text-slate-500 leading-snug mt-1">{description}</p>
+          <h4 className={`text-sm font-bold tracking-tight ${labelClassName || 'text-slate-900'}`}>{label}</h4>
+          <p className={`text-xs font-medium leading-snug mt-1 ${descriptionClassName || 'text-slate-500'}`}>{description}</p>
         </div>
       </div>
 

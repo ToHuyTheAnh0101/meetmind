@@ -28,3 +28,5 @@ export {
 
 // AI Features
 export { ChatHistory, ChatMessageType } from './ai/chat-history.entity';
+
+export { MeetingChatMessage } from './core/chat-message.entity';

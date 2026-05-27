@@ -69,7 +69,43 @@ export class BreakoutRoomService {
   }
 
   async getBreakoutRooms(meetingId: string) {
-    return this.breakoutRoomRepository.findByMeetingId(meetingId);
+    const rooms = await this.breakoutRoomRepository.findByMeetingId(meetingId);
+
+    return Promise.all(
+      rooms.map(async (room) => {
+        if (room.status === BreakoutRoomStatus.ACTIVE) {
+          try {
+            const activeParticipants =
+              await this.liveKitService.listParticipants(room.livekitRoomName);
+            const activeUserIds = new Set(
+              activeParticipants.map((p) => p.identity),
+            );
+
+            if (room.participants) {
+              room.participants = room.participants.map((p) => ({
+                ...p,
+                isOnline: activeUserIds.has(p.userId),
+              }));
+            }
+          } catch {
+            if (room.participants) {
+              room.participants = room.participants.map((p) => ({
+                ...p,
+                isOnline: false,
+              }));
+            }
+          }
+        } else {
+          if (room.participants) {
+            room.participants = room.participants.map((p) => ({
+              ...p,
+              isOnline: false,
+            }));
+          }
+        }
+        return room;
+      }),
+    );
   }
 
   async startBreakout(meetingId: string, userId: string) {
@@ -182,5 +218,9 @@ export class BreakoutRoomService {
       livekitRoomName: room.livekitRoomName,
       isBreakoutRoom: true,
     };
+  }
+
+  async leaveBreakoutRoom(meetingId: string, userId: string): Promise<void> {
+    await this.participantRepository.removeForUserInMeeting(userId, meetingId);
   }
 }

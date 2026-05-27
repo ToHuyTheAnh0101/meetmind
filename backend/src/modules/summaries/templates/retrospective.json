@@ -1,0 +1,36 @@
+{
+  "name": "Đánh giá cải tiến (Retrospective)",
+  "description": "Mẫu phân tích định kỳ sau mỗi Sprint hoặc dự án để cải tiến quy trình làm việc nhóm.",
+  "purpose": "retrospective",
+  "summaryStyle": "detailed",
+  "globalRules": "Tập trung trung thực vào phản hồi của các thành viên, không tự bịa đặt các vấn đề hoặc điểm tốt không có trong transcript.",
+  "sections": [
+    {
+      "name": "what_went_well",
+      "label": "Điểm tốt (What Went Well)",
+      "blockType": "custom",
+      "description": "Những điểm sáng, quy trình hoạt động tốt",
+      "aiInstructions": "Liệt kê những việc, quy trình hoặc hành động tích cực đã hoạt động hiệu quả trong giaiài qua.",
+      "placeholders": "- **[Điểm sáng 1]**: [Chi tiết vì sao thành công]\n- **[Điểm sáng 2]**: [Chi tiết vì sao thành công]",
+      "order": 1
+    },
+    {
+      "name": "what_to_improve",
+      "label": "Điểm cần cải thiện (What Can Be Improved)",
+      "blockType": "custom",
+      "description": "Các rào cản, khó khăn hoặc nút thắt cổ chai",
+      "aiInstructions": "Xác định các vấn đề, rào cản hoặc nút thắt cổ chai làm chậm tiến độ làm việc nhóm.",
+      "placeholders": "- **[Rào cản 1]**: [Mô tả vấn đề và tác động]\n- **[Rào cản 2]**: [Mô tả vấn đề và tác động]",
+      "order": 2
+    },
+    {
+      "name": "retro_actions",
+      "label": "Hành động khắc phục & Cam kết mới",
+      "blockType": "action_items",
+      "description": "Cam kết hành động cụ thể cho chu kỳ tiếp theo",
+      "aiInstructions": "Đưa ra các giải pháp và hành động cụ thể sẽ được áp dụng ngay trong Sprint tiếp theo để cải tiến.",
+      "placeholders": "- [ ] [Hành động khắc phục] - Phụ trách: [Tên người]",
+      "order": 3
+    }
+  ]
+}
