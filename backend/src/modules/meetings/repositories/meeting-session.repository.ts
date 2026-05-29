@@ -37,4 +37,16 @@ export class MeetingSessionRepository {
       order: { actualStartTime: 'DESC' },
     });
   }
+
+  /**
+   * Find the most recent session for a meeting regardless of status.
+   * Used by transcription so late-arriving chunks from the last recording
+   * period can still be saved even after the session is marked COMPLETED.
+   */
+  async findLatestByMeeting(meetingId: string): Promise<MeetingSession | null> {
+    return this.repo.findOne({
+      where: { meetingId },
+      order: { actualStartTime: 'DESC' },
+    });
+  }
 }

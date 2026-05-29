@@ -78,6 +78,8 @@ export function compileSummaryTemplatePrompt(
         [Yêu cầu định dạng toàn cục - Cực kỳ Nghiêm ngặt]
         - Trả về bản tóm tắt bằng tiếng Việt dưới định dạng Markdown sạch sẽ.
         - Tông giọng/Văn phong: ${styleInstruction}
+        - TUYỆT ĐỐI KHÔNG ĐƯỢC tự ý viết thêm bất kỳ lời dẫn dắt, lời xin lỗi, lời giải thích kỹ thuật hay đoạn văn bình luận nào ở đầu hoặc cuối câu trả lời (ví dụ: "Dựa trên yêu cầu của bạn...", "Tôi chưa thể xác định...", "Tuy nhiên, tôi xin tóm tắt..."). Hãy bắt đầu ngay lập tức bằng tiêu đề của mục đầu tiên (ví dụ: ### **${template.sections[0]?.label || 'Tiêu đề'}**).
+        - TUYỆT ĐỐI KHÔNG ĐƯỢC bao bọc toàn bộ bản tóm tắt hoặc bất kỳ phần nào của bản tóm tắt bằng các ký tự code block (như \`\`\`markdown hoặc \`\`\`). Hãy trả về nội dung Markdown thuần túy trực tiếp.
         - TUYỆT ĐỐI KHÔNG ĐƯỢC SAO CHÉP hoặc in các nhãn kỹ thuật hướng dẫn như: "Mục thứ...", "Tiêu đề mục cần tạo", "Loại khối nội dung", "Yêu cầu tổng quan cho mục này", "Chỉ dẫn phân tích riêng của AI cho mục này", "Cấu trúc hiển thị và các biến mẫu" vào bản tóm tắt cuối cùng. Những nhãn này CHỈ là hướng dẫn thiết kế dành riêng cho bạn để biết cách phân tích và định dạng.
         - Đầu ra cuối cùng cho mỗi mục chỉ được chứa Tiêu đề mục (ví dụ: ### **${template.sections[0]?.label || 'Tiêu đề'}**) và phần nội dung đã được phân tích/điền dữ liệu tương ứng.
         - TUYỆT ĐỐI TRÁNH ẢO GIÁC HÓA: Chỉ trích xuất và hiển thị thông tin thực tế từ đoạn transcript cuộc họp. Không tự ý bịa đặt, phỏng đoán hoặc bổ sung thông tin ngoài lề.

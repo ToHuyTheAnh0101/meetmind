@@ -879,7 +879,8 @@ const MeetingRoomPage: React.FC = () => {
         token={joinData.token}
         serverUrl={joinData.liveKitUrl}
         onDisconnected={() => {
-          const isBreakout = joinData.token.includes('breakout') || !!joinData.isBreakoutRoom;
+          const isBreakout =
+            joinData.token.includes("breakout") || !!joinData.isBreakoutRoom;
           if (isBreakout) {
             handleBreakoutEnded();
           } else {

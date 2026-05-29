@@ -39,6 +39,18 @@ import { AiService } from '../../../providers/ai/ai.service';
 export class MeetingsService {
   private readonly logger = new Logger(MeetingsService.name);
 
+  // Track active background Speech-to-Text translation tasks: "meetingId:userId_chunkIndex"
+  public activeTranscriptions = new Set<string>();
+
+  hasActiveTranscriptions(meetingId: string): boolean {
+    for (const key of this.activeTranscriptions) {
+      if (key.startsWith(`${meetingId}:`)) {
+        return true;
+      }
+    }
+    return false;
+  }
+
   constructor(
     private meetingsRepository: MeetingRepository,
     private participantsRepository: ParticipantRepository,
@@ -560,15 +572,24 @@ export class MeetingsService {
     const meeting = await this.findOne(meetingId);
     if (!meeting) throw new NotFoundException('Meeting not found');
 
-    // 1. Khởi tạo/Tìm kiếm meeting session đang hoạt động
+    // 1. Tìm session để gắn chunk vào.
+    //    Ưu tiên session ONGOING; nếu session vừa kết thúc (COMPLETED) thì
+    //    fallback sang session mới nhất — chunk này chắc chắn thuộc về nó.
     let session = await this.sessionRepository.findActiveByMeeting(meetingId);
     if (!session) {
-      session = this.sessionRepository.create({
-        meetingId,
-        actualStartTime: new Date(),
-        status: MeetingSessionStatus.ONGOING,
-      });
-      session = await this.sessionRepository.save(session);
+      session = await this.sessionRepository.findLatestByMeeting(meetingId);
+    }
+    if (!session) {
+      this.logger.warn(
+        `[STT Rejected] Chunk received for meeting ${meetingId} but no session exists at all. Discarding chunk.`,
+      );
+      throw new BadRequestException('No session found for this meeting');
+    }
+
+    if (session.status !== MeetingSessionStatus.ONGOING) {
+      this.logger.log(
+        `[STT] Session ${session.id} is ${session.status} — attaching late chunk to it anyway.`,
+      );
     }
 
     // 2. Lưu file ghi âm thô xuống đĩa cứng (uploads/recordings/[meetingId])
@@ -614,6 +635,12 @@ export class MeetingsService {
     const userId = body?.userId || undefined;
     const speakerName = body?.speakerName || undefined;
 
+    // Track this active transcription background task
+    const userIdStr = userId || 'unknown';
+    const chunkIndexStr = body?.chunkIndex || String(Date.now());
+    const transcriptionKey = `${meetingId}:${userIdStr}_chunk_${chunkIndexStr}`;
+    this.activeTranscriptions.add(transcriptionKey);
+
     this.aiService
       .transcribeAudio(buffer, mimetype)
       .then(async (transcriptText) => {
@@ -647,6 +674,10 @@ export class MeetingsService {
         this.logger.error(
           `[Background STT Error] Failed to transcribe for meeting ${meetingId}: ${errorMsg}`,
         );
+      })
+      .finally(() => {
+        // Always remove the task from tracking set once completed or failed
+        this.activeTranscriptions.delete(transcriptionKey);
       });
 
     // Trả về kết quả thành công lập tức cho client (Response cực kỳ nhanh < 50ms)

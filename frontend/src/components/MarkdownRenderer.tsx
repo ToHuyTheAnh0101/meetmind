@@ -135,6 +135,24 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     });
   };
 
+  const renderCodeBlock = (codeLines: string[], language: string, codeIdx: number) => {
+    if (codeLines.length === 0) return null;
+    return (
+      <div
+        key={`code-${codeIdx}`}
+        className="my-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 text-slate-100 font-mono text-[12px] shadow-lg animate-in fade-in duration-300"
+      >
+        <div className="flex items-center justify-between bg-slate-800/80 px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-wider select-none border-b border-slate-700/50">
+          <span>{language || "code"}</span>
+          <span className="text-[9px] font-medium text-slate-500 font-sans">AI Content Block</span>
+        </div>
+        <pre className="p-4 overflow-x-auto whitespace-pre-wrap leading-relaxed">
+          <code className="font-mono text-slate-200">{codeLines.join("\n")}</code>
+        </pre>
+      </div>
+    );
+  };
+
   const renderTable = (rows: string[][], tableIdx: number) => {
     if (rows.length === 0) return null;
     
@@ -210,11 +228,36 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   let currentTableRows: string[][] = [];
   let isInsideTable = false;
 
+  let currentCodeLines: string[] = [];
+  let isInsideCode = false;
+  let codeLanguage = "";
+
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const trimmed = line.trim();
 
-    // 1. Table Parser
+    // 1. Code Block Parser
+    if (trimmed.startsWith("```")) {
+      if (isInsideCode) {
+        // End of code block
+        elements.push(renderCodeBlock(currentCodeLines, codeLanguage, i));
+        currentCodeLines = [];
+        isInsideCode = false;
+        codeLanguage = "";
+      } else {
+        // Start of code block
+        isInsideCode = true;
+        codeLanguage = trimmed.slice(3).trim();
+      }
+      continue;
+    }
+
+    if (isInsideCode) {
+      currentCodeLines.push(line);
+      continue;
+    }
+
+    // 2. Table Parser
     if (trimmed.startsWith("|")) {
       isInsideTable = true;
       let cells = line.split("|").map(c => c.trim());
@@ -233,7 +276,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       continue;
     }
 
-    // 2. Headers Parser (# to ######)
+    // 3. Headers Parser (# to ######)
     const headerMatch = line.match(/^(#{1,6})\s+(.*)$/);
     if (headerMatch) {
       const level = headerMatch[1].length;
@@ -255,7 +298,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       continue;
     }
 
-    // 3. Lists Parser (Checklists, Bullet points & Ordered lists)
+    // 4. Lists Parser (Checklists, Bullet points & Ordered lists)
     const todoMatch = line.match(/^(\s*)[-*+]\s+\[([ xX])\]\s+(.*)$/);
     if (todoMatch) {
       const indent = todoMatch[1].length;
@@ -312,7 +355,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       continue;
     }
 
-    // 4. Paragraph Fallback
+    // 5. Paragraph Fallback
     elements.push(
       <p key={i} className="text-sm text-slate-600 pl-4 leading-relaxed font-medium font-sans">
         {formatInlineStyles(line)}
@@ -323,6 +366,11 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   // Handle remaining table rows if at end of file
   if (isInsideTable && currentTableRows.length > 0) {
     elements.push(renderTable(currentTableRows, lines.length));
+  }
+
+  // Handle remaining code block lines if at end of file
+  if (isInsideCode && currentCodeLines.length > 0) {
+    elements.push(renderCodeBlock(currentCodeLines, codeLanguage, lines.length));
   }
 
   return (

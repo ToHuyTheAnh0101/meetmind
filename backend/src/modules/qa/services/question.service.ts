@@ -66,9 +66,8 @@ export class QuestionService {
     id: string,
     status: QuestionStatus,
   ): Promise<MeetingQuestion> {
-    const question = await this.findById(id);
-    question.status = status;
-    return this.questionRepository.save(question);
+    await this.questionRepository.save({ id, status });
+    return this.findById(id);
   }
 
   async createAnswer(
@@ -88,8 +87,10 @@ export class QuestionService {
 
     // Update question status if it was pending and answered by moderator
     if (question.status === QuestionStatus.PENDING) {
-      question.status = QuestionStatus.ANSWERED;
-      await this.questionRepository.save(question);
+      await this.questionRepository.save({
+        id: questionId,
+        status: QuestionStatus.ANSWERED,
+      });
     }
 
     return savedAnswer;

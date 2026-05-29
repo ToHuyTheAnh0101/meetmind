@@ -5,6 +5,7 @@ import { SummaryTemplateRepository } from '../repositories/summary-template.repo
 import { MeetingRepository } from '../../meetings/repositories/meeting.repository';
 import { TranscriptRepository } from '../../meetings/repositories/transcript.repository';
 import { AiService } from '../../../providers/ai/ai.service';
+import { MeetingsService } from '../../meetings/services/meetings.service';
 
 @Injectable()
 export class SummaryService {
@@ -14,6 +15,7 @@ export class SummaryService {
     private transcriptRepository: TranscriptRepository,
     private summaryTemplateRepository: SummaryTemplateRepository,
     private aiService: AiService,
+    private meetingsService: MeetingsService,
   ) {}
 
   async create(meetingId: string, data: Partial<Summary>): Promise<Summary> {
@@ -88,14 +90,13 @@ export class SummaryService {
     const savedSummary = await this.summaryRepository.save(summary);
 
     // 2. Launch AI summarization as an asynchronous non-blocking background job
-    this.transcriptRepository
-      .findBySessionId(sessionId || '')
-      .then(async (transcriptChunks) => {
-        // If sessionId was not passed, fallback to meeting-wide transcripts
-        const chunks = sessionId
-          ? transcriptChunks
+    this.waitForPendingTranscripts(meetingId)
+      .then(async () => {
+        return sessionId
+          ? await this.transcriptRepository.findBySessionId(sessionId)
           : await this.transcriptRepository.findByMeetingId(meetingId);
-
+      })
+      .then(async (chunks) => {
         const transcriptText =
           chunks.map((c) => c.content).join('\n') ||
           `Không có bản dịch thoại trực tiếp. Đây là cuộc họp "${meeting.title}" với mô tả: ${meeting.description || 'Không có mô tả'}.`;
@@ -124,6 +125,26 @@ export class SummaryService {
       });
 
     return savedSummary;
+  }
+
+  private async waitForPendingTranscripts(meetingId: string): Promise<void> {
+    // Chờ 300ms ban đầu để đảm bảo các chunk cuối cùng đang bay trên đường truyền mạng (network in-flight)
+    // kịp cập bến server, gọi vào hàm transcribeAndSave và đăng ký thành công vào Set activeTranscriptions.
+    await new Promise((resolve) => setTimeout(resolve, 300));
+
+    const maxWaitTime = 10000; // max wait 10 seconds
+    const interval = 500; // check every 500ms
+    let waited = 300;
+
+    while (waited < maxWaitTime) {
+      const hasPending =
+        this.meetingsService.hasActiveTranscriptions(meetingId);
+      if (!hasPending) {
+        break;
+      }
+      await new Promise((resolve) => setTimeout(resolve, interval));
+      waited += interval;
+    }
   }
 
   private async generateSummaryTextInBackground(
