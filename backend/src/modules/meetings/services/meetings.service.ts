@@ -183,6 +183,9 @@ export class MeetingsService {
       );
     }
 
+    // Cleanup raw recording chunks
+    this.cleanupRecordings(id);
+
     return this.meetingsRepository.save(meeting);
   }
 
@@ -217,7 +220,32 @@ export class MeetingsService {
       );
     }
 
+    // Cleanup raw recording chunks
+    this.cleanupRecordings(id);
+
     return this.meetingsRepository.save(meeting);
+  }
+
+  private cleanupRecordings(meetingId: string) {
+    try {
+      const dirPath = path.join(
+        process.cwd(),
+        'uploads',
+        'recordings',
+        meetingId,
+      );
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        this.logger.log(
+          `Cleaned up temporary recordings for meeting ${meetingId}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to clean up recordings for meeting ${meetingId}:`,
+        error,
+      );
+    }
   }
 
   async findAll(
@@ -500,9 +528,13 @@ export class MeetingsService {
 
     const transcriptChunks =
       await this.transcriptRepository.findByMeetingId(meetingId);
-    const transcriptText =
-      transcriptChunks.map((c) => c.content).join('\n') ||
-      `Không có bản dịch thoại trực tiếp. Đây là cuộc họp "${meeting.title}" với mô tả: ${meeting.description || 'Không có mô tả'}.`;
+    const transcriptText = transcriptChunks.map((c) => c.content).join('\n');
+
+    if (!transcriptText || !transcriptText.trim()) {
+      return {
+        answer: `Không có bản dịch thoại trực tiếp. Đây là cuộc họp "${meeting.title}" với mô tả: ${meeting.description || 'Không có mô tả'}.`,
+      };
+    }
 
     const answer = await this.aiService.answerQuestion(
       question,
@@ -514,7 +546,17 @@ export class MeetingsService {
   /**
    * Dịch ngầm lát âm thanh và lưu trữ TranscriptChunk
    */
-  async transcribeAndSave(meetingId: string, file: any): Promise<any> {
+  async transcribeAndSave(
+    meetingId: string,
+    file: any,
+    body?: {
+      userId?: string;
+      speakerName?: string;
+      startTime?: string;
+      endTime?: string;
+      chunkIndex?: string;
+    },
+  ): Promise<any> {
     const meeting = await this.findOne(meetingId);
     if (!meeting) throw new NotFoundException('Meeting not found');
 
@@ -529,7 +571,7 @@ export class MeetingsService {
       session = await this.sessionRepository.save(session);
     }
 
-    // 2. Chuyển đổi âm thanh sang văn bản qua Gemini
+    // 2. Lưu file ghi âm thô xuống đĩa cứng (uploads/recordings/[meetingId])
     const f = file as {
       originalname?: string;
       buffer?: Buffer | Uint8Array | string;
@@ -540,31 +582,77 @@ export class MeetingsService {
       : Buffer.from(f.buffer || '');
     const mimetype = typeof f.mimetype === 'string' ? f.mimetype : 'audio/webm';
 
-    const transcriptText = await this.aiService.transcribeAudio(
-      buffer,
-      mimetype,
-    );
-
-    if (!transcriptText || !transcriptText.trim()) {
-      return { success: true, message: 'No speech detected' };
+    try {
+      const dirPath = path.join(
+        process.cwd(),
+        'uploads',
+        'recordings',
+        meetingId,
+      );
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+      const userId = body?.userId || 'unknown';
+      const chunkIndex =
+        body?.chunkIndex !== undefined ? body.chunkIndex : Date.now();
+      const fileName = `${userId}_chunk_${chunkIndex}.webm`;
+      const filePath = path.join(dirPath, fileName);
+      fs.writeFileSync(filePath, buffer);
+      this.logger.log(`Saved raw recording chunk to: ${filePath}`);
+    } catch (err) {
+      this.logger.error(`Failed to save raw recording chunk:`, err);
     }
 
-    // 3. Lưu trữ TranscriptChunk vào cơ sở dữ liệu
-    const chunk = this.transcriptRepository.create({
-      meetingId,
-      sessionId: session.id,
-      content: transcriptText.trim(),
-    });
+    // 3. Chuyển đổi âm thanh sang văn bản và lưu trữ DB dưới dạng BACKGROUND JOB bất đồng bộ ngầm
+    const chunkIndexNum = body?.chunkIndex
+      ? parseInt(body.chunkIndex, 10)
+      : undefined;
+    const startTimeNum = body?.startTime
+      ? parseFloat(body.startTime)
+      : undefined;
+    const endTimeNum = body?.endTime ? parseFloat(body.endTime) : undefined;
+    const userId = body?.userId || undefined;
+    const speakerName = body?.speakerName || undefined;
 
-    await this.transcriptRepository.save(chunk);
+    this.aiService
+      .transcribeAudio(buffer, mimetype)
+      .then(async (transcriptText) => {
+        if (!transcriptText || !transcriptText.trim()) {
+          this.logger.log(
+            `[Background STT] No speech detected for meeting ${meetingId}`,
+          );
+          return;
+        }
 
-    this.logger.log(
-      `Saved transcript chunk for meeting ${meetingId}: ${transcriptText.slice(0, 50)}...`,
-    );
+        // 4. Lưu trữ TranscriptChunk vào cơ sở dữ liệu với metadata đầy đủ
+        const chunk = this.transcriptRepository.create({
+          meetingId,
+          sessionId: session.id,
+          content: transcriptText.trim(),
+          userId,
+          speakerName,
+          chunkIndex: chunkIndexNum,
+          startTime: startTimeNum,
+          endTime: endTimeNum,
+        });
 
+        await this.transcriptRepository.save(chunk);
+
+        this.logger.log(
+          `[Background STT] Saved transcript chunk for meeting ${meetingId} (User: ${speakerName || 'Unknown'}): ${transcriptText.slice(0, 50)}...`,
+        );
+      })
+      .catch((err) => {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        this.logger.error(
+          `[Background STT Error] Failed to transcribe for meeting ${meetingId}: ${errorMsg}`,
+        );
+      });
+
+    // Trả về kết quả thành công lập tức cho client (Response cực kỳ nhanh < 50ms)
     return {
       success: true,
-      transcript: transcriptText.trim(),
+      message: 'Audio chunk successfully uploaded and queued for transcription',
     };
   }
 }

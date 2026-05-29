@@ -30,6 +30,11 @@ import {
   JoinResponseDto,
   ParticipantSummaryDto,
 } from '../dto/join-response.dto';
+import { EntityManager } from 'typeorm';
+import {
+  BreakoutRoom,
+  BreakoutRoomStatus,
+} from '../../breakout-rooms/entities/breakout-room.entity';
 
 @Injectable()
 export class ParticipantsService {
@@ -44,6 +49,7 @@ export class ParticipantsService {
     private readonly configService: ConfigService,
     private readonly mailService: MailService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
+    private readonly entityManager: EntityManager,
   ) {}
 
   async joinMeeting(
@@ -294,6 +300,18 @@ export class ParticipantsService {
         .getCount();
 
       if (activeParticipants === 0) {
+        // Check if there are active breakout rooms
+        const activeBreakout = await this.entityManager.findOne(BreakoutRoom, {
+          where: { meetingId: id, status: BreakoutRoomStatus.ACTIVE },
+        });
+
+        if (activeBreakout) {
+          this.logger.log(
+            `No active participants left in main room of meeting ${id}, but active breakout rooms exist. Keeping the session active.`,
+          );
+          return;
+        }
+
         this.logger.log(
           `No active participants left in meeting ${id}. Auto-closing the active session.`,
         );

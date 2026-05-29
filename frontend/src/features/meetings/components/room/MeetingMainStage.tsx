@@ -11,7 +11,8 @@ import {
   VideoTrack,
   useConnectionQualityIndicator,
   TrackToggle,
-  DisconnectButton
+  DisconnectButton,
+  useLocalParticipant
 } from '@livekit/components-react';
 import { Track, ConnectionQuality } from 'livekit-client';
 import { 
@@ -115,6 +116,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   isInBreakout,
 }) => {
   const { t } = useTranslation();
+  const { localParticipant } = useLocalParticipant();
   const [isControlsExpanded, setIsControlsExpanded] = useState(true);
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
 
@@ -144,16 +146,41 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
       streamRef.current = null;
     }
 
-    showSuccessToast("Đã tạm dừng trợ lý ghi chép AI.");
+    if (isOrganizer) {
+      // Broadcast RECORDING_STOPPED signal
+      const payload = JSON.stringify({ type: "RECORDING_STOPPED" });
+      try {
+        localParticipant.publishData(new TextEncoder().encode(payload), {
+          reliable: true,
+        });
+      } catch (err) {
+        console.error("Failed to publish RECORDING_STOPPED signal", err);
+      }
+      showSuccessToast("Đã tạm dừng trợ lý ghi chép AI.");
+    } else {
+      showSuccessToast("Đã tạm dừng ghi âm dịch thoại.");
+    }
   };
 
   const startRecording = async () => {
     try {
-      // 1. Ensure meeting session is active on the backend
-      try {
-        await apiClient.post(`/meetings/${meetingId}/sessions/start`);
-      } catch (err) {
-        console.error("Failed to start session on backend, but proceeding anyway", err);
+      // 1. Ensure meeting session is active on the backend and broadcast signal (Organizer only)
+      if (isOrganizer) {
+        try {
+          await apiClient.post(`/meetings/${meetingId}/sessions/start`);
+        } catch (err) {
+          console.error("Failed to start session on backend, but proceeding anyway", err);
+        }
+
+        // Broadcast RECORDING_STARTED signal
+        const payload = JSON.stringify({ type: "RECORDING_STARTED" });
+        try {
+          await localParticipant.publishData(new TextEncoder().encode(payload), {
+            reliable: true,
+          });
+        } catch (err) {
+          console.error("Failed to publish RECORDING_STARTED signal", err);
+        }
       }
 
       // 2. Request mic permission and get stream
@@ -162,7 +189,6 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
 
       isRecordingRef.current = true;
       setIsRecording(true);
-      chunkIndexRef.current = 0;
 
       // Helper function to start a recorder instance
       const startNewRecorder = () => {
@@ -179,13 +205,18 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
         recorderRef.current = recorder;
 
         recorder.ondataavailable = async (e) => {
-          if (e.data && e.data.size > 0 && isRecordingRef.current) {
+          if (e.data && e.data.size > 0) {
             const audioBlob = e.data;
             const chunkIndex = chunkIndexRef.current++;
             console.log(`Uploading audio chunk ${chunkIndex}, size: ${audioBlob.size} bytes`);
             
             const formData = new FormData();
             formData.append('audio', audioBlob, `chunk_${chunkIndex}.webm`);
+            formData.append('userId', localParticipant.identity);
+            formData.append('speakerName', localParticipant.name || localParticipant.identity);
+            formData.append('startTime', String(chunkIndex * 15));
+            formData.append('endTime', String((chunkIndex + 1) * 15));
+            formData.append('chunkIndex', String(chunkIndex));
 
             try {
               await apiClient.post(`/meetings/${meetingId}/transcribe`, formData, {
@@ -216,7 +247,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
       };
 
       startNewRecorder();
-      showSuccessToast("Đã kích hoạt trợ lý ghi chép AI!");
+      showSuccessToast(isOrganizer ? "Đã kích hoạt trợ lý ghi chép AI!" : "Hệ thống tự động ghi âm để dịch thoại.");
     } catch (err) {
       console.error("Failed to start MediaRecorder", err);
       showErrorToast("Không thể bắt đầu ghi âm. Vui lòng cấp quyền micro.");
@@ -226,7 +257,25 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   };
 
   useEffect(() => {
+    const handleRecordingStarted = () => {
+      if (!isOrganizer && !isRecordingRef.current) {
+        startRecording();
+      }
+    };
+
+    const handleRecordingStopped = () => {
+      if (!isOrganizer && isRecordingRef.current) {
+        stopRecording();
+      }
+    };
+
+    window.addEventListener("recording-started", handleRecordingStarted);
+    window.addEventListener("recording-stopped", handleRecordingStopped);
+
     return () => {
+      window.removeEventListener("recording-started", handleRecordingStarted);
+      window.removeEventListener("recording-stopped", handleRecordingStopped);
+
       // Clean up recording on unmount
       isRecordingRef.current = false;
       if (timeoutRef.current) {
@@ -239,7 +288,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
         streamRef.current.getTracks().forEach(track => track.stop());
       }
     };
-  }, []);
+  }, [isOrganizer, localParticipant]);
 
   const tracks = useTracks([
     { source: Track.Source.Camera, withPlaceholder: true },

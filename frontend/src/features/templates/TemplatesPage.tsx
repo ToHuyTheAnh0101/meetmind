@@ -28,6 +28,7 @@ import {
   SummaryTemplatePurpose,
   TemplateSectionDef,
 } from "@/types/api";
+import MarkdownRenderer from "@/components/MarkdownRenderer";
 
 // --- Helper for Purpose Styling ---
 const getPurposeStyles = (purpose: SummaryTemplatePurpose, t: any) => {
@@ -106,11 +107,11 @@ const PREDEFINED_BLOCKS = [
     placeholders: "### **Quyết định đã chốt**\n- ✔ **Quyết định 1:** [AI tự động trích xuất nội dung quyết định 1 đã thống nhất]\n- ✔ **Quyết định 2:** [AI tự động trích xuất nội dung quyết định 2 đã thống nhất]",
   },
   {
-    type: "action_items",
-    label: "Công việc cần làm",
-    description: "Đầu việc chi tiết kèm người phụ trách và thời hạn.",
-    aiInstructions: "Liệt kê các đầu việc cụ thể phát sinh trong cuộc họp, kèm theo người chịu trách nhiệm và hạn chót.",
-    placeholders: "### **Đầu việc cần làm**\n- **{{owner}}**: {{task}} (Hạn chót: {{deadline}})",
+    type: "roadblocks",
+    label: "Khó khăn & Rào cản",
+    description: "Liệt kê các khó khăn, thách thức cần tháo gỡ.",
+    aiInstructions: "Trích xuất tất cả các khó khăn, thách thức, rào cản kỹ thuật hoặc tiến độ được các thành viên thảo luận hoặc phàn nàn trong cuộc họp.",
+    placeholders: "### **Khó khăn & Rào cản**\n- 🚨 **Rào cản 1:** [AI tự động trích xuất rào cản/nút thắt cổ chai đang gặp phải]\n- 🚨 **Rào cản 2:** [AI tự động trích xuất rào cản/nút thắt cổ chai đang gặp phải]",
   },
   {
     type: "todo_table",
@@ -138,9 +139,9 @@ const TemplatesPage: React.FC = () => {
     meeting_date: "Ngày họp",
     summary: "Tóm tắt chung",
     action_items: "Các đầu việc",
-    participants: "Thành viên",
+    participants: "Người tham gia",
     task: "Nhiệm vụ",
-    owner: "Người nhận",
+    owner: "Thành viên",
     deadline: "Hạn chót"
   }), []);
 
@@ -202,186 +203,7 @@ const TemplatesPage: React.FC = () => {
       );
     }
 
-    // 2. Define highlightVariables helper function to parse dynamic tag highlighting
-    const highlightVariables = (text: string) => {
-      if (!text) return "";
-      const parts = text.split(/(\{\{[a-zA-Z0-9_]+\}\}|\[[^\]]+\])/g);
-      return parts.map((part, idx) => {
-        let varName: string | null = null;
-        const matchRaw = part.match(/\{\{([a-zA-Z0-9_]+)\}\}/);
-        if (matchRaw) {
-          varName = matchRaw[1];
-        } else {
-          const matchFriendly = part.match(/^\[([^\]]+)\]$/);
-          if (matchFriendly) {
-            const friendlyName = matchFriendly[1];
-            const foundKey = Object.keys(FRIENDLY_VARIABLES_VI).find(key => 
-              FRIENDLY_VARIABLES_VI[key] === friendlyName || 
-              FRIENDLY_VARIABLES_EN[key] === friendlyName ||
-              t(`template.variable_labels.${key}`) === friendlyName
-            );
-            if (foundKey) varName = foundKey;
-          }
-        }
-
-        if (varName) {
-          let label = varName;
-          let colorClasses = "bg-slate-100 text-slate-600 border-slate-200";
-          
-          if (varName === "meeting_title") {
-            colorClasses = "bg-cyan-50 text-cyan-700 border-cyan-200 ring-cyan-100";
-            label = t("template.variable_labels.meeting_title") || "Tiêu đề";
-          } else if (varName === "meeting_date") {
-            colorClasses = "bg-violet-50 text-violet-700 border-violet-200 ring-violet-100";
-            label = t("template.variable_labels.meeting_date") || "Ngày họp";
-          } else if (varName === "summary") {
-            colorClasses = "bg-emerald-50 text-emerald-700 border-emerald-200 ring-emerald-100";
-            label = t("template.variable_labels.summary") || "Tóm tắt";
-          } else if (varName === "action_items") {
-            colorClasses = "bg-rose-50 text-rose-700 border-rose-200 ring-rose-100";
-            label = t("template.variable_labels.action_items") || "Các đầu việc";
-          } else if (varName === "participants") {
-            colorClasses = "bg-teal-50 text-teal-700 border-teal-200 ring-teal-100";
-            label = t("template.variable_labels.participants") || "Thành viên";
-          } else if (varName === "task") {
-            colorClasses = "bg-amber-50 text-amber-700 border-amber-200 ring-amber-100";
-            label = t("template.variable_labels.task") || "Nhiệm vụ";
-          } else if (varName === "owner") {
-            colorClasses = "bg-indigo-50 text-indigo-700 border-indigo-200 ring-indigo-100";
-            label = t("template.variable_labels.owner") || "Người nhận";
-          } else if (varName === "deadline") {
-            colorClasses = "bg-rose-50 text-rose-700 border-rose-200 ring-rose-100";
-            label = t("template.variable_labels.deadline") || "Hạn chót";
-          }
-
-          return (
-            <span
-              key={idx}
-              className={`inline-flex items-center rounded-lg border px-2.5 py-0.5 text-[10px] font-black shadow-sm mx-0.5 ${colorClasses}`}
-            >
-              {label}
-            </span>
-          );
-        }
-        return part;
-      });
-    };
-
-    // 3. Dynamic Markdown Table Parser
-    if (placeholders.includes("|")) {
-      const rawLines = placeholders.split("\n").map(l => l.trim()).filter(l => l.includes("|"));
-      if (rawLines.length > 0) {
-        const parsedRows = rawLines.map(line => {
-          let cells = line.split("|").map(c => c.trim());
-          if (line.startsWith("|")) cells.shift();
-          if (line.endsWith("|") && cells[cells.length - 1] === "") cells.pop();
-          return cells;
-        });
-
-        const rows = parsedRows.filter(row => {
-          const joined = row.join("");
-          return !joined.includes("---") && !joined.includes("::") && joined.trim().length > 0;
-        });
-
-        if (rows.length > 0) {
-          const headers = rows[0];
-          const dataRows = rows.slice(1);
-
-          return (
-            <div className="space-y-2 animate-in fade-in duration-300">
-              <div className="overflow-x-auto rounded-xl border border-slate-100 bg-white/70 p-0.5 shadow-sm">
-                <table className="min-w-full divide-y divide-slate-100 text-left text-[11px] font-sans">
-                  <thead className="bg-slate-50 text-slate-500 font-black">
-                    <tr>
-                      {headers.map((h, i) => (
-                        <th key={i} className="px-3 py-2 whitespace-nowrap">
-                          {highlightVariables(h || `Cột ${i + 1}`)}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50 text-slate-600 font-semibold">
-                    {dataRows.length > 0 ? (
-                      dataRows.map((row, rowIdx) => (
-                        <tr key={rowIdx} className="hover:bg-slate-50/50 transition-colors">
-                          {headers.map((_, colIdx) => (
-                            <td key={colIdx} className="px-3 py-2">
-                              {highlightVariables(row[colIdx] || "")}
-                            </td>
-                          ))}
-                        </tr>
-                      ))
-                    ) : (
-                      <tr className="bg-white">
-                        {headers.map((h, colIdx) => {
-                          let prefillValue = "[Nội dung]";
-                          const headerLower = h.toLowerCase();
-                          if (headerLower.includes("nhiệm vụ") || headerLower.includes("công việc") || headerLower.includes("task")) {
-                            prefillValue = "[Nội dung công việc]";
-                          } else if (headerLower.includes("người") || headerLower.includes("ai") || headerLower.includes("phụ trách") || headerLower.includes("owner") || headerLower.includes("nhận")) {
-                            prefillValue = "[Tên người phụ trách]";
-                          } else if (headerLower.includes("hạn") || headerLower.includes("deadline") || headerLower.includes("ngày") || headerLower.includes("chót")) {
-                            prefillValue = "[Hạn chót]";
-                          }
-                          return (
-                            <td key={colIdx} className="px-3 py-2 text-slate-400 font-sans font-medium">
-                              {highlightVariables(prefillValue)}
-                            </td>
-                          );
-                        })}
-                      </tr>
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          );
-        }
-      }
-    }
-
-    // 4. Line-by-Line Markdown Parser (Headers, lists & inline style variables)
-    const lines = placeholders.split("\n");
-    return (
-      <div className="space-y-1.5 bg-white/70 rounded-xl p-3.5 border border-slate-100 animate-in fade-in duration-300">
-        {lines.map((line, idx) => {
-          const trimmed = line.trim();
-          if (!trimmed) return <div key={idx} className="h-1.5" />;
-
-          const headerMatch = line.match(/^(\s*)(#{1,6})\s+(.*)$/);
-          if (headerMatch) {
-            const level = headerMatch[2].length;
-            const content = headerMatch[3];
-            const sizeClass = 
-              level === 1 ? "text-base font-extrabold text-slate-900 mt-2.5 mb-1" :
-              level === 2 ? "text-sm font-extrabold text-slate-800 mt-2 mb-1" :
-              "text-xs font-black text-slate-700 mt-1.5 mb-0.5";
-            return (
-              <div key={idx} className={`${sizeClass} font-sans`}>
-                {highlightVariables(content)}
-              </div>
-            );
-          }
-
-          const listMatch = line.match(/^(\s*)[-*+]\s+(.*)$/);
-          if (listMatch) {
-            const content = listMatch[2];
-            return (
-              <div key={idx} className="flex items-start gap-2 text-[11px] font-semibold text-slate-700 pl-2 animate-in slide-in-from-left-2 duration-200">
-                <span className="text-cyan-500 shrink-0 mt-1 text-[8px]">•</span>
-                <span className="leading-relaxed font-sans">{highlightVariables(content)}</span>
-              </div>
-            );
-          }
-
-          return (
-            <p key={idx} className="text-[11px] font-semibold text-slate-600 leading-relaxed font-sans">
-              {highlightVariables(line)}
-            </p>
-          );
-        })}
-      </div>
-    );
+    return <MarkdownRenderer content={placeholders} highlightVariables={true} />;
   };
 
   // Page States
@@ -1324,7 +1146,7 @@ const TemplatesPage: React.FC = () => {
                             let emoji = "⚙️";
                             if (currentBlock.type === "executive_summary") emoji = "⚡";
                             if (currentBlock.type === "decisions") emoji = "✔";
-                            if (currentBlock.type === "action_items") emoji = "☐";
+                             if (currentBlock.type === "roadblocks") emoji = "🚨";
                             if (currentBlock.type === "todo_table") emoji = "📊";
                             return `${emoji} ${currentBlock.label}`;
                           }
@@ -1350,7 +1172,7 @@ const TemplatesPage: React.FC = () => {
                                 let emoji = "⚙️";
                                 if (block.type === "executive_summary") emoji = "⚡";
                                 if (block.type === "decisions") emoji = "✔";
-                                if (block.type === "action_items") emoji = "☐";
+                                if (block.type === "roadblocks") emoji = "🚨";
                                 if (block.type === "todo_table") emoji = "📊";
 
                                 return (

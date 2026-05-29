@@ -31,6 +31,12 @@ export class TranscriptChunk {
   @JoinColumn({ name: 'session_id' })
   session?: MeetingSession;
 
+  @Column({ nullable: true })
+  userId?: string;
+
+  @Column({ nullable: true })
+  speakerName?: string;
+
   @Column('text')
   content: string;
 

@@ -170,9 +170,9 @@
       "meeting_date": "Ngày họp",
       "summary": "Tóm tắt chung",
       "action_items": "Các đầu việc",
-      "participants": "Thành viên",
+      "participants": "Người tham gia",
       "task": "Nhiệm vụ",
-      "owner": "Người nhận",
+      "owner": "Thành viên",
       "deadline": "Hạn chót"
     }
   },

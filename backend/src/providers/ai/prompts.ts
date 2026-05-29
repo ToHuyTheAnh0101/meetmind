@@ -41,22 +41,23 @@ export function compileSummaryTemplatePrompt(
   transcript: string,
   template: PromptTemplateInput,
 ): string {
-  // 1. Build sections instructions
+  // 1. Build sections instructions with clear separation of guidelines and structure
   const sectionsPrompt = template.sections
     .sort((a, b) => a.order - b.order)
-    .map((sec) => {
-      let sectionPrompt = `### **${sec.label}**\n`;
+    .map((sec, idx) => {
+      let sectionPrompt = `Mục thứ ${idx + 1}:\n`;
+      sectionPrompt += `- Tiêu đề mục cần tạo: ### **${sec.label}**\n`;
       if (sec.blockType) {
-        sectionPrompt += `- [Loại khối nội dung: ${sec.blockType}]\n`;
+        sectionPrompt += `  - Loại khối nội dung: ${sec.blockType}\n`;
       }
       if (sec.description) {
-        sectionPrompt += `- [Yêu cầu tổng quan: ${sec.description}]\n`;
+        sectionPrompt += `  - Yêu cầu tổng quan cho mục này: ${sec.description}\n`;
       }
       if (sec.aiInstructions) {
-        sectionPrompt += `- [Chỉ dẫn phân tích AI cho mục này: ${sec.aiInstructions}]\n`;
+        sectionPrompt += `  - Chỉ dẫn phân tích riêng của AI cho mục này: ${sec.aiInstructions}\n`;
       }
       if (sec.placeholders) {
-        sectionPrompt += `- [Cấu trúc hiển thị & Biến điền mẫu]:\n${sec.placeholders}\n`;
+        sectionPrompt += `  - Cấu trúc hiển thị và các biến mẫu bạn cần điền dữ liệu vào:\n\`\`\`markdown\n${sec.placeholders}\n\`\`\`\n`;
       }
       return sectionPrompt;
     })
@@ -74,10 +75,13 @@ export function compileSummaryTemplatePrompt(
         
         Nhiệm vụ của bạn là tạo ra bản tóm tắt cuộc họp tuân thủ chặt chẽ theo cấu trúc mẫu (Template) dưới đây. 
 
-        [Yêu cầu định dạng toàn cục]
+        [Yêu cầu định dạng toàn cục - Cực kỳ Nghiêm ngặt]
         - Trả về bản tóm tắt bằng tiếng Việt dưới định dạng Markdown sạch sẽ.
         - Tông giọng/Văn phong: ${styleInstruction}
-        - TUYỆT ĐỐI TRÁNH ẢO GIÁC HÓA: Chỉ trích xuất và hiển thị thông tin thực tế từ đoạn transcript cuộc họp. Không tự ý bịa đặt, phỏng đoán hoặc bổ sung thông tin ngoài lề. Nếu một phần nội dung hoặc một khối trong cấu trúc mẫu không xuất hiện/không tìm thấy dữ liệu trong transcript cuộc họp, bạn được phép và nên ghi rõ "Không có thông tin được nhắc đến trong cuộc họp" hoặc phản hồi khéo léo tương tự tùy tình huống, tuyệt đối không tự chế nội dung.
+        - TUYỆT ĐỐI KHÔNG ĐƯỢC SAO CHÉP hoặc in các nhãn kỹ thuật hướng dẫn như: "Mục thứ...", "Tiêu đề mục cần tạo", "Loại khối nội dung", "Yêu cầu tổng quan cho mục này", "Chỉ dẫn phân tích riêng của AI cho mục này", "Cấu trúc hiển thị và các biến mẫu" vào bản tóm tắt cuối cùng. Những nhãn này CHỈ là hướng dẫn thiết kế dành riêng cho bạn để biết cách phân tích và định dạng.
+        - Đầu ra cuối cùng cho mỗi mục chỉ được chứa Tiêu đề mục (ví dụ: ### **${template.sections[0]?.label || 'Tiêu đề'}**) và phần nội dung đã được phân tích/điền dữ liệu tương ứng.
+        - TUYỆT ĐỐI TRÁNH ẢO GIÁC HÓA: Chỉ trích xuất và hiển thị thông tin thực tế từ đoạn transcript cuộc họp. Không tự ý bịa đặt, phỏng đoán hoặc bổ sung thông tin ngoài lề.
+        - NẾU KHÔNG CÓ THÔNG TIN/NỘI DUNG: Nếu một phần nội dung hoặc một khối trong cấu trúc mẫu không xuất hiện/không tìm thấy dữ liệu trong transcript cuộc họp, bạn CHỈ cần ghi rõ "Không có thông tin được nhắc đến trong cuộc họp" ngay bên dưới tiêu đề mục tương ứng, TUYỆT ĐỐI không tự chế nội dung và TUYỆT ĐỐI không in ra bất kỳ dòng hướng dẫn kỹ thuật nào.
         ${globalRulesPrompt}
 
         [Cấu trúc các mục tóm tắt cần tuân thủ]

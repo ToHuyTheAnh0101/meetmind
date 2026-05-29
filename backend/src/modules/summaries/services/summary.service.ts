@@ -57,61 +57,112 @@ export class SummaryService {
     await this.summaryRepository.remove(summary);
   }
 
-  async generateAiSummary(meetingId: string): Promise<Summary> {
+  async generateAiSummary(
+    meetingId: string,
+    sessionId?: string,
+    templateId?: string,
+  ): Promise<Summary> {
     const meeting = await this.meetingRepository.findById(meetingId);
     if (!meeting) {
       throw new NotFoundException('Meeting not found');
     }
 
-    const transcriptChunks =
-      await this.transcriptRepository.findByMeetingId(meetingId);
-    const transcriptText =
-      transcriptChunks.map((c) => c.content).join('\n') ||
-      `Không có bản dịch thoại trực tiếp. Đây là cuộc họp "${meeting.title}" với mô tả: ${meeting.description || 'Không có mô tả'}.`;
+    const resolvedTemplateId = templateId || meeting.templateId;
 
-    let summaryText: string;
+    // 1. Immediately find or create a summary record and set status to '[GENERATING]'
+    let summary = sessionId
+      ? await this.summaryRepository.findBySessionId(sessionId)
+      : await this.summaryRepository.findOverallByMeetingId(meetingId);
 
-    if (meeting.templateId) {
-      try {
-        const template = await this.summaryTemplateRepository.findById(
-          meeting.templateId,
-        );
-        if (template) {
-          summaryText = await this.aiService.generateSummaryWithTemplate(
-            meeting.title,
-            transcriptText,
-            template,
-          );
-        } else {
-          summaryText = await this.aiService.generateSummary(
-            meeting.title,
-            transcriptText,
-          );
-        }
-      } catch {
-        summaryText = await this.aiService.generateSummary(
-          meeting.title,
-          transcriptText,
-        );
-      }
-    } else {
-      summaryText = await this.aiService.generateSummary(
-        meeting.title,
-        transcriptText,
-      );
-    }
-
-    let summary =
-      await this.summaryRepository.findOverallByMeetingId(meetingId);
     if (summary) {
-      summary.summaryText = summaryText;
+      summary.summaryText = '[GENERATING]';
+      summary.templateId = resolvedTemplateId;
     } else {
       summary = this.summaryRepository.create({
         meetingId,
-        summaryText,
+        sessionId,
+        summaryText: '[GENERATING]',
+        templateId: resolvedTemplateId,
       });
     }
+    const savedSummary = await this.summaryRepository.save(summary);
 
-    return this.summaryRepository.save(summary);
+    // 2. Launch AI summarization as an asynchronous non-blocking background job
+    this.transcriptRepository
+      .findBySessionId(sessionId || '')
+      .then(async (transcriptChunks) => {
+        // If sessionId was not passed, fallback to meeting-wide transcripts
+        const chunks = sessionId
+          ? transcriptChunks
+          : await this.transcriptRepository.findByMeetingId(meetingId);
+
+        const transcriptText =
+          chunks.map((c) => c.content).join('\n') ||
+          `Không có bản dịch thoại trực tiếp. Đây là cuộc họp "${meeting.title}" với mô tả: ${meeting.description || 'Không có mô tả'}.`;
+
+        return this.generateSummaryTextInBackground(
+          meeting.title,
+          transcriptText,
+          resolvedTemplateId,
+        );
+      })
+      .then(async (summaryText) => {
+        // Update the DB record with the actual text
+        const current = sessionId
+          ? await this.summaryRepository.findBySessionId(sessionId)
+          : await this.summaryRepository.findOverallByMeetingId(meetingId);
+
+        if (current) {
+          current.summaryText = summaryText;
+          await this.summaryRepository.save(current);
+        }
+      })
+      .catch((err) => {
+        console.error('[Background Summary] Failed to generate:', err);
+        // On error, clear the placeholder so user can regenerate
+        this.resetGeneratingSummaryOnError(meetingId, sessionId);
+      });
+
+    return savedSummary;
+  }
+
+  private async generateSummaryTextInBackground(
+    title: string,
+    transcriptText: string,
+    resolvedTemplateId?: string,
+  ): Promise<string> {
+    if (resolvedTemplateId) {
+      try {
+        const template =
+          await this.summaryTemplateRepository.findById(resolvedTemplateId);
+        if (template) {
+          return await this.aiService.generateSummaryWithTemplate(
+            title,
+            transcriptText,
+            template,
+          );
+        }
+      } catch {
+        // Fallback to standard
+      }
+    }
+    return await this.aiService.generateSummary(title, transcriptText);
+  }
+
+  private async resetGeneratingSummaryOnError(
+    meetingId: string,
+    sessionId?: string,
+  ) {
+    try {
+      const current = sessionId
+        ? await this.summaryRepository.findBySessionId(sessionId)
+        : await this.summaryRepository.findOverallByMeetingId(meetingId);
+
+      if (current && current.summaryText === '[GENERATING]') {
+        await this.summaryRepository.remove(current);
+      }
+    } catch (err) {
+      console.error('[Background Summary] Failed to reset on error:', err);
+    }
   }
 }

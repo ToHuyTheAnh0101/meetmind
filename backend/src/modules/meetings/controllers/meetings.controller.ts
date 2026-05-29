@@ -217,11 +217,19 @@ export class MeetingsController {
   async transcribeAndSave(
     @Param('id') id: string,
     @UploadedFile() file: any,
+    @Body()
+    body: {
+      userId?: string;
+      speakerName?: string;
+      startTime?: string;
+      endTime?: string;
+      chunkIndex?: string;
+    },
   ): Promise<any> {
     if (!file) {
       throw new BadRequestException('No audio file provided');
     }
-    return await this.meetingsService.transcribeAndSave(id, file);
+    return await this.meetingsService.transcribeAndSave(id, file, body);
   }
 
   @Post('test-mail')

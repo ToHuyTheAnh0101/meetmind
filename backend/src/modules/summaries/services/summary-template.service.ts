@@ -13,6 +13,27 @@ import { SummaryTemplateRepository } from '../repositories/summary-template.repo
 export class SummaryTemplateService {
   constructor(private summaryTemplateRepository: SummaryTemplateRepository) {}
 
+  // Helper to recursively normalize strings in templates to NFC
+  private normalizeNFC<T>(obj: T): T {
+    if (typeof obj === 'string') {
+      return obj.normalize('NFC') as unknown as T;
+    }
+    if (Array.isArray(obj)) {
+      return obj.map((item: unknown) =>
+        this.normalizeNFC(item),
+      ) as unknown as T;
+    }
+    if (obj !== null && typeof obj === 'object') {
+      const newObj: Record<string, unknown> = {};
+      const record = obj as Record<string, unknown>;
+      for (const key of Object.keys(record)) {
+        newObj[key] = this.normalizeNFC(record[key]);
+      }
+      return newObj as unknown as T;
+    }
+    return obj;
+  }
+
   async create(
     data: Partial<SummaryTemplate>,
     createdByUserId: string,
@@ -21,8 +42,11 @@ export class SummaryTemplateService {
       throw new BadRequestException('Cannot create system templates');
     }
 
+    // Automatically normalize Vietnamese accents to NFC
+    const normalizedData = this.normalizeNFC(data);
+
     const template = this.summaryTemplateRepository.create({
-      ...data,
+      ...normalizedData,
       createdByUserId,
     });
 
@@ -98,7 +122,10 @@ export class SummaryTemplateService {
       throw new BadRequestException('Cannot modify createdByUserId');
     }
 
-    Object.assign(template, data);
+    // Automatically normalize Vietnamese accents to NFC
+    const normalizedData = this.normalizeNFC(data);
+
+    Object.assign(template, normalizedData);
     return this.summaryTemplateRepository.save(template);
   }
 

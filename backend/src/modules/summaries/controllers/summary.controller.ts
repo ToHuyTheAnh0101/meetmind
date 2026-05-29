@@ -42,8 +42,15 @@ export class SummaryController {
 
   @Post('generate')
   @UseGuards(JwtAuthGuard)
-  async generate(@Param('meetingId') meetingId: string): Promise<Summary> {
-    return this.summaryService.generateAiSummary(meetingId);
+  async generate(
+    @Param('meetingId') meetingId: string,
+    @Body() body: { sessionId?: string; templateId?: string },
+  ): Promise<Summary> {
+    return this.summaryService.generateAiSummary(
+      meetingId,
+      body?.sessionId,
+      body?.templateId,
+    );
   }
 
   @Post()

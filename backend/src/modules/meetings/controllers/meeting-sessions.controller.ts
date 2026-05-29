@@ -1,10 +1,23 @@
-import { Controller, Post, Param, UseGuards, Request } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Param,
+  UseGuards,
+  Request,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { MeetingSessionsService } from '../services/meeting-sessions.service';
 
 @Controller('meetings')
 export class MeetingSessionsController {
   constructor(private readonly sessionsService: MeetingSessionsService) {}
+
+  @Get(':id/sessions')
+  @UseGuards(JwtAuthGuard)
+  async getSessions(@Param('id') id: string) {
+    return this.sessionsService.getSessionsByMeetingId(id);
+  }
 
   @Post(':id/sessions/start')
   @UseGuards(JwtAuthGuard)

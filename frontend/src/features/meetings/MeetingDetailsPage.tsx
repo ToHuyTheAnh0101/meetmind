@@ -31,7 +31,7 @@ import {
   useInfiniteQuery 
 } from '@tanstack/react-query'
 import apiClient from '@/lib/apiClient'
-import { Meeting, MeetingPermission } from '@/types/api'
+import { Meeting, MeetingPermission, MeetingAccessType } from '@/types/api'
 import SettingToggle from './components/details/SettingToggle'
 import EmailTagInput from './components/details/EmailTagInput'
 import { useTimeTheme } from '@/hooks/useTimeTheme'
@@ -55,7 +55,19 @@ const MeetingDetailsPage: React.FC = () => {
   const [isInstant, setIsInstant] = useState(true)
   const [activeTab, setActiveTab] = useState<'general' | 'permissions' | 'summary'>('general')
   
-  const [formData, setFormData] = useState({
+  const [formData, setFormData] = useState<{
+    title: string
+    description: string
+    startTime: string
+    accessType: MeetingAccessType
+    waitingRoomEnabled: boolean
+    muteOnJoin: boolean
+    allowDisplayNameEdit: boolean
+    inviteeEmails: string[]
+    reminderMinutes: number
+    password: string
+    templateId: string
+  }>({
     title: '',
     description: '',
     startTime: '',
@@ -63,15 +75,7 @@ const MeetingDetailsPage: React.FC = () => {
     waitingRoomEnabled: false,
     muteOnJoin: false,
     allowDisplayNameEdit: true,
-    inviteeEmails: [
-      'alex.rivera@company.com', 'beatrice.smith@tech.io', 'charlie.davis@venture.net',
-      'diana.prince@global.org', 'ethan.hunt@mission.com', 'fiona.gallagher@innovate.co',
-      'george.clooney@star.me', 'hannah.montana@pop.tv', 'ian.mckellen@wizard.uk',
-      'julia.roberts@actor.com', 'kevin.hart@comedy.us', 'lara.croft@tomb.net',
-      'michael.scott@dunder.com', 'nina.simone@jazz.org', 'oscar.wilde@literature.com',
-      'peter.parker@spider.me', 'quentin.tarantino@film.co', 'rachel.green@friends.tv',
-      'steve.jobs@apple.me', 'tony.stark@stark.id'
-    ],
+    inviteeEmails: [],
     reminderMinutes: 10,
     password: '',
     templateId: ''

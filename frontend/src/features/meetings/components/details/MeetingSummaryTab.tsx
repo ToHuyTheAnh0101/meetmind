@@ -13,6 +13,7 @@ import {
   FileText
 } from 'lucide-react'
 import apiClient from '@/lib/apiClient'
+import MarkdownRenderer from '@/components/MarkdownRenderer'
 
 interface MeetingSummaryTabProps {
   meetingId: string
@@ -41,27 +42,52 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({ meetingId 
     }
   ])
 
-  // 1. Fetch AI Summary from DB
-  const { data: summaryData, isLoading: isLoadingSummary, refetch: refetchSummary } = useQuery<any>({
-    queryKey: ['meeting-summary', meetingId],
+  // 1. Fetch all AI Summaries for the meeting
+  const { data: summaries, isLoading: isLoadingSummaries, refetch: refetchSummaries } = useQuery<any[]>({
+    queryKey: ['meeting-summaries', meetingId],
     queryFn: async () => {
-      const res = await apiClient.get(`/meetings/${meetingId}/summaries/overall`)
+      const res = await apiClient.get(`/meetings/${meetingId}/summaries`)
+      return res.data
+    },
+    refetchInterval: (query) => {
+      const hasGenerating = query.state.data?.some((s: any) => s.summaryText === '[GENERATING]');
+      return hasGenerating ? 3000 : false;
+    }
+  })
+
+  // 2. Fetch all Sessions for the meeting
+  const { data: sessions, isLoading: isLoadingSessions } = useQuery<any[]>({
+    queryKey: ['meeting-sessions', meetingId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/meetings/${meetingId}/sessions`)
       return res.data
     }
   })
 
-  // 2. Generate/Regenerate AI Summary Mutation
+  // 3. Fetch all templates
+  const { data: templates } = useQuery<any[]>({
+    queryKey: ['summary-templates'],
+    queryFn: async () => {
+      const res = await apiClient.get('/summary-templates')
+      return res.data
+    }
+  })
+
+  // 4. Generate/Regenerate AI Summary Mutation (moved up to fix hoisting issue)
   const generateSummaryMutation = useMutation({
-    mutationFn: async () => {
-      const res = await apiClient.post(`/meetings/${meetingId}/summaries/generate`)
+    mutationFn: async ({ sessionId, templateId }: { sessionId: string; templateId?: string }) => {
+      const res = await apiClient.post(`/meetings/${meetingId}/summaries/generate`, {
+        sessionId,
+        templateId: templateId || undefined,
+      })
       return res.data
     },
     onSuccess: () => {
-      refetchSummary()
+      refetchSummaries()
     }
   })
 
-  // 3. Chat Q&A Mutation
+  // 5. Chat Q&A Mutation
   const chatMutation = useMutation({
     mutationFn: async (question: string) => {
       const res = await apiClient.post(`/meetings/${meetingId}/chat`, { question })
@@ -93,6 +119,41 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({ meetingId 
     }
   })
 
+  const [selectedSessionId, setSelectedSessionId] = useState<string>('')
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>('')
+
+  // Sort sessions: latest first
+  const sortedSessions = sessions
+    ? [...sessions].sort(
+        (a, b) =>
+          new Date(b.createdAt || b.actualStartTime).getTime() -
+          new Date(a.createdAt || a.actualStartTime).getTime()
+      )
+    : []
+
+  // Sync selectedSessionId with the latest session if none is selected
+  useEffect(() => {
+    if (sortedSessions.length > 0 && !selectedSessionId) {
+      setSelectedSessionId(sortedSessions[0].id)
+    }
+  }, [sortedSessions, selectedSessionId])
+
+  // Determine current summary based on selected session
+  const currentSummary = summaries?.find(s => s.sessionId === selectedSessionId)
+
+  const summary = currentSummary?.summaryText
+
+  const isGenerating = generateSummaryMutation.isPending || summary === '[GENERATING]'
+
+  // Sync template ID when current summary changes
+  useEffect(() => {
+    if (currentSummary?.templateId) {
+      setSelectedTemplateId(currentSummary.templateId)
+    } else {
+      setSelectedTemplateId('')
+    }
+  }, [currentSummary])
+
   // Scroll to bottom of chat when new message arrives
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -120,58 +181,28 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({ meetingId 
     handleSendMessage(questionText)
   }
 
-  // A simple markdown-like renderer to render structured paragraphs beautifully
-  const renderSummaryContent = (text: string) => {
-    if (!text) return null
 
-    // Split text into lines to look for headers or bullet points
-    const lines = text.split('\n')
-    return (
-      <div className="space-y-4 text-slate-700 leading-relaxed font-medium">
-        {lines.map((line, idx) => {
-          // Check for main headers (e.g. ## or **)
-          if (line.startsWith('###') || line.startsWith('**') || line.match(/^\d+\./)) {
-            const cleanLine = line.replace(/^[#*\d.\s]+/, '').replace(/\*\*$/, '')
-            return (
-              <h4 key={idx} className="text-base font-black text-slate-900 mt-6 mb-2 flex items-center gap-2">
-                <span className="h-2 w-2 rounded-full bg-cyan-500" />
-                {cleanLine}
-              </h4>
-            )
-          }
-          // Check for bullet points
-          if (line.trim().startsWith('-') || line.trim().startsWith('*')) {
-            const cleanLine = line.replace(/^[-*\s]+/, '')
-            return (
-              <div key={idx} className="flex gap-2 pl-4 items-start py-1">
-                <span className="text-cyan-500 text-sm mt-0.5">•</span>
-                <span className="text-sm font-semibold text-slate-600">{cleanLine}</span>
-              </div>
-            )
-          }
-          // Normal line
-          if (line.trim() === '') return null
-          return (
-            <p key={idx} className="text-sm text-slate-600 pl-4">
-              {line}
-            </p>
-          )
-        })}
-      </div>
-    )
+  const selectedSession = sessions?.find(s => s.id === selectedSessionId)
+  const isSelectedSessionOngoing = selectedSession?.status === 'ongoing'
+
+  const handleGenerate = () => {
+    if (!selectedSessionId) return
+    generateSummaryMutation.mutate({
+      sessionId: selectedSessionId,
+      templateId: selectedTemplateId,
+    })
   }
-
-  const summary = summaryData?.summaryText
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       {/* LEFT COLUMN: AI SUMMARY VIEW */}
-      <div className="lg:col-span-6 space-y-6">
+      <div className="lg:col-span-7 space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-[2.5rem] border border-white/80 bg-white/70 p-6 sm:p-8 shadow-2xl backdrop-blur-xl min-h-[500px] flex flex-col"
+          className="rounded-[2.5rem] border border-white/80 bg-white/70 p-5 sm:p-6 shadow-2xl backdrop-blur-xl min-h-[550px] flex flex-col"
         >
+          {/* Header section */}
           <div className="flex items-center justify-between border-b border-slate-100 pb-6 mb-6">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-[1.25rem] bg-cyan-500/10 flex items-center justify-center text-cyan-600 shadow-inner">
@@ -181,75 +212,216 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({ meetingId 
                 <h3 className="text-xl font-black text-slate-900 leading-tight">
                   {t('meeting.summary_tab.summary_card_title')}
                 </h3>
-                <p className="text-xs font-bold text-slate-500 mt-0.5">
-                  Powered by Gemini 2.0 Flash
-                </p>
               </div>
             </div>
-            {summary && (
-              <button
-                disabled={generateSummaryMutation.isPending}
-                onClick={() => generateSummaryMutation.mutate()}
-                className="h-10 w-10 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-50"
-                title={t('meeting.summary_tab.generate_summary_btn')}
-              >
-                {generateSummaryMutation.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-              </button>
-            )}
           </div>
 
-          <div className="flex-1 flex flex-col justify-center">
-            {isLoadingSummary ? (
-              <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
-                <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
-                <span className="text-sm font-bold">{t('meeting.permissions.loading')}</span>
-              </div>
-            ) : summary ? (
-              <div className="space-y-4 max-h-[550px] overflow-y-auto pr-2 custom-scrollbar">
-                {renderSummaryContent(summary)}
-              </div>
-            ) : (
-              <div className="text-center py-16 px-4">
-                <div className="mx-auto h-16 w-16 rounded-[1.5rem] bg-slate-100/80 flex items-center justify-center text-slate-400 mb-6 shadow-inner">
-                  <FileText className="h-8 w-8" />
-                </div>
-                <h4 className="text-lg font-black text-slate-900">
-                  {t('meeting.summary_tab.no_summary_yet')}
+          {/* Nested Split Pane Layout */}
+          <div className="flex-1 flex flex-col md:flex-row gap-6">
+            {/* Sidebar list of session history */}
+            <div className="w-full md:w-48 shrink-0 md:border-r md:border-slate-100 md:pr-3 flex flex-row md:flex-col gap-2 overflow-x-auto md:overflow-y-auto md:max-h-[480px] pb-2 md:pb-0 custom-scrollbar">
+              <div className="hidden md:block">
+                <h4 className="text-xs font-black text-slate-400 tracking-wider mb-3">
+                  {t('common.save') === 'Lưu' ? 'Lịch sử phiên họp' : 'Sessions History'}
                 </h4>
-                <p className="text-xs font-bold text-slate-500 mt-2 max-w-sm mx-auto leading-relaxed">
-                  {t('common.save') === 'Lưu'
-                    ? 'Nhấp vào nút bên dưới để sử dụng AI phân tích cuộc họp và trích xuất các quyết định chính, công việc cần làm.'
-                    : 'Click the button below to analyze the meeting audio/transcript to extract key decisions and action items.'}
-                </p>
-                <button
-                  onClick={() => generateSummaryMutation.mutate()}
-                  disabled={generateSummaryMutation.isPending}
-                  className="mt-8 px-6 py-3.5 bg-gradient-to-r from-cyan-500 to-indigo-500 hover:scale-[1.03] active:scale-95 text-white font-black text-sm rounded-2xl shadow-lg shadow-cyan-100 transition-all flex items-center gap-3 mx-auto disabled:opacity-50"
-                >
-                  {generateSummaryMutation.isPending ? (
-                    <>
-                      <Loader2 className="h-4 w-4 animate-spin" />
-                      <span>{t('meeting.summary_tab.generating')}</span>
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4" />
-                      <span>{t('meeting.summary_tab.generate_summary_btn')}</span>
-                    </>
-                  )}
-                </button>
               </div>
-            )}
+
+              {/* Session list items */}
+              {isLoadingSessions ? (
+                <div className="hidden md:flex flex-col items-center justify-center py-6 text-slate-400 gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-cyan-500" />
+                </div>
+              ) : sortedSessions.length === 0 ? (
+                <div className="text-xs font-bold text-slate-400 py-4">
+                  {t('common.save') === 'Lưu' ? 'Không có phiên họp' : 'No sessions found'}
+                </div>
+              ) : (
+                sortedSessions.map((session, idx) => {
+                  const isSelected = selectedSessionId === session.id
+                  const dateStr = session.actualStartTime
+                    ? new Date(session.actualStartTime).toLocaleDateString([], { day: '2-digit', month: '2-digit' })
+                    : ''
+                  const timeStr = session.actualStartTime
+                    ? new Date(session.actualStartTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+                    : ''
+                  const isOngoing = session.status === 'ongoing'
+
+                  return (
+                    <button
+                      key={session.id}
+                      onClick={() => setSelectedSessionId(session.id)}
+                      className={`w-full p-3 rounded-2xl text-left transition-all flex items-center gap-3 border shrink-0 md:shrink ${
+                        isSelected
+                          ? 'bg-gradient-to-r from-cyan-500/10 to-indigo-500/10 border-cyan-500/20 text-slate-900 shadow-sm'
+                          : 'bg-transparent border-transparent text-slate-600 hover:bg-slate-50 hover:text-slate-800'
+                      }`}
+                      style={{ minWidth: '160px' }}
+                    >
+                      <div className={`h-8 w-8 rounded-xl flex items-center justify-center shrink-0 ${
+                        isSelected ? 'bg-indigo-500 text-white' : 'bg-slate-100 text-slate-400'
+                      }`}>
+                        <FileText className="h-4 w-4" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-1">
+                          <p className="text-xs font-black truncate">
+                            {t('common.save') === 'Lưu' ? `Phiên #${sortedSessions.length - idx}` : `Session #${sortedSessions.length - idx}`}
+                          </p>
+                          {isOngoing && (
+                            <span className="flex h-2 w-2 relative shrink-0">
+                              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                              <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                            </span>
+                          )}
+                        </div>
+                        <p className="text-[10px] font-bold text-slate-400 mt-0.5">
+                          {dateStr} {timeStr}
+                        </p>
+                      </div>
+                    </button>
+                  )
+                })
+              )}
+            </div>
+
+            {/* Detail Summary Panel */}
+            <div className="flex-1 flex flex-col justify-between min-w-0">
+              {isLoadingSummaries || isLoadingSessions ? (
+                <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
+                  <Loader2 className="h-8 w-8 animate-spin text-cyan-500" />
+                  <span className="text-sm font-bold">{t('meeting.permissions.loading')}</span>
+                </div>
+              ) : isSelectedSessionOngoing ? (
+                /* Ongoing session prenote */
+                <div className="text-center py-16 px-4 flex-1 flex flex-col justify-center">
+                  <div className="mx-auto h-16 w-16 rounded-[1.5rem] bg-emerald-50/80 text-emerald-500 flex items-center justify-center mb-6 shadow-inner relative">
+                    <span className="animate-ping absolute inline-flex h-12 w-12 rounded-[1.25rem] bg-emerald-400/20 opacity-75"></span>
+                    <Sparkles className="h-8 w-8 text-emerald-500 animate-pulse" />
+                  </div>
+                  <h4 className="text-lg font-black text-slate-900">
+                    {t('common.save') === 'Lưu' ? 'Phiên họp đang diễn ra' : 'Session is ongoing'}
+                  </h4>
+                  <p className="text-xs font-bold text-slate-500 mt-2 max-w-sm mx-auto leading-relaxed">
+                    {t('common.save') === 'Lưu'
+                      ? 'Phiên họp hiện tại đang diễn ra và hội thoại đang được dịch thoại trực tiếp. Bản tóm tắt AI sẽ sẵn sàng khi phiên họp kết thúc.'
+                      : 'The current session is active and conversation is being transcribed live. The AI summary will be available immediately after the session ends.'}
+                  </p>
+                </div>
+              ) : (selectedSession && !selectedSession.hasTranscripts && !summary) ? (
+                /* No transcripts and no summary state (AI not activated) */
+                <div className="text-center py-16 px-4 flex-1 flex flex-col justify-center animate-fade-in">
+                  <div className="mx-auto h-16 w-16 rounded-[1.5rem] bg-amber-50/80 text-amber-500 flex items-center justify-center mb-6 shadow-inner">
+                    <Bot className="h-8 w-8 text-amber-500" />
+                  </div>
+                  <h4 className="text-lg font-black text-slate-900">
+                    {t('common.save') === 'Lưu' ? 'Trợ lý AI không được kích hoạt' : 'AI Assistant was not activated'}
+                  </h4>
+                  <p className="text-xs font-bold text-slate-500 mt-2 max-w-sm mx-auto leading-relaxed">
+                    {t('common.save') === 'Lưu'
+                      ? 'Phiên họp này không kích hoạt tính năng ghi âm và dịch thuật thoại trực tiếp, nên không có dữ liệu hội thoại cuộc họp để tiến hành tóm tắt.'
+                      : 'This session did not activate the live recording and translation feature, so there is no conversation data to generate a summary.'}
+                  </p>
+                </div>
+              ) : isGenerating ? (
+                /* Dynamic Premium Generating State with rotating sparkles and pulsed text */
+                <div className="text-center py-16 px-4 flex-1 flex flex-col justify-center">
+                  <div className="mx-auto h-16 w-16 rounded-[1.5rem] bg-cyan-500/10 text-cyan-600 flex items-center justify-center mb-6 shadow-inner relative">
+                    <Loader2 className="h-8 w-8 animate-spin text-cyan-500 absolute" />
+                    <Sparkles className="h-5 w-5 text-indigo-500 animate-pulse" />
+                  </div>
+                  <h4 className="text-lg font-black text-slate-800 animate-pulse">
+                    {t('common.save') === 'Lưu' ? 'Đang hoàn thiện bản tóm tắt cuộc họp...' : 'Completing the meeting summary...'}
+                  </h4>
+                  <p className="text-xs font-bold text-slate-400 mt-2 max-w-sm mx-auto leading-relaxed">
+                    {t('common.save') === 'Lưu'
+                      ? 'Trợ lý AI MeetMind đang tổng hợp tất cả các luồng ghi âm và dịch thoại để trích xuất các ý chính.'
+                      : 'MeetMind AI Assistant is aggregating all recording tracks and transcript streams to extract key highlights.'}
+                  </p>
+                </div>
+              ) : summary ? (
+                /* Displaying actual summary and template configuration */
+                <div className="flex-1 flex flex-col justify-between">
+                  {/* Template Config Row */}
+                  <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 mb-4 md:flex-row md:items-end md:justify-between">
+                    <div className="flex flex-col gap-1.5 min-w-0 flex-1">
+                      <span className="text-[11px] font-black text-slate-400 tracking-wider">
+                        {t('common.save') === 'Lưu' ? 'Mẫu tóm tắt:' : 'Template:'}
+                      </span>
+                      <select
+                        value={selectedTemplateId}
+                        onChange={(e) => setSelectedTemplateId(e.target.value)}
+                        className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none focus:border-cyan-500 transition-colors animate-fade-in min-w-[220px] max-w-[320px]"
+                      >
+                        <option value="">{t('common.save') === 'Lưu' ? 'Mẫu mặc định' : 'Default Template'}</option>
+                        {templates?.map(t => (
+                          <option key={t.id} value={t.id}>{t.name}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    {/* Compact Regenerate Button */}
+                    <button
+                      onClick={handleGenerate}
+                      className="px-3.5 py-2 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all font-black text-xs gap-1.5 shadow-sm"
+                      title={t('meeting.summary_tab.generate_summary_btn')}
+                    >
+                      <RefreshCw className="h-3.5 w-3.5" />
+                      <span>{t('common.save') === 'Lưu' ? 'Tạo lại' : 'Regenerate'}</span>
+                    </button>
+                  </div>
+
+                  <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+                    <MarkdownRenderer content={summary} />
+                  </div>
+                </div>
+              ) : (
+                /* No summary yet state */
+                <div className="text-center py-12 px-4 flex-1 flex flex-col justify-center">
+                  <div className="mx-auto h-16 w-16 rounded-[1.5rem] bg-slate-100/80 flex items-center justify-center text-slate-400 mb-6 shadow-inner">
+                    <FileText className="h-8 w-8" />
+                  </div>
+                  <h4 className="text-lg font-black text-slate-900">
+                    {t('meeting.summary_tab.no_summary_yet')}
+                  </h4>
+                  <p className="text-xs font-bold text-slate-500 mt-2 max-w-sm mx-auto leading-relaxed">
+                    {t('common.save') === 'Lưu'
+                      ? 'Chọn mẫu tóm tắt và nhấp nút khởi tạo bên dưới để bắt đầu phân tích cuộc họp.'
+                      : 'Choose a template and click the generate button below to begin analyzing the meeting.'}
+                  </p>
+
+                  {/* Template selector for empty state */}
+                  <div className="my-6 max-w-xs mx-auto flex flex-col items-stretch gap-2">
+                    <span className="text-[11px] font-black text-slate-400 tracking-wider shrink-0 text-left">
+                      {t('common.save') === 'Lưu' ? 'Mẫu:' : 'Template:'}
+                    </span>
+                    <select
+                      value={selectedTemplateId}
+                      onChange={(e) => setSelectedTemplateId(e.target.value)}
+                      className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none focus:border-cyan-500 transition-colors w-full animate-fade-in"
+                    >
+                      <option value="">{t('common.save') === 'Lưu' ? 'Mẫu mặc định' : 'Default Template'}</option>
+                      {templates?.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={handleGenerate}
+                    className="px-6 py-3.5 bg-gradient-to-r from-cyan-500 to-indigo-500 hover:scale-[1.03] active:scale-95 text-white font-black text-sm rounded-2xl shadow-lg shadow-cyan-100 transition-all flex items-center gap-3 mx-auto"
+                  >
+                    <Sparkles className="h-4 w-4" />
+                    <span>{t('meeting.summary_tab.generate_summary_btn')}</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </motion.div>
       </div>
 
       {/* RIGHT COLUMN: Q&A CHATBOT VIEW */}
-      <div className="lg:col-span-6 space-y-6">
+      <div className="lg:col-span-5 space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -268,6 +440,18 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({ meetingId 
               </p>
             </div>
           </div>
+
+          {/* AI not activated warning banner in Q&A */}
+          {selectedSession && !selectedSession.hasTranscripts && (
+            <div className="mx-2 mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800 flex items-start gap-2.5 shadow-sm animate-fade-in shrink-0">
+              <Bot className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
+              <span>
+                {t('common.save') === 'Lưu'
+                  ? 'Lưu ý: Phiên họp này không được kích hoạt trợ lý AI. Hỏi đáp có thể không tìm thấy dữ liệu hội thoại cho phiên này.'
+                  : 'Note: AI assistant was not activated for this session. Chat Q&A may not find any conversation history.'}
+              </span>
+            </div>
+          )}
 
           {/* Messages Area */}
           <div className="flex-1 overflow-y-auto pr-2 mb-4 space-y-4 custom-scrollbar">

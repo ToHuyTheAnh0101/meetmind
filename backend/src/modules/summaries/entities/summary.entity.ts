@@ -15,7 +15,7 @@ import { Meeting, MeetingSession } from '../../meetings/entities';
 @Index(['sessionId'])
 export class Summary {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @ManyToOne(() => Meeting, {
     onDelete: 'CASCADE',
@@ -35,11 +35,14 @@ export class Summary {
   session?: MeetingSession;
 
   @Column({ type: 'text', nullable: true })
-  summaryText: string;
+  summaryText?: string;
+
+  @Column('uuid', { name: 'template_id', nullable: true })
+  templateId?: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

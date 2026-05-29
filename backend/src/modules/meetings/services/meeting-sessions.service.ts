@@ -3,6 +3,7 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { MeetingSessionRepository } from '../repositories/meeting-session.repository';
 import { MeetingRepository } from '../repositories/meeting.repository';
+import { TranscriptRepository } from '../repositories/transcript.repository';
 import { MeetingSession, MeetingSessionStatus } from '../entities';
 
 @Injectable()
@@ -10,6 +11,7 @@ export class MeetingSessionsService {
   constructor(
     private readonly sessionRepository: MeetingSessionRepository,
     private readonly meetingsRepository: MeetingRepository,
+    private readonly transcriptRepository: TranscriptRepository,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -101,6 +103,21 @@ export class MeetingSessionsService {
 
   async findActiveByMeeting(meetingId: string): Promise<MeetingSession | null> {
     return this.sessionRepository.findActiveByMeeting(meetingId);
+  }
+
+  async getSessionsByMeetingId(meetingId: string): Promise<any[]> {
+    const sessions = await this.sessionRepository.findByMeetingId(meetingId);
+    const result: any[] = [];
+    for (const session of sessions) {
+      const chunks = await this.transcriptRepository.findBySessionId(
+        session.id,
+      );
+      result.push({
+        ...session,
+        hasTranscripts: chunks.length > 0,
+      });
+    }
+    return result;
   }
 
   async save(session: Partial<MeetingSession>): Promise<MeetingSession> {

@@ -37,7 +37,7 @@ curl 'http://localhost:3000/summary-templates' \
         "blockType": "todo_table",
         "description": "Bảng chi tiết nhiệm vụ giao cho các thành viên",
         "aiInstructions": "Trích xuất tất cả các đầu việc được giao, người thực hiện và hạn chót. Trình bày dưới dạng bảng Markdown.",
-        "placeholders": "| Nhiệm vụ | Người phụ trách | Hạn chót | Trạng thái |\\n| :--- | :--- | :--- | :--- |\\n| [Tên nhiệm vụ cụ thể] | [Tên người được giao] | [Hạn hoàn thành] | Chưa bắt đầu |",
+        "placeholders": "| Nhiệm vụ | Người phụ trách | Hạn chót | Trạng thái |\n| :--- | :--- | :--- | :--- |\n| [Tên nhiệm vụ cụ thể] | [Tên người được giao] | [Hạn hoàn thành] | Chưa bắt đầu |",
         "order": 2
       },
       {
@@ -46,7 +46,7 @@ curl 'http://localhost:3000/summary-templates' \
         "blockType": "decisions",
         "description": "Quyết định quan trọng đã thống nhất",
         "aiInstructions": "Liệt kê tất cả các quyết định, chính sách, hoặc giải pháp kỹ thuật đã thống nhất trong cuộc họp.",
-        "placeholders": "- Quyết định 1: [Nội dung quyết định]\\n- Quyết định 2: [Nội dung quyết định]",
+        "placeholders": "- Quyết định 1: [Nội dung quyết định]\n- Quyết định 2: [Nội dung quyết định]",
         "order": 3
       }
     ]
@@ -84,7 +84,7 @@ curl 'http://localhost:3000/summary-templates' \
         "blockType": "custom",
         "description": "Danh sách chi tiết các ý kiến sáng tạo",
         "aiInstructions": "Liệt kê tất cả các ý tưởng đã được thảo luận, ghi chú rõ người đề xuất và ưu/nhược điểm sơ bộ nếu có.",
-        "placeholders": "- **[Tên ý tưởng]** (Đề xuất bởi: [Tên người]):\\n  * Chi tiết: [Mô tả ngắn]\\n  * Đánh giá: [Ưu điểm / Nhược điểm]",
+        "placeholders": "- **[Tên ý tưởng]** (Đề xuất bởi: [Tên người]):\n  * Chi tiết: [Mô tả ngắn]\n  * Đánh giá: [Ưu điểm / Nhược điểm]",
         "order": 2
       },
       {
@@ -122,7 +122,7 @@ curl 'http://localhost:3000/summary-templates' \
         "blockType": "custom",
         "description": "Những điểm sáng, quy trình hoạt động tốt",
         "aiInstructions": "Liệt kê những việc, quy trình hoặc hành động tích cực đã hoạt động hiệu quả trong giai đoạn qua.",
-        "placeholders": "- **[Điểm sáng 1]**: [Chi tiết vì sao thành công]\\n- **[Điểm sáng 2]**: [Chi tiết vì sao thành công]",
+        "placeholders": "- **[Điểm sáng 1]**: [Chi tiết vì sao thành công]\n- **[Điểm sáng 2]**: [Chi tiết vì sao thành công]",
         "order": 1
       },
       {
@@ -131,7 +131,7 @@ curl 'http://localhost:3000/summary-templates' \
         "blockType": "custom",
         "description": "Các rào cản, khó khăn hoặc nút thắt cổ chai",
         "aiInstructions": "Xác định các vấn đề, rào cản hoặc nút thắt cổ chai làm chậm tiến độ làm việc nhóm.",
-        "placeholders": "- **[Rào cản 1]**: [Mô tả vấn đề và tác động]\\n- **[Rào cản 2]**: [Mô tả vấn đề và tác động]",
+        "placeholders": "- **[Rào cản 1]**: [Mô tả vấn đề và tác động]\n- **[Rào cản 2]**: [Mô tả vấn đề và tác động]",
         "order": 2
       },
       {
@@ -169,7 +169,7 @@ curl 'http://localhost:3000/summary-templates' \
         "blockType": "custom",
         "description": "Nhu cầu cụ thể và các khó khăn khách hàng đang gặp phải",
         "aiInstructions": "Phân tích và trích xuất những khó khăn, mong đợi, hoặc nhu cầu cốt lõi mà khách hàng đã chia sẻ.",
-        "placeholders": "- **[Nhu cầu 1]**: [Mô tả nỗi đau hoặc mong muốn của đối tác]\\n- **[Nhu cầu 2]**: [Mô tả nỗi đau hoặc mong muốn của đối tác]",
+        "placeholders": "- **[Nhu cầu 1]**: [Mô tả nỗi đau hoặc mong muốn của đối tác]\n- **[Nhu cầu 2]**: [Mô tả nỗi đau hoặc mong muốn của đối tác]",
         "order": 1
       },
       {
@@ -178,7 +178,7 @@ curl 'http://localhost:3000/summary-templates' \
         "blockType": "decisions",
         "description": "Lộ trình hợp tác và đề xuất giá trị từ phía ta",
         "aiInstructions": "Liệt kê các giải pháp, tính năng, hoặc lộ trình hợp tác mà phía ta đã đề xuất và khách hàng tỏ ý đồng tình.",
-        "placeholders": "- Đề xuất 1: [Chi tiết giải pháp đề xuất]\\n- Đề xuất 2: [Chi tiết giải pháp đề xuất]",
+        "placeholders": "- Đề xuất 1: [Chi tiết giải pháp đề xuất]\n- Đề xuất 2: [Chi tiết giải pháp đề xuất]",
         "order": 2
       },
       {
@@ -187,7 +187,7 @@ curl 'http://localhost:3000/summary-templates' \
         "blockType": "action_items",
         "description": "Kế hoạch theo dõi (follow-up) và gửi báo giá tiếp theo",
         "aiInstructions": "Xác định các việc cần theo sát (follow-up) sau cuộc họp để thúc đẩy tiến độ ký hợp đồng.",
-        "placeholders": "- [ ] [Gửi tài liệu báo giá/đề xuất] - Hạn chót: [Thời gian]\\n- [ ] [Lên lịch buổi demo tiếp theo]",
+        "placeholders": "- [ ] [Gửi tài liệu báo giá/đề xuất] - Hạn chót: [Thời gian]\n- [ ] [Lên lịch buổi demo tiếp theo]",
         "order": 3
       }
     ]
@@ -225,7 +225,7 @@ curl 'http://localhost:3000/summary-templates' \
         "blockType": "todo_table",
         "description": "Bảng chi tiết các kỹ năng chuyên môn được kiểm tra",
         "aiInstructions": "Trích xuất các câu hỏi kỹ thuật hoặc bài kiểm tra năng lực đã trao đổi. Trình bày dưới dạng bảng gồm kỹ năng, nhận xét của người phỏng vấn và đánh giá kết quả (Đạt / Chưa đạt / Xuất sắc).",
-        "placeholders": "| Kỹ năng kiểm tra | Chi tiết câu hỏi / Tình huống | Nhận xét chuyên môn | Đánh giá |\\n| :--- | :--- | :--- | :--- |\\n| [Kỹ năng 1] | [Câu hỏi/Tình huống đưa ra] | [Tóm tắt câu trả lời & khả năng của ứng viên] | Đạt |",
+        "placeholders": "| Kỹ năng kiểm tra | Chi tiết câu hỏi / Tình huống | Nhận xét chuyên môn | Đánh giá |\n| :--- | :--- | :--- | :--- |\n| [Kỹ năng 1] | [Câu hỏi/Tình huống đưa ra] | [Tóm tắt câu trả lời & khả năng của ứng viên] | Đạt |",
         "order": 2
       },
       {
@@ -234,7 +234,7 @@ curl 'http://localhost:3000/summary-templates' \
         "blockType": "decisions",
         "description": "Kết quả phỏng vấn chung và bước tiếp theo",
         "aiInstructions": "Nêu rõ kết luận chung của buổi phỏng vấn (Đồng ý tuyển dụng / Cân nhắc vòng sau / Từ chối) và các bước tiếp theo cần thực hiện (ví dụ: gửi bài test, hẹn gặp vòng 2, hoặc chuẩn bị Offer letter).",
-        "placeholders": "- Quyết định đề xuất: [Nhận tuyển dụng / Cân nhắc / Từ chối]\\n- Hành động tiếp theo: [Gửi Offer Letter / Hẹn phỏng vấn vòng 2 / Gửi thư từ chối khách sáo] - Phụ trách: [Tên người]",
+        "placeholders": "- Quyết định đề xuất: [Nhận tuyển dụng / Cân nhắc / Từ chối]\n- Hành động tiếp theo: [Gửi Offer Letter / Hẹn phỏng vấn vòng 2 / Gửi thư từ chối khách sáo] - Phụ trách: [Tên người]",
         "order": 3
       }
     ]
