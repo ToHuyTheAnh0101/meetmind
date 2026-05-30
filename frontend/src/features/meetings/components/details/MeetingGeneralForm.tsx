@@ -445,9 +445,14 @@ export const MeetingGeneralForm: React.FC<MeetingGeneralFormProps> = ({
               </div>
 
               <div className="space-y-4">
-                <label className="text-sm font-bold text-slate-500">
-                  {t("meeting.guest_invitations")}
-                </label>
+                <div className="flex flex-col gap-1">
+                  <label className="text-sm font-bold text-slate-500">
+                    {t("meeting.guest_invitations")}
+                  </label>
+                  <p className="text-xs font-semibold text-slate-400 leading-tight">
+                    {t("meeting.guest_invitations_desc")}
+                  </p>
+                </div>
                 <EmailTagInput
                   emails={formData.inviteeEmails}
                   onChange={(emails) =>
@@ -530,7 +535,7 @@ export const MeetingGeneralForm: React.FC<MeetingGeneralFormProps> = ({
                       reminderMinutes: parseInt(e.target.value),
                     })
                   }
-                  className="bg-white/80 backdrop-blur-sm px-4 py-2 rounded-xl text-xs font-black border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/5 transition-all cursor-pointer hover:bg-white ml-8"
+                  className="w-28 bg-white/80 backdrop-blur-sm px-3 py-2 rounded-xl text-xs font-black border border-slate-200 focus:outline-none focus:ring-2 focus:ring-slate-900/5 transition-all cursor-pointer hover:bg-white ml-8"
                 >
                   <option value="0">{t("meeting.none")}</option>
                   <option value="5">5m</option>

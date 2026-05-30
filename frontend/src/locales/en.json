@@ -249,9 +249,10 @@
     "guest_list_only": "Guest List Only",
     "strict": "Strict",
     "guest_invitations": "Guest Invitations",
+    "guest_invitations_desc": "Automatic email invitations will be sent at meeting start",
     "preferences": "Meeting Preferences",
-    "reminders": "Reminders",
-    "notify_before": "Notification before start.",
+    "reminders": "Email Reminders",
+    "notify_before": "Send email reminder before the meeting starts",
     "attachments": "Attachments & Resources",
     "coming_soon": "Coming Soon: Link documents here",
     "invite_link": "Invite Link",
@@ -396,14 +397,38 @@
       "tab_permissions": "Permissions",
       "tab_summary": "AI Summary & Q&A",
       "list": {
-        "edit_meeting_info": { "label": "Edit meeting info", "desc": "Allows changing title, description, and time" },
-        "manage_polls": { "label": "Manage polls", "desc": "Create and close surveys" },
-        "manage_qa": { "label": "Manage Q&A", "desc": "Approve and answer questions" },
-        "co_host": { "label": "Co-host permissions", "desc": "Grant peer management rights to the host" },
-        "view_transcript": { "label": "View transcript", "desc": "Access transcript content" },
-        "chat_with_ai": { "label": "Chat with AI", "desc": "Use AI assistant in the room" },
-        "edit_summary": { "label": "Edit summary", "desc": "Modify AI summary content" },
-        "download_recording": { "label": "Download recording", "desc": "Download audio/video files" }
+        "edit_meeting_info": {
+          "label": "Edit meeting info",
+          "desc": "Allows changing title, description, and time"
+        },
+        "manage_polls": {
+          "label": "Manage polls",
+          "desc": "Create and close surveys"
+        },
+        "manage_qa": {
+          "label": "Manage Q&A",
+          "desc": "Approve and answer questions"
+        },
+        "co_host": {
+          "label": "Co-host permissions",
+          "desc": "Grant peer management rights to the host"
+        },
+        "view_transcript": {
+          "label": "View transcript",
+          "desc": "Access transcript content"
+        },
+        "chat_with_ai": {
+          "label": "Chat with AI",
+          "desc": "Use AI assistant in the room"
+        },
+        "edit_summary": {
+          "label": "Edit summary",
+          "desc": "Modify AI summary content"
+        },
+        "download_recording": {
+          "label": "Download recording",
+          "desc": "Download audio/video files"
+        }
       },
       "bulk_actions": "Bulk Actions",
       "bulk_actions_desc": "Quick settings for everyone",

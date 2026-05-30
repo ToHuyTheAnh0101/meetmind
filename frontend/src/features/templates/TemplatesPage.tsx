@@ -25,6 +25,7 @@ import { TemplateListHeader } from "./components/TemplateListHeader";
 import { TemplateFormBasicInfo } from "./components/TemplateFormBasicInfo";
 import { TemplateBlockEditor } from "./components/TemplateBlockEditor";
 import { TemplateActiveBlocks } from "./components/TemplateActiveBlocks";
+import { TemplateNotionPreview } from "./components/TemplateNotionPreview";
 
 // --- Predefined Blocks and Utility Helpers ---
 import { PREDEFINED_BLOCKS } from "./predefinedBlocks";
@@ -547,7 +548,7 @@ const TemplatesPage: React.FC = () => {
           </div>
 
           <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
-            {/* Left Column: Form & Block Builder Config */}
+            {/* Left Column: Form, Block Editor & Active Blocks List */}
             <div className="xl:col-span-1 space-y-6">
               <TemplateFormBasicInfo
                 formName={formName}
@@ -565,6 +566,7 @@ const TemplatesPage: React.FC = () => {
                 isFormStyleOpen={isFormStyleOpen}
                 setIsFormStyleOpen={setIsFormStyleOpen}
                 isVi={isVi}
+                isSystem={!!selectedTemplate?.isSystem}
               />
 
               <TemplateBlockEditor
@@ -589,10 +591,7 @@ const TemplatesPage: React.FC = () => {
                 setNewSecDesc={setNewSecDesc}
                 setNewSecPlaceholders={setNewSecPlaceholders}
               />
-            </div>
 
-            {/* Right Column: Active Blocks and Notion-style Preview */}
-            <div className="xl:col-span-1">
               <TemplateActiveBlocks
                 formSections={formSections}
                 selectedTemplate={selectedTemplate}
@@ -600,9 +599,16 @@ const TemplatesPage: React.FC = () => {
                 handleStartEditSection={handleStartEditSection}
                 handleDeleteSection={handleDeleteSection}
                 moveSection={moveSection}
-                renderCompiledBlock={renderCompiledBlock}
+              />
+            </div>
+
+            {/* Right Column: Notion-style Realtime Preview */}
+            <div className="xl:col-span-1">
+              <TemplateNotionPreview
                 formName={formName}
                 formPurpose={formPurpose}
+                formSections={formSections}
+                renderCompiledBlock={renderCompiledBlock}
               />
             </div>
           </div>

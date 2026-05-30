@@ -20,6 +20,7 @@ interface TemplateFormBasicInfoProps {
   isFormStyleOpen: boolean;
   setIsFormStyleOpen: (val: boolean) => void;
   isVi: boolean;
+  isSystem?: boolean;
 }
 
 export const TemplateFormBasicInfo: React.FC<TemplateFormBasicInfoProps> = ({
@@ -38,6 +39,7 @@ export const TemplateFormBasicInfo: React.FC<TemplateFormBasicInfoProps> = ({
   isFormStyleOpen,
   setIsFormStyleOpen,
   isVi,
+  isSystem = false,
 }) => {
   const { t } = useTranslation();
 
@@ -56,14 +58,15 @@ export const TemplateFormBasicInfo: React.FC<TemplateFormBasicInfoProps> = ({
         <div className="space-y-1.5 sm:col-span-2">
           <label className="text-xs font-black text-slate-700 tracking-wide flex items-center gap-1">
             <span>{t("template.field_template_name")}</span>
-            <span className="text-rose-500">*</span>
+            {!isSystem && <span className="text-rose-500">*</span>}
           </label>
           <input
             type="text"
             value={formName}
             onChange={(e) => setFormName(e.target.value)}
+            disabled={isSystem}
             placeholder={t("template.field_template_name_placeholder")}
-            className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold placeholder:text-slate-400 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 outline-none transition-all shadow-sm"
+            className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold placeholder:text-slate-400 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 outline-none transition-all shadow-sm disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
           />
         </div>
 
@@ -73,8 +76,9 @@ export const TemplateFormBasicInfo: React.FC<TemplateFormBasicInfoProps> = ({
           </label>
           <button
             type="button"
-            onClick={() => setIsFormPurposeOpen(!isFormPurposeOpen)}
-            className="flex h-11 w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50"
+            onClick={() => !isSystem && setIsFormPurposeOpen(!isFormPurposeOpen)}
+            disabled={isSystem}
+            className="flex h-11 w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             <span className="flex items-center gap-2">
               {formPurpose === "interview" && `🎤 ${t("template.purpose_options.interview")}`}
@@ -87,11 +91,13 @@ export const TemplateFormBasicInfo: React.FC<TemplateFormBasicInfoProps> = ({
               {formPurpose === "sales_pitch" && `🤝 ${t("template.purpose_options.sales_pitch")}`}
               {formPurpose === "custom" && `⚙️ ${t("template.purpose_options.custom")}`}
             </span>
-            <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${isFormPurposeOpen ? "rotate-180" : ""}`} />
+            {!isSystem && (
+              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${isFormPurposeOpen ? "rotate-180" : ""}`} />
+            )}
           </button>
 
           <AnimatePresence>
-            {isFormPurposeOpen && (
+            {isFormPurposeOpen && !isSystem && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setIsFormPurposeOpen(false)} />
                 <motion.div
@@ -144,8 +150,9 @@ export const TemplateFormBasicInfo: React.FC<TemplateFormBasicInfoProps> = ({
           </label>
           <button
             type="button"
-            onClick={() => setIsFormStyleOpen(!isFormStyleOpen)}
-            className="flex h-11 w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50"
+            onClick={() => !isSystem && setIsFormStyleOpen(!isFormStyleOpen)}
+            disabled={isSystem}
+            className="flex h-11 w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             <span className="flex items-center gap-2">
               {formStyle === "detailed" && t("template.style_options.detailed")}
@@ -153,11 +160,13 @@ export const TemplateFormBasicInfo: React.FC<TemplateFormBasicInfoProps> = ({
               {formStyle === "formal" && t("template.style_options.formal")}
               {formStyle === "bullet_points" && t("template.style_options.bullet_points")}
             </span>
-            <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${isFormStyleOpen ? "rotate-180" : ""}`} />
+            {!isSystem && (
+              <ChevronDown className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${isFormStyleOpen ? "rotate-180" : ""}`} />
+            )}
           </button>
 
           <AnimatePresence>
-            {isFormStyleOpen && (
+            {isFormStyleOpen && !isSystem && (
               <>
                 <div className="fixed inset-0 z-40" onClick={() => setIsFormStyleOpen(false)} />
                 <motion.div
@@ -205,27 +214,30 @@ export const TemplateFormBasicInfo: React.FC<TemplateFormBasicInfoProps> = ({
           <textarea
             value={formDesc}
             onChange={(e) => setFormDesc(e.target.value)}
+            disabled={isSystem}
             placeholder={t("template.field_template_desc_placeholder")}
             rows={2}
-            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold placeholder:text-slate-400 focus:border-cyan-400 outline-none transition resize-none shadow-sm"
+            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold placeholder:text-slate-400 focus:border-cyan-400 outline-none transition resize-none shadow-sm disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
           />
         </div>
 
-        <div className="space-y-1.5 sm:col-span-2">
-          <label className="text-xs font-black text-slate-700 tracking-wide">
-            {isVi ? "Quy tắc phân tích toàn cục (Global Rules)" : "Global Analysis Rules"}
-          </label>
-          <textarea
-            value={formGlobalRules}
-            onChange={(e) => setFormGlobalRules(e.target.value)}
-            placeholder={isVi 
-              ? "Các chỉ dẫn áp dụng cho toàn bộ bản tóm tắt (ví dụ: Không dùng từ quá trang trọng, tập trung vào người phụ trách...)" 
-              : "Guidelines or rules applied to the entire summary (e.g. Focus on action items, keep tone formal...)"
-            }
-            rows={2}
-            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold placeholder:text-slate-400 focus:border-cyan-400 outline-none transition resize-none shadow-sm"
-          />
-        </div>
+        {!isSystem && (
+          <div className="space-y-1.5 sm:col-span-2">
+            <label className="text-xs font-black text-slate-700 tracking-wide">
+              {isVi ? "Quy tắc phân tích toàn cục (Global Rules)" : "Global Analysis Rules"}
+            </label>
+            <textarea
+              value={formGlobalRules}
+              onChange={(e) => setFormGlobalRules(e.target.value)}
+              placeholder={isVi 
+                ? "Các chỉ dẫn áp dụng cho toàn bộ bản tóm tắt (ví dụ: Không dùng từ quá trang trọng, tập trung vào người phụ trách...)" 
+                : "Guidelines or rules applied to the entire summary (e.g. Focus on action items, keep tone formal...)"
+              }
+              rows={2}
+              className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold placeholder:text-slate-400 focus:border-cyan-400 outline-none transition resize-none shadow-sm"
+            />
+          </div>
+        )}
       </div>
     </div>
   );

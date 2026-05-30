@@ -57,6 +57,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
       return res.data;
     },
     refetchInterval: (query) => {
+      // Tiếp tục polling 3s/lần nếu có bản tóm tắt nào đang trong trạng thái [GENERATING]
       const hasGenerating = query.state.data?.some(
         (s: any) => s.summaryText === "[GENERATING]",
       );
@@ -71,7 +72,29 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
       const res = await apiClient.get(`/meetings/${meetingId}/sessions`);
       return res.data;
     },
+    refetchInterval: (query) => {
+      const data = query.state.data as any[];
+      if (!data) return false;
+
+      // Kích hoạt Polling khi cuộc họp/phiên đang diễn ra (ongoing) hoặc đang biên dịch âm thanh (processing/summarizing)
+      const hasOngoing = data.some((s: any) => s.status === "ongoing");
+      const hasProcessing = data.some((s: any) => s.aiActivated === true && !s.hasTranscripts);
+
+      // Chỉ poll nếu phiên họp chưa hoàn thành hoặc chưa có bản dịch xong
+      if (hasOngoing || hasProcessing) {
+        return 4000; // Polling thông minh mỗi 4 giây
+      }
+
+      return false; // Dừng lập tức khi chuyển sang completed và có đầy đủ transcripts
+    },
   });
+
+  // Tự động đồng bộ và làm mới danh sách tóm tắt khi dữ liệu phiên họp thay đổi (ví dụ kết thúc họp hoặc dịch xong)
+  useEffect(() => {
+    if (sessions) {
+      refetchSummaries();
+    }
+  }, [sessions, refetchSummaries]);
 
   // 3. Fetch all templates
   const { data: templates } = useQuery<any[]>({
@@ -222,7 +245,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       {/* LEFT COLUMN: AI SUMMARY VIEW */}
-      <div className="lg:col-span-7 space-y-6">
+      <div className="lg:col-span-8 space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
@@ -443,7 +466,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                     </button>
                   </div>
 
-                  <div className="space-y-4 max-h-[420px] overflow-y-auto pr-1 custom-scrollbar">
+                  <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
                     <MarkdownRenderer content={summary} />
                   </div>
                 </div>
@@ -500,7 +523,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
       </div>
 
       {/* RIGHT COLUMN: Q&A CHATBOT VIEW */}
-      <div className="lg:col-span-5 space-y-6">
+      <div className="lg:col-span-4 space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}

@@ -335,7 +335,7 @@ const MeetingDetailsPage: React.FC = () => {
   }
 
   return (
-    <div className="max-w-6xl mx-auto space-y-6 pb-20">
+    <div className={`${activeTab === "summary" ? "max-w-[1440px]" : "max-w-6xl"} mx-auto space-y-6 pb-20 transition-all duration-300`}>
       {/* 1. CUSTOM DELETE CONFIRMATION MODAL */}
       <AnimatePresence>
         {showDeleteConfirm && (

@@ -57,7 +57,7 @@ export function compileSummaryTemplatePrompt(
         sectionPrompt += `  - Chỉ dẫn phân tích riêng của AI cho mục này: ${sec.aiInstructions}\n`;
       }
       if (sec.placeholders) {
-        sectionPrompt += `  - Cấu trúc hiển thị và các biến mẫu bạn cần điền dữ liệu vào:\n\`\`\`markdown\n${sec.placeholders}\n\`\`\`\n`;
+        sectionPrompt += `  - Cấu trúc hiển thị và các biến mẫu bạn cần điền dữ liệu vào (hãy điền vào và trả về văn bản Markdown thuần túy trực tiếp, TUYỆT ĐỐI KHÔNG dùng ký hiệu code block \`\`\` để bao bọc):\n${sec.placeholders}\n`;
       }
       return sectionPrompt;
     })
@@ -83,10 +83,19 @@ export function compileSummaryTemplatePrompt(
         - TUYỆT ĐỐI KHÔNG ĐƯỢC SAO CHÉP hoặc in các nhãn kỹ thuật hướng dẫn như: "Mục thứ...", "Tiêu đề mục cần tạo", "Loại khối nội dung", "Yêu cầu tổng quan cho mục này", "Chỉ dẫn phân tích riêng của AI cho mục này", "Cấu trúc hiển thị và các biến mẫu" vào bản tóm tắt cuối cùng. Những nhãn này CHỈ là hướng dẫn thiết kế dành riêng cho bạn để biết cách phân tích và định dạng.
         - [BẮT BUỘC TUÂN THỦ BỐ CỤC KHỐI]: Đối với các mục có cung cấp "Cấu trúc hiển thị và các biến mẫu" (ví dụ: Bảng Markdown, danh sách Checkbox '- [ ]', hay Danh sách gạch đầu dòng), bạn BẮT BUỘC phải giữ nguyên 100% định dạng nguyên mẫu này trong đầu ra của mục. Tuyệt đối không được tự ý thay đổi bảng thành văn bản thường hoặc ngược lại.
         - [LẶP HÀNG/LẶP DÒNG CHO NHIỀU PHẦN TỬ]: Nếu cuộc họp thảo luận nhiều nội dung tương ứng (ví dụ: có nhiều công việc cần giao, nhiều ý kiến thảo luận, nhiều quyết định), bạn BẮT BUỘC phải nhân bản/lặp lại dòng cấu trúc mẫu đó (ví dụ: thêm các dòng mới vào bảng Markdown hoặc thêm nhiều dòng Checkbox '- [ ]') tương ứng với số lượng phần tử thực tế trong cuộc họp, điền đầy đủ dữ liệu vào các biến tương ứng.
-        - [ĐIỀN BIẾN THÔNG MINH]: Bạn phải phân tích ngữ cảnh cuộc họp để thay thế các biến mẫu trong cấu trúc (ví dụ: '{{ten_nhiem_vu}}', '{{nguoi_phu_trach}}', '{{han_chot}}' hoặc tương tự) bằng dữ liệu thật trích xuất được. Nếu biến nào không có thông tin cụ thể (ví dụ: giao việc nhưng không nói rõ hạn chót), hãy điền "Chưa xác định" hoặc "Đang cập nhật" thay vì in nguyên dấu ngoặc của biến.
+        - [QUY TẮC BẮT BUỘC - THAY THẾ HOÀN TOÀN NGOẶC VUÔNG CHỈ DẪN '[...]']:
+          1. Bạn phải phân biệt rõ hai loại ngoặc vuông:
+             - Loại A (Ngoặc vuông chức năng): Định dạng Markdown như hộp kiểm (Checkbox) '- [ ]' hoặc '- [x]', hãy GIỮ NGUYÊN để làm checkbox hiển thị trên giao diện.
+             - Loại B (Ngoặc vuông chỉ dẫn/giữ chỗ): Các nhãn hướng dẫn như '[AI tự động...]', '[Công Việc 1]', '[Tên người]', '[Hạn chót]', v.v. Bạn BẮT BUỘC phải XÓA BỎ hoàn toàn cặp ngoặc vuông này và thay thế bằng dữ liệu thực tế.
+          2. Tuyệt đối không được sao chép nguyên văn hoặc in các ngoặc vuông chỉ dẫn/giữ chỗ (Loại B) này ra kết quả cuối cùng.
+          3. Nếu một phần nội dung mẫu (ví dụ: mô tả tóm tắt hoặc các hàng trong bảng nhiệm vụ) hoàn toàn không có thông tin thảo luận thực tế trong cuộc họp, bạn BẮT BUỘC phải thay thế phần chỉ dẫn mẫu đó bằng dòng chữ: "Không có thông tin được nhắc đến trong cuộc họp". Tuyệt đối không in lại các dòng chữ hướng dẫn mẫu trong ngoặc vuông.
         - Đầu ra cuối cùng cho mỗi mục chỉ được chứa Tiêu đề mục (ví dụ: ### **${template.sections[0]?.label || 'Tiêu đề'}**) và phần nội dung đã được phân tích/điền dữ liệu tương ứng.
+        - [QUY TẮC BẮT BUỘC - LỌC TRÙNG LẶP DO GỐI ĐẦU ÂM THANH (5S OVERLAP)]:
+          1. Transcript cuộc họp đầu vào được ghép từ các phần ghi âm nhỏ gối đầu 5 giây (5s overlap).
+          2. Điều này dẫn đến việc xuất hiện các câu nói bị lặp lại hoặc gối nhau ở điểm tiếp giáp các đoạn (ví dụ: Một câu ở cuối đoạn trước bị cắt cụt, dở dang, nhưng được lặp lại đầy đủ và mạch lạc hơn ở đoạn sau).
+          3. Bạn BẮT BUỘC phải phân tích ngữ cảnh, đối chiếu và loại bỏ các câu trùng lặp/dở dang do kỹ thuật gối đầu này. Hãy ƯU TIÊN chọn phiên bản câu hoàn chỉnh, rõ ý và đầy đủ ngữ nghĩa ở đoạn sau để đưa vào nội dung tóm tắt.
+          4. Tuyệt đối không coi các câu lặp lại do gối đầu này là thông tin mới hoặc công việc mới.
         - TUYỆT ĐỐI TRÁNH ẢO GIÁC HÓA: Chỉ trích xuất và hiển thị thông tin thực tế từ đoạn transcript cuộc họp. Không tự ý bịa đặt, phỏng đoán hoặc bổ sung thông tin ngoài lề.
-        - NẾU KHÔNG CÓ THÔNG TIN/NỘI DUNG: Nếu một phần nội dung hoặc một khối trong cấu trúc mẫu không xuất hiện/không tìm thấy dữ liệu trong transcript cuộc họp, bạn CHỈ cần ghi rõ "Không có thông tin được nhắc đến trong cuộc họp" ngay bên dưới tiêu đề mục tương ứng, TUYỆT ĐỐI không tự chế nội dung và TUYỆT ĐỐI không in ra bất kỳ dòng hướng dẫn kỹ thuật nào.
         ${globalRulesPrompt}
 
         [Cấu trúc các mục tóm tắt cần tuân thủ]
@@ -108,6 +117,7 @@ export const ANSWER_QUESTION_PROMPT = (question: string, context: string) => `
         [Quy tắc nghiêm ngặt khi trả lời]:
         1. TUYỆT ĐỐI TRÁNH ẢO GIÁC HÓA: Chỉ trả lời dựa vào các thông tin thực tế có trong ngữ cảnh cuộc họp được cung cấp ở trên. Tuyệt đối không tự bịa đặt, suy đoán hoặc thêm thắt thông tin nằm ngoài nội dung cuộc họp.
         2. TỪ CHỐI CÂU HỎI NGOÀI LỀ: Nếu câu hỏi hoàn toàn không liên quan đến nội dung cuộc họp, hoặc thông tin được hỏi không hề xuất hiện/không tìm thấy trong ngữ cảnh cuộc họp, hãy lịch sự từ chối trả lời bằng tiếng Việt. Bạn có thể phản hồi khéo léo như: "Nội dung này không được nhắc đến trong cuộc họp" hoặc "Câu hỏi không liên quan đến nội dung cuộc họp", tuyệt đối không tự chế câu trả lời hoặc sử dụng kiến thức bên ngoài cuộc họp để trả lời các vấn đề ngoài lề.
+        3. LỌC TRÙNG LẶP DO GỐI ĐẦU 5S: Đoạn transcript có thể chứa các câu nói gối đầu lặp lại 5 giây do kỹ thuật chia nhỏ audio. Hãy chủ động lọc bỏ các câu trùng lặp hoặc câu dở dang bị cắt cụt, ưu tiên chọn phiên bản câu hoàn chỉnh và rõ ràng nhất để trả lời.
       `;
 
 export const DEFAULT_SUMMARY_PROMPT = (title: string, transcript: string) => `
@@ -124,5 +134,6 @@ export const DEFAULT_SUMMARY_PROMPT = (title: string, transcript: string) => `
         [Quy tắc nghiêm ngặt chống ảo giác]:
         - Chỉ trích xuất những thông tin có thực tế trong đoạn transcript cuộc họp. Không tự ý suy diễn hoặc bịa đặt thông tin.
         - Nếu bất kỳ mục nào ở trên không được thảo luận hoặc không có thông tin trong cuộc họp, hãy ghi rõ "Không được đề cập trong cuộc họp" thay vì tự chế nội dung.
+        - LỌC TRÙNG LẶP DO GỐI ĐẦU 5S: Đoạn transcript được tạo bởi các đoạn audio gối đầu 5 giây nên sẽ có các câu nói lặp lại hoặc bị cắt dở ở ranh giới. Hãy tự động đối chiếu và loại bỏ các phần trùng lặp dở dang này, chỉ chọn lọc và tổng hợp từ phiên bản câu nói đầy đủ, rõ nghĩa nhất.
         - Trình bày thật ngắn gọn, súc tích, trực quan và dễ đọc.
       `;
