@@ -4,14 +4,14 @@ databases:
     postgresMajorVersion: 15
 
 services:
-  - type: redis
+  - type: keyvalue
     name: meetmind-redis
     plan: free
     ipAllowList: []
 
   - type: web
     name: meetmind-backend
-    plan: starter
+    plan: free
     runtime: node
     rootDir: backend
     branch: main
@@ -60,12 +60,12 @@ services:
         sync: false
       - key: REDIS_HOST
         fromService:
-          type: redis
+          type: keyvalue
           name: meetmind-redis
           property: host
       - key: REDIS_PORT
         fromService:
-          type: redis
+          type: keyvalue
           name: meetmind-redis
           property: port
       - key: CORS_ORIGIN
