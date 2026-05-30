@@ -27,7 +27,6 @@ import { UpdateMeetingDto } from '../dto/update-meeting.dto';
 import { ListMeetingsDto } from '../dto/list-meetings.dto';
 import { PaginatedResult } from '../../../common/interfaces/paginated-result.interface';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { MailService } from '../../../providers/mail/mail.service';
 import { Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
@@ -39,7 +38,6 @@ export class MeetingsController {
   constructor(
     private readonly meetingsService: MeetingsService,
     private readonly liveKitService: LiveKitService,
-    private readonly mailService: MailService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -202,18 +200,6 @@ export class MeetingsController {
     return { status: 'ok' };
   }
 
-  @Post(':id/test-transcribe')
-  @UseInterceptors(FileInterceptor('audio'))
-  async testTranscribe(
-    @Param('id') id: string,
-    @UploadedFile() file: any,
-  ): Promise<any> {
-    if (!file) {
-      throw new BadRequestException('No audio file provided');
-    }
-    return this.meetingsService.testTranscribe(id, file);
-  }
-
   @Post(':id/transcribe')
   @UseGuards(JwtAuthGuard)
   @UseInterceptors(FileInterceptor('audio'))
@@ -233,35 +219,5 @@ export class MeetingsController {
       throw new BadRequestException('No audio file provided');
     }
     return await this.meetingsService.transcribeAndSave(id, file, body);
-  }
-
-  @Post('test-mail')
-  async testMail(@Body('email') email: string) {
-    const mockDate = new Date();
-    mockDate.setMinutes(mockDate.getMinutes() + 30);
-
-    await this.mailService.sendMeetingInvitation(
-      email,
-      'Thành viên Demo',
-      '[Demo] Cuộc họp tổng kết Q2 - MeetMind',
-      mockDate,
-      'http://localhost:3001/room/demo-id-123',
-      'meetmind2024',
-    );
-
-    await this.mailService.scheduleMeetingReminder(
-      email,
-      'Thành viên Demo',
-      'demo-meeting-id',
-      '[Demo] Cuộc họp tổng kết Q2 - MeetMind',
-      mockDate,
-      10,
-      'http://localhost:3001/room/demo-id-123',
-      'meetmind2024',
-    );
-
-    return {
-      message: `Đã gửi 2 email mẫu (Invitation + Reminder) tới ${email}`,
-    };
   }
 }

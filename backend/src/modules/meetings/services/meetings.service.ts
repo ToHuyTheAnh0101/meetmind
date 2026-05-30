@@ -381,47 +381,6 @@ export class MeetingsService {
   }
 
   /**
-   * API Test - Chuyển đổi âm thanh đơn lẻ sang văn bản
-   */
-  async testTranscribe(meetingId: string, file: any): Promise<any> {
-    const meeting = await this.meetingsRepository.findById(meetingId);
-    if (!meeting) throw new NotFoundException('Meeting not found');
-
-    const uploadsDir = path.join(process.cwd(), 'uploads', 'audio');
-    if (!fs.existsSync(uploadsDir))
-      fs.mkdirSync(uploadsDir, { recursive: true });
-
-    const f = file as {
-      originalname?: string;
-      buffer?: Buffer | Uint8Array | string;
-      mimetype?: string;
-    };
-    const originalname =
-      typeof f.originalname === 'string' ? f.originalname : 'test.webm';
-    const buffer = Buffer.isBuffer(f.buffer)
-      ? f.buffer
-      : Buffer.from(f.buffer || '');
-    const mimetype = typeof f.mimetype === 'string' ? f.mimetype : 'audio/webm';
-
-    const fileName = `${meetingId}-${Date.now()}-${originalname}`;
-    const filePath = path.join(uploadsDir, fileName);
-    fs.writeFileSync(filePath, buffer);
-
-    try {
-      const transcript = await this.aiService.transcribeAudio(buffer, mimetype);
-      return {
-        meetingId,
-        fileName,
-        transcript,
-        timestamp: new Date().toISOString(),
-      };
-    } catch (error) {
-      this.logger.error('Transcription error:', error);
-      throw new BadRequestException('Failed to transcribe audio with Gemini');
-    }
-  }
-
-  /**
    * Lưu thông tin file audio từ LiveKit vào bảng MeetingRecording
    */
   async saveAudioRecording(
