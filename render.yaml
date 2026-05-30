@@ -1,0 +1,99 @@
+databases:
+  - name: meetmind-db
+    plan: free
+    postgresMajorVersion: 15
+
+services:
+  # 1. Redis Cache & Queue
+  - type: redis
+    name: meetmind-redis
+    plan: free
+    ipAllowList: [] # Chỉ cho phép truy cập nội bộ bảo mật từ các service của Render
+
+  # 2. Whisper ASR Docker Service (Private Service - Không lộ ra ngoài Internet)
+  - type: pserv
+    name: meetmind-whisper
+    plan: starter # Chọn gói Starter (hoặc cao hơn) để có đủ RAM chạy Whisper CPU
+    env: docker
+    dockerImage: onerahmet/openai-whisper-asr-webservice:latest
+    envVars:
+      - key: ASR_MODEL
+        value: small # Sử dụng model small để tiết kiệm RAM & CPU tối đa mà vẫn chính xác
+      - key: ASR_ENGINE
+        value: faster-whisper
+
+  # 3. NestJS Backend Web Service
+  - type: web
+    name: meetmind-backend
+    plan: starter
+    env: node
+    rootDir: backend
+    buildCommand: npm install && npm run build
+    startCommand: npm run start:prod
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      # Tự động liên kết cơ sở dữ liệu PostgreSQL ở trên
+      - key: DB_HOST
+        fromDatabase:
+          name: meetmind-db
+          property: host
+      - key: DB_PORT
+        value: 5432
+      - key: DB_USER
+        fromDatabase:
+          name: meetmind-db
+          property: user
+      - key: DB_PASSWORD
+        fromDatabase:
+          name: meetmind-db
+          property: password
+      - key: DB_NAME
+        fromDatabase:
+          name: meetmind-db
+          property: database
+      # Tự động liên kết Redis ở trên
+      - key: REDIS_HOST
+        fromService:
+          type: redis
+          name: meetmind-redis
+          property: host
+      - key: REDIS_PORT
+        fromService:
+          type: redis
+          name: meetmind-redis
+          property: port
+      # Kết nối nội bộ sang service Whisper Docker
+      - key: WHISPER_API_URL
+        value: http://meetmind-whisper:9000
+      # Các khóa cấu hình ngẫu nhiên hoặc nhập thủ công
+      - key: JWT_SECRET
+        generateValue: true # Render sẽ tự động sinh mã secret ngẫu nhiên bảo mật
+      - key: GEMINI_API_KEY
+        sync: false # Người dùng sẽ điền thủ công trên giao diện Render
+      - key: LIVEKIT_URL
+        sync: false
+      - key: LIVEKIT_API_KEY
+        sync: false
+      - key: LIVEKIT_API_SECRET
+        sync: false
+      - key: CORS_ORIGIN
+        value: https://meetmind-frontend.onrender.com # Thay thế bằng domain frontend thực tế của bạn
+
+  # 4. React Frontend Static Site (HOÀN TOÀN MIỄN PHÍ)
+  - type: web
+    name: meetmind-frontend
+    plan: static # Gói static site miễn phí 100% của Render
+    env: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    publishDir: dist
+    envVars:
+      # Tự động truyền URL Backend vào Client khi build
+      - key: VITE_API_URL
+        fromService:
+          type: web
+          name: meetmind-backend
+          property: host
