@@ -81,15 +81,9 @@ services:
           name: meetmind-redis
           property: port
       - key: CORS_ORIGIN
-        fromService:
-          type: web
-          name: meetmind-frontend
-          property: url
+        value: https://meetmind-frontend.onrender.com
       - key: FRONTEND_URL
-        fromService:
-          type: web
-          name: meetmind-frontend
-          property: url
+        value: https://meetmind-frontend.onrender.com
       - key: MAIL_HOST
         value: smtp.gmail.com
       - key: MAIL_PORT
@@ -117,7 +111,4 @@ services:
     staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_URL
-        fromService:
-          type: web
-          name: meetmind-backend
-          property: url
+        value: https://meetmind-backend.onrender.com
