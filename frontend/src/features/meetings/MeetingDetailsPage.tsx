@@ -43,6 +43,7 @@ import { MeetingSummaryTab } from './components/details/MeetingSummaryTab'
 
 const MeetingDetailsPage: React.FC = () => {
   const { t, i18n } = useTranslation()
+  const isVi = i18n.language === 'vi'
   const theme = useTimeTheme()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -380,7 +381,7 @@ const MeetingDetailsPage: React.FC = () => {
                     disabled={deleteMutation.isPending}
                     className="flex h-16 w-full items-center justify-center rounded-2xl bg-rose-500 font-black text-white shadow-xl shadow-rose-200 transition hover:bg-rose-600 hover:scale-[1.02] active:scale-95 disabled:opacity-50"
                   >
-                    {deleteMutation.isPending ? <Loader2 className="h-6 w-6 animate-spin" /> : t('common.save') === 'Lưu' ? 'Xác Nhận Xóa' : 'Confirm Delete'}
+                    {deleteMutation.isPending ? <Loader2 className="h-6 w-6 animate-spin" /> : isVi ? 'Xác Nhận Xóa' : 'Confirm Delete'}
                   </button>
                   <button
                     onClick={() => setShowDeleteConfirm(false)}
@@ -511,7 +512,7 @@ const MeetingDetailsPage: React.FC = () => {
                               className="flex items-center gap-2 px-3 py-2 rounded-lg bg-white text-cyan-600 hover:bg-cyan-50 font-bold text-xs transition-all whitespace-nowrap shadow-sm border border-cyan-100"
                             >
                               <Sparkles className="h-3.5 w-3.5" />
-                              {t('common.save') === 'Lưu' ? 'Sử Dụng' : 'Use'}
+                              {isVi ? 'Sử Dụng' : 'Use'}
                             </button>
                           )}
                         </motion.div>

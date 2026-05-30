@@ -456,44 +456,6 @@ export class MeetingsService {
     }
   }
 
-  /**
-   * Xử lý bản dịch toàn bộ cuộc họp dựa trên các file ghi âm đã lưu
-   */
-  async processMeetingTranscription(meetingId: string): Promise<void> {
-    try {
-      this.logger.log(
-        `Bắt đầu xử lý bản dịch chạy ngầm cho cuộc họp: ${meetingId}`,
-      );
-
-      const recordings =
-        await this.recordingRepository.findByMeetingId(meetingId);
-
-      if (recordings.length === 0) {
-        this.logger.warn(
-          `Không tìm thấy bản ghi âm nào cho cuộc họp: ${meetingId}`,
-        );
-        return;
-      }
-
-      // 2. Gọi AI Service để xử lý đa luồng
-      // Lưu ý: Trong thực tế bạn cần tải buffer từ fileUrl trước khi gửi cho AI
-      // Ở đây tôi viết logic khung để bạn tích hợp phần tải file
-      this.logger.log(
-        `Đang gửi ${recordings.length} đoạn âm thanh sang Gemini...`,
-      );
-
-      // MOCK: Giả định đã tải được buffer (Bạn cần thêm logic tải file từ URL)
-      // const transcriptChunks = await this.aiService.transcribeMultiTrackAudio(...)
-
-      this.logger.log(`Hoàn tất xử lý bản dịch cho cuộc họp: ${meetingId}`);
-    } catch (error) {
-      this.logger.error(
-        `Lỗi khi xử lý bản dịch cho cuộc họp ${meetingId}:`,
-        error,
-      );
-    }
-  }
-
   async checkConflict(userId: string, time: string, currentMeetingId?: string) {
     const checkTime = new Date(time);
     if (isNaN(checkTime.getTime())) {

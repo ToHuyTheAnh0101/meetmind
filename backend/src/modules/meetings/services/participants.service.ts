@@ -58,9 +58,7 @@ export class ParticipantsService {
     password?: string,
     displayName?: string,
   ): Promise<JoinResponseDto> {
-    console.log(
-      `[ParticipantsService] Attempting to join meeting: ${id} for user: ${userId}`,
-    );
+    this.logger.log(`Attempting to join meeting: ${id} for user: ${userId}`);
     try {
       const meeting = await this.meetingsRepository.findById(id);
       if (!meeting) throw new NotFoundException('Meeting not found');
@@ -224,7 +222,7 @@ export class ParticipantsService {
         participants: participantSummaries,
       };
     } catch (error) {
-      console.error('CRITICAL ERROR in joinMeeting:', error);
+      this.logger.error('CRITICAL ERROR in joinMeeting:', error);
       throw error;
     }
   }
@@ -234,8 +232,8 @@ export class ParticipantsService {
     userId: string,
     hostId: string,
   ): Promise<void> {
-    console.log(
-      `[ParticipantsService] Admitting user ${userId} to meeting ${id} by host ${hostId}`,
+    this.logger.log(
+      `Admitting user ${userId} to meeting ${id} by host ${hostId}`,
     );
     const meeting = await this.meetingsRepository.findById(id);
     if (!meeting) throw new NotFoundException('Meeting not found');

@@ -16,6 +16,7 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MeetingsService } from '../services/meetings.service';
@@ -33,6 +34,8 @@ import type { Cache } from 'cache-manager';
 
 @Controller('meetings')
 export class MeetingsController {
+  private readonly logger = new Logger(MeetingsController.name);
+
   constructor(
     private readonly meetingsService: MeetingsService,
     private readonly liveKitService: LiveKitService,
@@ -190,7 +193,7 @@ export class MeetingsController {
           startedAt,
         );
 
-        console.log(
+        this.logger.log(
           `LiveKit Egress Ended for room ${meetingId}. Audio saved at: ${location}`,
         );
       }

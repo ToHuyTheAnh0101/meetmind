@@ -28,14 +28,21 @@ export class MeetingSessionsService {
       throw new Error('Only organizer can start session');
     }
 
-    // If an active session exists, return it
+    // If an active session exists, mark it as AI-activated and return
     const active = await this.sessionRepository.findActiveByMeeting(meetingId);
-    if (active) return active;
+    if (active) {
+      if (!active.aiActivated) {
+        active.aiActivated = true;
+        await this.sessionRepository.save(active);
+      }
+      return active;
+    }
 
     const session = this.sessionRepository.create({
       meetingId,
       actualStartTime: new Date(),
       status: MeetingSessionStatus.ONGOING,
+      aiActivated: true, // set immediately when organizer activates AI recording
     });
 
     return this.sessionRepository.save(session);

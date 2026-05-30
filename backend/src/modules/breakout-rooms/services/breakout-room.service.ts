@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  Logger,
 } from '@nestjs/common';
 import { MeetingRepository } from '../../meetings/repositories/meeting.repository';
 import { BreakoutRoomRepository } from '../repositories/breakout-room.repository';
@@ -16,6 +17,8 @@ import { LiveKitService } from '../../../providers/livekit/livekit.service';
 
 @Injectable()
 export class BreakoutRoomService {
+  private readonly logger = new Logger(BreakoutRoomService.name);
+
   constructor(
     private readonly meetingRepository: MeetingRepository,
     private readonly breakoutRoomRepository: BreakoutRoomRepository,
@@ -56,7 +59,7 @@ export class BreakoutRoomService {
       });
 
       const savedRoom = await this.breakoutRoomRepository.save(room);
-      console.log(
+      this.logger.log(
         `Created room ${savedRoom.name} with ${savedRoom.participants?.length || 0} participants`,
       );
     }
@@ -64,7 +67,7 @@ export class BreakoutRoomService {
     // 3. Lấy lại toàn bộ danh sách phòng kèm participants để trả về
     const finalRooms =
       await this.breakoutRoomRepository.findByMeetingId(meetingId);
-    console.log(`Returning ${finalRooms.length} rooms after setup.`);
+    this.logger.log(`Returning ${finalRooms.length} rooms after setup.`);
     return finalRooms;
   }
 
@@ -134,27 +137,27 @@ export class BreakoutRoomService {
       throw new ForbiddenException('Only organizer can end breakout');
 
     await this.breakoutRoomRepository.removeAllForMeeting(meetingId);
-    console.log(
-      `[DEBUG] All breakout rooms for meeting ${meetingId} have been hard deleted.`,
+    this.logger.debug(
+      `All breakout rooms for meeting ${meetingId} have been hard deleted.`,
     );
 
     return { message: 'Breakout rooms closed' };
   }
 
   async getBreakoutToken(meetingId: string, userId: string) {
-    console.log(
-      `[DEBUG] getBreakoutToken: searching for userId="${userId}" in meetingId="${meetingId}"`,
+    this.logger.debug(
+      `getBreakoutToken: searching for userId="${userId}" in meetingId="${meetingId}"`,
     );
     const rooms = await this.breakoutRoomRepository.findByMeetingId(meetingId);
-    console.log(`[DEBUG] Total rooms found: ${rooms.length}`);
+    this.logger.debug(`Total rooms found: ${rooms.length}`);
 
     // Tìm phòng đang ACTIVE mà user này được gán vào
     let foundRoom: BreakoutRoom | null = null;
     let foundParticipant: BreakoutRoomParticipant | null = null;
 
     for (const r of rooms) {
-      console.log(
-        `[DEBUG] Checking Room: "${r.name}" | Status: ${r.status} | Participants Count: ${r.participants?.length}`,
+      this.logger.debug(
+        `Checking Room: "${r.name}" | Status: ${r.status} | Participants Count: ${r.participants?.length}`,
       );
       const p = r.participants?.find(
         (part) =>
@@ -163,8 +166,8 @@ export class BreakoutRoomService {
       );
 
       if (p) {
-        console.log(
-          `[DEBUG] Found user in room "${r.name}". Room status is ${r.status}`,
+        this.logger.debug(
+          `Found user in room "${r.name}". Room status is ${r.status}`,
         );
         foundParticipant = p;
         if (r.status === BreakoutRoomStatus.ACTIVE) {
@@ -175,8 +178,8 @@ export class BreakoutRoomService {
     }
 
     if (!foundRoom || !foundParticipant) {
-      console.log(
-        `[DEBUG] No ACTIVE room found for user ${userId}. (RoomFound=${!!foundRoom}, ParticipantFound=${!!foundParticipant})`,
+      this.logger.debug(
+        `No ACTIVE room found for user ${userId}. (RoomFound=${!!foundRoom}, ParticipantFound=${!!foundParticipant})`,
       );
       return null;
     }

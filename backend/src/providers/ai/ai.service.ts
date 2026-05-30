@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import {
   GoogleGenerativeAI,
@@ -23,6 +23,7 @@ type TranscriptionSegment = {
 
 @Injectable()
 export class AiService {
+  private readonly logger = new Logger(AiService.name);
   private genAI: GoogleGenerativeAI;
   private primaryModel: GenerativeModel;
   private fallbackModel: GenerativeModel;
@@ -80,6 +81,7 @@ export class AiService {
             model: ollamaModel,
             prompt: textPrompt,
             stream: false,
+            keep_alive: '1m',
           },
         );
 
@@ -90,8 +92,8 @@ export class AiService {
           },
         } as unknown as GenerateContentResult;
       } catch (error) {
-        console.error(
-          `[AiService] Local Ollama failed, falling back to Gemini Cloud:`,
+        this.logger.error(
+          `Local Ollama failed, falling back to Gemini Cloud:`,
           error,
         );
       }
@@ -110,16 +112,13 @@ export class AiService {
             error.message.toLowerCase().includes('limit')));
 
       if (isQuotaError) {
-        console.warn(
-          `[AiService] Primary model failed due to rate limit/quota. Retrying with fallback model...`,
+        this.logger.warn(
+          `Primary model failed due to rate limit/quota. Retrying with fallback model...`,
         );
         try {
           return await this.fallbackModel.generateContent(prompt);
         } catch (fallbackError) {
-          console.error(
-            `[AiService] Fallback model also failed:`,
-            fallbackError,
-          );
+          this.logger.error(`Fallback model also failed:`, fallbackError);
           throw fallbackError;
         }
       }
@@ -137,7 +136,7 @@ export class AiService {
       const response = result.response;
       return response.text();
     } catch (error) {
-      console.error('Error answering question:', error);
+      this.logger.error('Error answering question:', error);
       throw new Error('Failed to answer question');
     }
   }
@@ -152,7 +151,7 @@ export class AiService {
       const response = result.response;
       return response.text();
     } catch (error) {
-      console.error('Error generating summary:', error);
+      this.logger.error('Error generating summary:', error);
       throw new Error('Failed to generate summary');
     }
   }
@@ -171,7 +170,7 @@ export class AiService {
       const response = result.response;
       return response.text();
     } catch (error) {
-      console.error('Error generating summary with template:', error);
+      this.logger.error('Error generating summary with template:', error);
       throw new Error('Failed to generate summary with template');
     }
   }
@@ -209,7 +208,10 @@ export class AiService {
         );
         return response.data.text?.trim() || '';
       } catch (error) {
-        console.error('Error transcribing audio with Local Whisper:', error);
+        this.logger.error(
+          'Error transcribing audio with Local Whisper:',
+          error,
+        );
         throw new Error('Failed to transcribe audio with Local Whisper');
       }
     }
@@ -231,7 +233,7 @@ export class AiService {
       const response = result.response;
       return response.text().trim();
     } catch (error) {
-      console.error('Error transcribing audio with Gemini:', error);
+      this.logger.error('Error transcribing audio with Gemini:', error);
       throw new Error('Failed to transcribe audio');
     }
   }
@@ -314,7 +316,7 @@ export class AiService {
               : Number(item.endTime) || 0,
         }));
     } catch (error) {
-      console.error('Error in multi-track transcription:', error);
+      this.logger.error('Error in multi-track transcription:', error);
       // Trả về mảng rỗng nếu có lỗi để tránh crash hệ thống
       return [];
     }

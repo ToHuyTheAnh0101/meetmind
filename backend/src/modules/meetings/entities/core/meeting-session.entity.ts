@@ -45,6 +45,10 @@ export class MeetingSession {
   @Column({ nullable: true })
   recordingUrl?: string;
 
+  /** Set to true immediately when organizer clicks "Kích hoạt trợ lý AI" */
+  @Column({ type: 'boolean', default: false })
+  aiActivated!: boolean;
+
   @CreateDateColumn()
   createdAt!: Date;
 
