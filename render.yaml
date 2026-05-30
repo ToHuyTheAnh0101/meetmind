@@ -42,7 +42,9 @@ services:
           name: meetmind-db
           property: host
       - key: DB_PORT
-        value: 5432
+        fromDatabase:
+          name: meetmind-db
+          property: port
       - key: DB_USER
         fromDatabase:
           name: meetmind-db
@@ -81,10 +83,13 @@ services:
       - key: LIVEKIT_API_SECRET
         sync: false
       - key: CORS_ORIGIN
-        value: https://meetmind-frontend.onrender.com # Thay thế bằng domain frontend thực tế của bạn
+        fromService:
+          type: static
+          name: meetmind-frontend
+          property: url
 
   # 4. React Frontend Static Site (HOÀN TOÀN MIỄN PHÍ)
-  - type: web
+  - type: static
     name: meetmind-frontend
     plan: static # Gói static site miễn phí 100% của Render
     runtime: static # Khai báo môi trường Static web hosting
@@ -97,4 +102,4 @@ services:
         fromService:
           type: web
           name: meetmind-backend
-          property: host
+          property: url
