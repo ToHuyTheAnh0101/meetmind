@@ -19,7 +19,7 @@ services:
       url: docker.io/onerahmet/openai-whisper-asr-webservice:latest
     envVars:
       - key: ASR_MODEL
-        value: small # Sử dụng model small để tiết kiệm RAM & CPU tối đa mà vẫn chính xác
+        value: medium # Sử dụng model medium để tiết kiệm RAM & CPU tối đa mà vẫn chính xác
       - key: ASR_ENGINE
         value: faster-whisper
 
@@ -84,18 +84,23 @@ services:
         sync: false
       - key: CORS_ORIGIN
         fromService:
-          type: static
+          type: web
+          name: meetmind-frontend
+          property: url
+      - key: FRONTEND_URL
+        fromService:
+          type: web
           name: meetmind-frontend
           property: url
 
   # 4. React Frontend Static Site (HOÀN TOÀN MIỄN PHÍ)
-  - type: static
+  - type: web
     name: meetmind-frontend
     plan: static # Gói static site miễn phí 100% của Render
     runtime: static # Khai báo môi trường Static web hosting
     rootDir: frontend
     buildCommand: npm install && npm run build
-    staticPublishDir: dist # Thư mục chứa tài nguyên tĩnh đã build xong
+    publishDir: dist # Thư mục chứa tài nguyên tĩnh đã build xong
     envVars:
       # Tự động truyền URL Backend vào Client khi build
       - key: VITE_API_URL
