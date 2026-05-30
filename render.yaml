@@ -14,8 +14,9 @@ services:
   - type: pserv
     name: meetmind-whisper
     plan: starter # Chọn gói Starter (hoặc cao hơn) để có đủ RAM chạy Whisper CPU
-    env: docker
-    dockerImage: onerahmet/openai-whisper-asr-webservice:latest
+    runtime: image # Khai báo chạy bằng prebuilt Docker image
+    image:
+      url: docker.io/onerahmet/openai-whisper-asr-webservice:latest
     envVars:
       - key: ASR_MODEL
         value: small # Sử dụng model small để tiết kiệm RAM & CPU tối đa mà vẫn chính xác
@@ -26,7 +27,7 @@ services:
   - type: web
     name: meetmind-backend
     plan: starter
-    env: node
+    runtime: node # Khai báo sử dụng môi trường Node.js gốc
     rootDir: backend
     buildCommand: npm install && npm run build
     startCommand: npm run start:prod
@@ -86,10 +87,10 @@ services:
   - type: web
     name: meetmind-frontend
     plan: static # Gói static site miễn phí 100% của Render
-    env: static
+    runtime: static # Khai báo môi trường Static web hosting
     rootDir: frontend
     buildCommand: npm install && npm run build
-    publishDir: dist
+    staticPublishDir: dist # Thư mục chứa tài nguyên tĩnh đã build xong
     envVars:
       # Tự động truyền URL Backend vào Client khi build
       - key: VITE_API_URL
