@@ -108,10 +108,9 @@ services:
       - key: OLLAMA_MODEL
         value: qwen2:7b
 
-  - type: web
+  - type: static
     name: meetmind-frontend
     plan: starter
-    runtime: static
     rootDir: frontend
     branch: main
     buildCommand: npm ci && npm run build
