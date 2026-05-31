@@ -108,13 +108,14 @@ services:
       - key: OLLAMA_MODEL
         value: qwen2:7b
 
-  - type: static
+  - type: web
     name: meetmind-frontend
+    runtime: static
     plan: starter
     rootDir: frontend
     branch: main
     buildCommand: npm ci && npm run build
-    staticPublishPath: frontend/dist
+    staticPublishPath: ./build
     envVars:
       - key: VITE_API_URL
         value: https://meetmind-backend.onrender.com
