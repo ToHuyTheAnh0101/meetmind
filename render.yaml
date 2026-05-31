@@ -30,7 +30,7 @@ services:
 
   - type: web
     name: meetmind-backend
-    plan: free
+    plan: starter
     runtime: node
     rootDir: backend
     branch: main
