@@ -110,7 +110,7 @@ services:
 
   - type: web
     name: meetmind-frontend
-    plan: free
+    plan: starter
     runtime: static
     rootDir: frontend
     branch: main
