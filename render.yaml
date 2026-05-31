@@ -9,6 +9,25 @@ services:
     plan: free
     ipAllowList: []
 
+  - type: pserv
+    name: meetmind-whisper
+    plan: starter
+    runtime: image
+    image:
+      url: docker.io/onerahmet/openai-whisper-asr-webservice:latest
+    envVars:
+      - key: ASR_MODEL
+        value: medium
+      - key: ASR_ENGINE
+        value: faster-whisper
+
+  - type: pserv
+    name: meetmind-ollama
+    plan: starter
+    runtime: image
+    image:
+      url: docker.io/ollama/ollama:latest
+
   - type: web
     name: meetmind-backend
     plan: free
@@ -82,6 +101,12 @@ services:
         sync: false
       - key: MAIL_FROM
         sync: false
+      - key: WHISPER_API_URL
+        value: http://meetmind-whisper:9000
+      - key: OLLAMA_API_URL
+        value: http://meetmind-ollama:11434
+      - key: OLLAMA_MODEL
+        value: qwen2:7b
 
   - type: web
     name: meetmind-frontend
