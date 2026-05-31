@@ -110,12 +110,12 @@ services:
 
   - type: web
     name: meetmind-frontend
-    runtime: static
     plan: starter
+    runtime: static
     rootDir: frontend
     branch: main
     buildCommand: npm ci && npm run build
-    staticPublishPath: ./build
+    staticPublishPath: frontend/dist
     envVars:
       - key: VITE_API_URL
         value: https://meetmind-backend.onrender.com
