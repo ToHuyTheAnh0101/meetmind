@@ -1,4 +1,5 @@
 # yaml-language-server: $schema=https://render.com/schema/render.yaml.json
+version: "1"
 databases:
   - name: meetmind-db
     plan: free
@@ -108,15 +109,4 @@ services:
         value: http://meetmind-ollama:11434
       - key: OLLAMA_MODEL
         value: qwen2:7b
-
-  - type: web
-    name: meetmind-frontend
-    plan: starter
-    runtime: static
-    rootDir: frontend
-    branch: main
-    buildCommand: npm ci && npm run build
-    staticPublishPath: "frontend/dist"
-    envVars:
-      - key: VITE_API_URL
-        value: https://meetmind-backend.onrender.com
+  # Frontend is deployed separately (e.g., Vercel); not managed by Render blueprint.
