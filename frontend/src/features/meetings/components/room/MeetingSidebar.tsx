@@ -158,9 +158,9 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                    )}
                 </div>
               )}
-              {activeTab === 'lobby' && (
-                 <LobbyManagement meetingId={meetingId} />
-              )}
+                {activeTab === 'lobby' && (
+                  <LobbyManagement meetingId={meetingId} enabled={isOpen && activeTab === 'lobby'} />
+                )}
               {activeTab === 'permissions' && (
                  <MeetingPermissionsTab meetingId={meetingId} />
               )}
