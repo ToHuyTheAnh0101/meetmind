@@ -1,7 +1,8 @@
+# yaml-language-server: $schema=https://render.com/schema/render.yaml.json
 databases:
   - name: meetmind-db
     plan: free
-    postgresMajorVersion: 15
+    postgresMajorVersion: "15"
 
 services:
   - type: keyvalue
@@ -115,7 +116,7 @@ services:
     rootDir: frontend
     branch: main
     buildCommand: npm ci && npm run build
-    staticPublishPath: frontend/dist
+    staticPublishPath: "frontend/dist"
     envVars:
       - key: VITE_API_URL
         value: https://meetmind-backend.onrender.com
