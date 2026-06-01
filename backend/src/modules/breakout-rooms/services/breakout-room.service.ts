@@ -14,6 +14,12 @@ import {
 } from '../entities/breakout-room.entity';
 import { BreakoutRoomParticipant } from '../entities/breakout-room-participant.entity';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
+import { EntityManager } from 'typeorm';
+import { MeetingSession } from '../../meetings/entities';
+import {
+  MeetingEvent,
+  EventType,
+} from '../../events/entities/meeting-event.entity';
 
 @Injectable()
 export class BreakoutRoomService {
@@ -24,6 +30,7 @@ export class BreakoutRoomService {
     private readonly breakoutRoomRepository: BreakoutRoomRepository,
     private readonly participantRepository: BreakoutRoomParticipantRepository,
     private readonly liveKitService: LiveKitService,
+    private readonly entityManager: EntityManager,
   ) {}
 
   async setupBreakoutRooms(
@@ -127,6 +134,28 @@ export class BreakoutRoomService {
       await this.liveKitService.createRoom(room.livekitRoomName);
     }
 
+    // Log BREAKOUT_STARTED event
+    try {
+      const session = await this.entityManager.findOne(MeetingSession, {
+        where: { meetingId },
+        order: { actualStartTime: 'DESC' },
+      });
+      if (session) {
+        const newEvent = this.entityManager.create(MeetingEvent, {
+          sessionId: session.id,
+          type: EventType.BREAKOUT_STARTED,
+          triggeredByUserId: userId,
+          metadata: {
+            roomsCount: rooms.length,
+            roomNames: rooms.map((r) => r.name),
+          },
+        });
+        await this.entityManager.save(MeetingEvent, newEvent);
+      }
+    } catch (err) {
+      this.logger.error('Failed to log BREAKOUT_STARTED event:', err);
+    }
+
     return rooms;
   }
 
@@ -135,6 +164,27 @@ export class BreakoutRoomService {
     if (!meeting) throw new NotFoundException('Meeting not found');
     if (meeting.organizerId !== userId)
       throw new ForbiddenException('Only organizer can end breakout');
+
+    // Log BREAKOUT_ENDED event before deleting rooms
+    try {
+      const session = await this.entityManager.findOne(MeetingSession, {
+        where: { meetingId },
+        order: { actualStartTime: 'DESC' },
+      });
+      if (session) {
+        const newEvent = this.entityManager.create(MeetingEvent, {
+          sessionId: session.id,
+          type: EventType.BREAKOUT_ENDED,
+          triggeredByUserId: userId,
+          metadata: {
+            timestamp: new Date().toISOString(),
+          },
+        });
+        await this.entityManager.save(MeetingEvent, newEvent);
+      }
+    } catch (err) {
+      this.logger.error('Failed to log BREAKOUT_ENDED event:', err);
+    }
 
     await this.breakoutRoomRepository.removeAllForMeeting(meetingId);
     this.logger.debug(

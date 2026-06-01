@@ -21,6 +21,7 @@ import {
 // --- Subcomponents ---
 import MeetingPermissionsTab from "./components/details/MeetingPermissionsTab";
 import { MeetingSummaryTab } from "./components/details/MeetingSummaryTab";
+import { MeetingDiaryTab } from "./components/details/MeetingDiaryTab";
 import { MeetingGeneralForm } from "./components/details/MeetingGeneralForm";
 import { MeetingControlCenter } from "./components/details/MeetingControlCenter";
 import { MeetingTeamPresence } from "./components/details/MeetingTeamPresence";
@@ -38,7 +39,7 @@ const MeetingDetailsPage: React.FC = () => {
   const isNew = location.pathname === "/meetings/new";
   const [copied, setCopied] = useState(false);
   const [isInstant, setIsInstant] = useState(true);
-  const [activeTab, setActiveTab] = useState<"general" | "permissions" | "summary">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "permissions" | "summary" | "diary">("general");
 
   const [formData, setFormData] = useState<{
     title: string;
@@ -335,7 +336,7 @@ const MeetingDetailsPage: React.FC = () => {
   }
 
   return (
-    <div className={`${activeTab === "summary" ? "max-w-[1440px]" : "max-w-6xl"} mx-auto space-y-6 pb-20 transition-all duration-300`}>
+    <div className="max-w-[1440px] mx-auto space-y-6 pb-20 transition-all duration-300">
       {/* 1. CUSTOM DELETE CONFIRMATION MODAL */}
       <AnimatePresence>
         {showDeleteConfirm && (
@@ -455,6 +456,24 @@ const MeetingDetailsPage: React.FC = () => {
                 {t("meeting.permissions.tab_summary")}
               </span>
             </button>
+            <button
+              onClick={() => setActiveTab("diary")}
+              className={`relative px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
+                activeTab === "diary"
+                  ? "text-indigo-600"
+                  : "text-slate-500 hover:text-slate-700"
+              }`}
+            >
+              {activeTab === "diary" && (
+                <motion.div
+                  layoutId="tab-bg"
+                  className="absolute inset-0 bg-white shadow-sm border border-slate-300 rounded-xl"
+                />
+              )}
+              <span className="relative z-10">
+                {t("meeting.permissions.tab_diary")}
+              </span>
+            </button>
           </div>
         )}
       </div>
@@ -521,7 +540,7 @@ const MeetingDetailsPage: React.FC = () => {
           >
             <MeetingPermissionsTab meetingId={id!} variant="details" />
           </motion.div>
-        ) : (
+        ) : activeTab === "summary" ? (
           <motion.div
             key="summary"
             initial={{ opacity: 0, y: 20 }}
@@ -529,6 +548,15 @@ const MeetingDetailsPage: React.FC = () => {
             exit={{ opacity: 0, y: -20 }}
           >
             <MeetingSummaryTab meetingId={id!} />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="diary"
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+          >
+            <MeetingDiaryTab meetingId={id!} />
           </motion.div>
         )}
       </AnimatePresence>

@@ -35,6 +35,10 @@ import {
   BreakoutRoom,
   BreakoutRoomStatus,
 } from '../../breakout-rooms/entities/breakout-room.entity';
+import {
+  MeetingEvent,
+  EventType,
+} from '../../events/entities/meeting-event.entity';
 
 @Injectable()
 export class ParticipantsService {
@@ -199,6 +203,12 @@ export class ParticipantsService {
         await this.meetingsRepository.save(meeting);
       }
 
+      await this.logMeetingEvent(id, EventType.USER_JOINED, userId, {
+        displayName: fullName,
+        email: user.email,
+        avatar: user.picture || undefined,
+      });
+
       const participantsData = await this.getParticipants(id, 1, 100);
       const participantSummaries: ParticipantSummaryDto[] =
         participantsData.items
@@ -253,6 +263,15 @@ export class ParticipantsService {
     participant.status = ParticipantStatus.ADMITTED;
     participant.isInMeeting = true;
     await this.participantsRepository.save(participant);
+
+    const targetUser = await this.usersService.findById(userId);
+    await this.logMeetingEvent(id, EventType.PARTICIPANT_ADMITTED, hostId, {
+      targetUserId: userId,
+      targetEmail: targetUser?.email || 'Unknown',
+      targetName: targetUser
+        ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
+        : 'Unknown',
+    });
   }
 
   async rejectParticipant(
@@ -289,6 +308,15 @@ export class ParticipantsService {
     if (participant) {
       participant.isInMeeting = false;
       await this.participantsRepository.save(participant);
+
+      const user = await this.usersService.findById(userId);
+      await this.logMeetingEvent(id, EventType.USER_LEFT, userId, {
+        displayName:
+          participant.displayName ||
+          (user ? `${user.firstName} ${user.lastName}` : 'Unknown'),
+        email: user?.email || 'Unknown',
+        avatar: user?.picture || undefined,
+      });
 
       // Check if there are any active participants left in the meeting
       const activeParticipants = await this.participantsRepository
@@ -380,6 +408,24 @@ export class ParticipantsService {
     const saved = (await this.participantsRepository.save(
       participant,
     )) as Participant;
+
+    const targetUser = await this.usersService.findById(targetUserId);
+    const targetName = targetUser
+      ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
+      : 'Unknown';
+
+    await this.logMeetingEvent(
+      meetingId,
+      EventType.PERMISSIONS_CHANGED,
+      requesterId,
+      {
+        targetUserId,
+        targetEmail: targetUser?.email || 'Unknown',
+        targetName,
+        permissions,
+      },
+    );
+
     return saved;
   }
 
@@ -436,8 +482,43 @@ export class ParticipantsService {
       this.logger.log(
         `Successfully updated permissions for ${participants.length} participants`,
       );
+
+      await this.logMeetingEvent(
+        meetingId,
+        EventType.PERMISSIONS_CHANGED,
+        requesterId,
+        {
+          action,
+          permissions,
+          count: participants.length,
+          userIds: userIds || [],
+        },
+      );
     }
 
     return { count: participants.length };
+  }
+
+  private async logMeetingEvent(
+    meetingId: string,
+    type: EventType,
+    triggeredByUserId: string,
+    metadata?: Record<string, any>,
+  ): Promise<void> {
+    try {
+      const session =
+        await this.sessionRepository.findLatestByMeeting(meetingId);
+      if (session) {
+        const newEvent = this.entityManager.create(MeetingEvent, {
+          sessionId: session.id,
+          type,
+          triggeredByUserId,
+          metadata: metadata || undefined,
+        });
+        await this.entityManager.save(MeetingEvent, newEvent);
+      }
+    } catch (err) {
+      this.logger.error(`Failed to log meeting event ${type}:`, err);
+    }
   }
 }

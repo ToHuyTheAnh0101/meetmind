@@ -84,6 +84,7 @@ const MeetingRoomPage: React.FC = () => {
   >("roster");
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [hasUnreadPolls, setHasUnreadPolls] = useState(false);
+  const [hasUnreadQA, setHasUnreadQA] = useState(false);
   const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(
     null,
@@ -161,6 +162,22 @@ const MeetingRoomPage: React.FC = () => {
     enabled: !!id && (isQuestionModalOpen || activeTab === "qa"),
   });
 
+  // Poll participants to detect waiting users in the lobby for organizers/co-hosts
+  const { data: participantsData } = useQuery<any>({
+    queryKey: ["meeting-participants", id],
+    queryFn: async () => {
+      const response = await apiClient.get(`/meetings/${id}/participants`);
+      return response.data;
+    },
+    enabled: !!id && (isOrganizer || isCoHost),
+    refetchInterval: (isOrganizer || isCoHost) && (!isSidebarOpen || activeTab !== "lobby") ? 5000 : false,
+  });
+
+  const hasWaitingLobby = useMemo(() => {
+    if (!participantsData?.items) return false;
+    return participantsData.items.some((p: any) => p.status === "waiting");
+  }, [participantsData]);
+
   const selectedQuestion = useMemo(
     () => allQuestions.find((q) => q.id === selectedQuestionId) || null,
     [allQuestions, selectedQuestionId],
@@ -213,6 +230,7 @@ const MeetingRoomPage: React.FC = () => {
         if (prevOpen && activeTab === tab) return false;
         setActiveTab(tab as any);
         if (tab === "polls") setHasUnreadPolls(false);
+        if (tab === "qa") setHasUnreadQA(false);
         return true;
       });
     },
@@ -432,11 +450,17 @@ const MeetingRoomPage: React.FC = () => {
     const handleRefreshQA = (e: any) => {
       if (e.detail?.meetingId === id) {
         queryClient.invalidateQueries({ queryKey: ["questions", id] });
+        if (activeTab !== "qa" || !isSidebarOpen) {
+          setHasUnreadQA(true);
+        }
       }
     };
     const handleRefreshPolls = (e: any) => {
       if (e.detail?.meetingId === id) {
         queryClient.invalidateQueries({ queryKey: ["polls", id] });
+        if (activeTab !== "polls" || !isSidebarOpen) {
+          setHasUnreadPolls(true);
+        }
       }
     };
     window.addEventListener("refresh-meeting", handleRefreshMeeting);
@@ -460,6 +484,8 @@ const MeetingRoomPage: React.FC = () => {
     queryClient,
     handleBreakoutStarted,
     handleBreakoutEnded,
+    activeTab,
+    isSidebarOpen,
   ]);
 
   useEffect(() => {
@@ -731,10 +757,13 @@ const MeetingRoomPage: React.FC = () => {
             onClose={handleCloseSidebar}
             activeTab={activeTab}
             hasUnreadPolls={hasUnreadPolls}
+            hasUnreadQA={hasUnreadQA}
+            hasWaitingLobby={hasWaitingLobby}
             setActiveTab={(tab: any) => {
               setActiveTab(tab);
               setIsSidebarOpen(true);
               if (tab === "polls") setHasUnreadPolls(false);
+              if (tab === "qa") setHasUnreadQA(false);
             }}
             meetingId={joinData.meetingId}
             userId={user?.id || ""}

@@ -21,6 +21,13 @@ export enum EventType {
   QA_CLOSED = 'qa_closed',
   RECORDING_STARTED = 'recording_started',
   RECORDING_STOPPED = 'recording_stopped',
+  PARTICIPANT_ADMITTED = 'participant_admitted',
+  PERMISSIONS_CHANGED = 'permissions_changed',
+  BREAKOUT_STARTED = 'breakout_started',
+  BREAKOUT_ENDED = 'breakout_ended',
+  AI_ASSISTANT_ACTIVATED = 'ai_assistant_activated',
+  AI_ASSISTANT_DEACTIVATED = 'ai_assistant_deactivated',
+  AI_SUMMARY_GENERATED = 'ai_summary_generated',
 }
 
 @Entity('meeting-events')

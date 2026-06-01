@@ -18,8 +18,10 @@ import {
   BadRequestException,
   Logger,
   Res,
+  ForbiddenException,
 } from '@nestjs/common';
 import * as express from 'express';
+import { MeetingSessionsService } from '../services/meeting-sessions.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MeetingsService } from '../services/meetings.service';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
@@ -33,6 +35,13 @@ import { Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 
+interface RequestWithUser {
+  user: {
+    id: string;
+    email: string;
+  };
+}
+
 @Controller('meetings')
 export class MeetingsController {
   private readonly logger = new Logger(MeetingsController.name);
@@ -40,6 +49,7 @@ export class MeetingsController {
   constructor(
     private readonly meetingsService: MeetingsService,
     private readonly liveKitService: LiveKitService,
+    private readonly sessionsService: MeetingSessionsService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -165,9 +175,20 @@ export class MeetingsController {
     @Param('id') id: string,
     @Body('question') question: string,
     @Body('sessionId') sessionId: string,
-    @Request() req: { user: { id: string } },
+    @Request() req: RequestWithUser,
     @Res() res: express.Response,
   ): Promise<void> {
+    if (sessionId) {
+      const hasAccess = await this.sessionsService.checkSessionAccess(
+        sessionId,
+        req.user.id,
+        req.user.email,
+      );
+      if (!hasAccess) {
+        throw new ForbiddenException('You do not have access to this session');
+      }
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -204,8 +225,18 @@ export class MeetingsController {
   async getAIChatHistory(
     @Param('id') id: string,
     @Query('sessionId') sessionId: string,
-    @Request() req: { user: { id: string } },
+    @Request() req: RequestWithUser,
   ): Promise<any[]> {
+    if (sessionId) {
+      const hasAccess = await this.sessionsService.checkSessionAccess(
+        sessionId,
+        req.user.id,
+        req.user.email,
+      );
+      if (!hasAccess) {
+        throw new ForbiddenException('You do not have access to this session');
+      }
+    }
     return this.meetingsService.getAIChatHistory(id, req.user.id, sessionId);
   }
 

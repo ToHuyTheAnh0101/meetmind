@@ -44,6 +44,8 @@ interface MeetingSidebarProps {
   onReturnToMain: () => void;
   isInBreakout: boolean;
   hasUnreadPolls?: boolean;
+  hasUnreadQA?: boolean;
+  hasWaitingLobby?: boolean;
 }
 
 const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
@@ -65,6 +67,8 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   onReturnToMain,
   isInBreakout,
   hasUnreadPolls,
+  hasUnreadQA,
+  hasWaitingLobby,
 }) => {
   const { t } = useTranslation();
   const [breakoutRooms, setBreakoutRooms] = useState<any[]>([]);
@@ -307,6 +311,14 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                
                {tab.id === 'polls' && hasUnreadPolls && (!isOpen || activeTab !== 'polls') && (
                  <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-rose-500 rounded-full border-2 border-slate-900 shadow-[0_0_8px_rgba(244,63,94,0.6)] animate-pulse" />
+               )}
+               
+               {tab.id === 'qa' && hasUnreadQA && (!isOpen || activeTab !== 'qa') && (
+                 <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-lime-500 rounded-full border-2 border-slate-900 shadow-[0_0_8px_rgba(132,204,22,0.6)] animate-pulse" />
+               )}
+
+               {tab.id === 'lobby' && hasWaitingLobby && (!isOpen || activeTab !== 'lobby') && (
+                 <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-emerald-500 rounded-full border-2 border-slate-900 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" />
                )}
                
                {isActive && (

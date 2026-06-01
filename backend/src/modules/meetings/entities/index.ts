@@ -20,7 +20,6 @@ export {
 // Real-time Collaboration
 // Content & Analytics
 export { TranscriptChunk } from './content/transcript-chunk.entity';
-export { MeetingRecording } from './content/meeting-recording.entity';
 export {
   MeetingSession,
   MeetingSessionStatus,
@@ -30,3 +29,5 @@ export {
 export { ChatHistory, ChatMessageType } from './ai/chat-history.entity';
 
 export { MeetingChatMessage } from './core/chat-message.entity';
+
+export { MeetingSessionShare } from './core/meeting-session-share.entity';

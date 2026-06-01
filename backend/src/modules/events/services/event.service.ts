@@ -44,12 +44,14 @@ export class EventService {
     sessionId: string,
     type: EventType,
     triggeredByUserId: string,
+    metadata?: Record<string, any>,
   ): Promise<MeetingEvent> {
     // Direct event creation from sessionId (no auto-create session)
     const event = this.eventRepository.create({
       sessionId,
       type,
       triggeredByUserId,
+      metadata: metadata || undefined,
     });
     return this.eventRepository.save(event);
   }

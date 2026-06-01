@@ -15,7 +15,6 @@ import type { Cache } from 'cache-manager';
 import {
   Meeting,
   MeetingStatus,
-  MeetingRecording,
   MeetingAccessType,
   ParticipantStatus,
   MeetingPermission,
@@ -32,7 +31,6 @@ import { PaginationHelper } from '../../../common/utils/pagination.helper';
 import { MeetingRepository } from '../repositories/meeting.repository';
 import { ParticipantRepository } from '../repositories/participant.repository';
 import { TranscriptRepository } from '../repositories/transcript.repository';
-import { MeetingRecordingRepository } from '../repositories/meeting-recording.repository';
 import { MeetingSessionRepository } from '../repositories/meeting-session.repository';
 import { MailService } from '../../../providers/mail/mail.service';
 import { AiService } from '../../../providers/ai/ai.service.js';
@@ -57,7 +55,6 @@ export class MeetingsService {
     private meetingsRepository: MeetingRepository,
     private participantsRepository: ParticipantRepository,
     private transcriptRepository: TranscriptRepository,
-    private recordingRepository: MeetingRecordingRepository,
     private sessionRepository: MeetingSessionRepository,
     private liveKitService: LiveKitService,
     private usersService: UsersService,
@@ -383,10 +380,7 @@ export class MeetingsService {
     await this.meetingsRepository.remove(meeting);
   }
 
-  /**
-   * Lưu thông tin file audio từ LiveKit vào bảng MeetingRecording
-   */
-  async saveAudioRecording(
+  saveAudioRecording(
     meetingId: string,
     participantIdentity: string,
     fileUrl: string,
@@ -394,28 +388,10 @@ export class MeetingsService {
     duration: number = 0,
     startTime: number = 0,
   ): Promise<void> {
-    try {
-      const participant =
-        await this.participantsRepository.findByMeetingAndUser(
-          meetingId,
-          participantIdentity,
-        );
-
-      const recording = new MeetingRecording();
-      recording.meetingId = meetingId;
-      recording.participantId = participant?.id || '';
-      recording.fileUrl = fileUrl;
-      recording.fileSize = fileSize;
-      recording.duration = duration;
-      recording.startTime = startTime;
-
-      await this.recordingRepository.save(recording);
-      this.logger.log(
-        `Đã lưu bản ghi âm cho ${participantIdentity} tại ${fileUrl}`,
-      );
-    } catch (error) {
-      this.logger.error(`Lỗi khi lưu bản ghi âm:`, error);
-    }
+    this.logger.log(
+      `[Webhook Audio Egress] Nhận bản ghi âm cho ${participantIdentity} tại ${fileUrl}. Dung lượng: ${fileSize} bytes, Thời lượng: ${duration}s, Bắt đầu lúc: ${startTime}s. (Đã bỏ lưu database)`,
+    );
+    return Promise.resolve();
   }
 
   async checkConflict(userId: string, time: string, currentMeetingId?: string) {

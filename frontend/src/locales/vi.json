@@ -398,7 +398,8 @@
       "no_results": "Không tìm thấy thành viên nào khớp với tìm kiếm.",
       "tab_general": "Thiết lập chung",
       "tab_permissions": "Phân quyền",
-      "tab_summary": "Tóm tắt & Hỏi đáp AI",
+      "tab_summary": "Phân tích & Tra cứu",
+      "tab_diary": "Nhật ký",
       "list": {
         "edit_meeting_info": {
           "label": "Sửa thông tin họp",
@@ -449,14 +450,14 @@
     "n_people_unassigned": "{{count}} người chưa gán",
     "start_breakout": "Bắt đầu chia phòng",
     "summary_tab": {
-      "tab_name": "Tóm tắt & Hỏi đáp AI",
+      "tab_name": "Phân tích & Tra cứu",
       "title": "Trí Tuệ Nhân Tạo Cuộc Họp",
       "subtitle": "Xem tóm tắt cuộc họp thông minh và tương tác với Trợ lý AI.",
       "no_summary_yet": "Bản tóm tắt cuộc họp chưa được khởi tạo.",
       "generate_summary_btn": "Khởi tạo Tóm tắt AI",
       "generating": "Đang phân tích cuộc họp...",
-      "summary_card_title": "Tóm Tắt Cuộc Họp AI",
-      "chatbot_card_title": "Trợ Lý Hỏi Đáp AI",
+      "summary_card_title": "Phân tích cuộc họp AI",
+      "chatbot_card_title": "Trợ lý tra cứu AI",
       "chat_placeholder": "Hỏi trợ lý AI bất kỳ điều gì về cuộc họp...",
       "suggested_questions": "Câu hỏi gợi ý",
       "preset_q1": "Tóm tắt ngắn gọn cuộc họp này?",

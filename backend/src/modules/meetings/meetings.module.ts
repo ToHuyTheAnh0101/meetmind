@@ -5,12 +5,12 @@ import {
   Meeting,
   Participant,
   TranscriptChunk,
-  MeetingRecording,
   Notification,
   AccessRequest,
   ChatHistory,
   MeetingSession,
   MeetingChatMessage,
+  MeetingSessionShare,
 } from './entities';
 
 // Controllers
@@ -23,10 +23,10 @@ import { ChatController } from './controllers/chat.controller';
 import { MeetingRepository } from './repositories/meeting.repository';
 import { ParticipantRepository } from './repositories/participant.repository';
 import { TranscriptRepository } from './repositories/transcript.repository';
-import { MeetingRecordingRepository } from './repositories/meeting-recording.repository';
 import { MeetingSessionRepository } from './repositories/meeting-session.repository';
 import { MeetingChatMessageRepository } from './repositories/meeting-chat-message.repository';
 import { ChatHistoryRepository } from './repositories/chat-history.repository';
+import { MeetingSessionShareRepository } from './repositories/meeting-session-share.repository';
 
 // Services
 import { MeetingsService } from './services/meetings.service';
@@ -48,12 +48,12 @@ import { AiModule } from '../../providers/ai/ai.module';
       Meeting,
       Participant,
       TranscriptChunk,
-      MeetingRecording,
       Notification,
       AccessRequest,
       ChatHistory,
       MeetingSession,
       MeetingChatMessage,
+      MeetingSessionShare,
     ]),
     LiveKitModule,
     UsersModule,
@@ -64,10 +64,10 @@ import { AiModule } from '../../providers/ai/ai.module';
     MeetingRepository,
     ParticipantRepository,
     TranscriptRepository,
-    MeetingRecordingRepository,
     MeetingSessionRepository,
     MeetingChatMessageRepository,
     ChatHistoryRepository,
+    MeetingSessionShareRepository,
     // Services
     MeetingsService,
     ParticipantsService,
@@ -88,10 +88,10 @@ import { AiModule } from '../../providers/ai/ai.module';
     MeetingRepository,
     ParticipantRepository,
     TranscriptRepository,
-    MeetingRecordingRepository,
     MeetingSessionRepository,
     MeetingChatMessageRepository,
     ChatHistoryRepository,
+    MeetingSessionShareRepository,
     TypeOrmModule,
   ],
 })

@@ -395,7 +395,8 @@
       "no_results": "No participants found matching your search.",
       "tab_general": "General settings",
       "tab_permissions": "Permissions",
-      "tab_summary": "AI Summary & Q&A",
+      "tab_summary": "Analysis & Search",
+      "tab_diary": "Diary",
       "list": {
         "edit_meeting_info": {
           "label": "Edit meeting info",
@@ -446,14 +447,14 @@
     "n_people_unassigned": "{{count}} unassigned",
     "start_breakout": "Start Breakout",
     "summary_tab": {
-      "tab_name": "AI Summary & Q&A",
+      "tab_name": "Analysis & Search",
       "title": "Meeting AI Intelligence",
       "subtitle": "View intelligent meeting summary and interact with the AI assistant.",
       "no_summary_yet": "Meeting summary has not been generated yet.",
       "generate_summary_btn": "Generate AI Summary",
       "generating": "Analyzing meeting...",
-      "summary_card_title": "AI Meeting Summary",
-      "chatbot_card_title": "AI Q&A Assistant",
+      "summary_card_title": "AI meeting analysis",
+      "chatbot_card_title": "AI lookup assistant",
       "chat_placeholder": "Ask AI assistant anything about this meeting...",
       "suggested_questions": "Suggested Questions",
       "preset_q1": "Summarize this meeting briefly?",

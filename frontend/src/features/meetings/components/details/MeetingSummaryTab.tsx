@@ -1,7 +1,7 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useMemo } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
   MessageSquare,
@@ -11,10 +11,17 @@ import {
   Bot,
   User,
   FileText,
+  Share2,
+  Users,
+  Trash2,
+  Plus,
+  Lock,
 } from "lucide-react";
 import apiClient from "@/lib/apiClient";
 import { getToken } from "@/lib/tokenStorage";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
+import { useAuth } from "@/features/auth/AuthContext";
+import { showSuccessToast, showErrorToast } from "@/lib/toastUtils";
 
 interface MeetingSummaryTabProps {
   meetingId: string;
@@ -38,6 +45,103 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+  const [isSharePanelOpen, setIsSharePanelOpen] = useState(false);
+  const [shareEmailInput, setShareEmailInput] = useState("");
+  
+  const { user } = useAuth();
+
+  // Fetch meeting details to get organizerId
+  const { data: meeting } = useQuery<any>({
+    queryKey: ["meeting-details", meetingId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/meetings/${meetingId}`);
+      return res.data;
+    },
+    enabled: !!meetingId,
+  });
+
+  // Fetch participants to check for co-host status
+  const { data: participantsData } = useQuery<any>({
+    queryKey: ["meeting-participants", meetingId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/meetings/${meetingId}/participants`);
+      return res.data;
+    },
+    enabled: !!meetingId,
+  });
+
+  const isOrganizer = useMemo(() => {
+    return meeting?.organizerId === user?.id;
+  }, [meeting, user]);
+
+  const isCoHost = useMemo(() => {
+    if (!participantsData?.items || !user) return false;
+    const p = participantsData.items.find((x: any) => x.userId === user.id);
+    return p?.permissions?.includes("co_host");
+  }, [participantsData, user]);
+
+  const canManageShares = isOrganizer || isCoHost;
+
+  // Fetch Whitelist Shares for selected session
+  const { data: sharesData, refetch: refetchShares } = useQuery<any>({
+    queryKey: ["session-shares", meetingId, selectedSessionId],
+    queryFn: async () => {
+      const res = await apiClient.get(
+        `/meetings/${meetingId}/sessions/${selectedSessionId}/shares`,
+      );
+      return res.data;
+    },
+    enabled: !!selectedSessionId,
+  });
+
+  const addShareMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await apiClient.post(
+        `/meetings/${meetingId}/sessions/${selectedSessionId}/shares`,
+        { email },
+      );
+      return res.data;
+    },
+    onSuccess: () => {
+      showSuccessToast(
+        isVi ? "Cấp quyền xem tóm tắt thành công!" : "Session access shared successfully!",
+      );
+      setShareEmailInput("");
+      refetchShares();
+    },
+    onError: (err: any) => {
+      const errMsg = err?.response?.data?.message || err?.message;
+      showErrorToast(
+        isVi
+          ? `Lỗi: ${errMsg || "Không thể chia sẻ quyền xem"}`
+          : `Error: ${errMsg || "Failed to share session access"}`,
+      );
+    },
+  });
+
+  const removeShareMutation = useMutation({
+    mutationFn: async (shareId: string) => {
+      const res = await apiClient.delete(
+        `/meetings/${meetingId}/sessions/${selectedSessionId}/shares/${shareId}`,
+      );
+      return res.data;
+    },
+    onSuccess: () => {
+      showSuccessToast(
+        isVi ? "Đã thu hồi quyền xem thành công!" : "Session access revoked successfully!",
+      );
+      refetchShares();
+    },
+    onError: (err: any) => {
+      const errMsg = err?.response?.data?.message || err?.message;
+      showErrorToast(
+        isVi
+          ? `Lỗi: ${errMsg || "Không thể thu hồi quyền xem"}`
+          : `Error: ${errMsg || "Failed to revoke session access"}`,
+      );
+    },
+  });
+
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -320,6 +424,12 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
     handleSendMessage(questionText);
   };
 
+  // Reset sharing panel when selected session changes
+  useEffect(() => {
+    setIsSharePanelOpen(false);
+    setShareEmailInput("");
+  }, [selectedSessionId]);
+
   const selectedSession = sessions?.find((s) => s.id === selectedSessionId);
   const isSelectedSessionOngoing = selectedSession?.status === "ongoing";
 
@@ -546,18 +656,164 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                       </select>
                     </div>
 
-                    {/* Compact Regenerate Button */}
-                    <button
-                      onClick={handleGenerate}
-                      className="px-3.5 py-2 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all font-black text-xs gap-1.5 shadow-sm"
-                      title={t("meeting.summary_tab.generate_summary_btn")}
-                    >
-                      <RefreshCw className="h-3.5 w-3.5" />
-                      <span>
-                        {isVi ? "Tạo lại" : "Regenerate"}
-                      </span>
-                    </button>
+                     <div className="flex items-center gap-2">
+                      {/* Whitelist Share trigger button */}
+                      {selectedSessionId && (
+                        <button
+                          type="button"
+                          onClick={() => setIsSharePanelOpen((prev) => !prev)}
+                          className={`px-3.5 py-2 flex items-center justify-center rounded-xl border transition-all font-black text-xs gap-1.5 shadow-sm ${
+                            isSharePanelOpen
+                              ? "bg-cyan-500 border-cyan-400 text-white shadow-cyan-100 shadow-lg"
+                              : "bg-slate-50 border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800"
+                          }`}
+                          title={isVi ? "Cấp quyền xem phiên họp" : "Manage session access shares"}
+                        >
+                          <Share2 className="h-3.5 w-3.5" />
+                          <span>
+                            {isVi ? "Chia sẻ" : "Share"}
+                            {sharesData?.sharedShares?.length > 0 && (
+                              <span className={`ml-1 px-1.5 py-0.5 rounded-full text-[9px] font-black leading-none ${
+                                isSharePanelOpen ? "bg-white text-cyan-600 animate-pulse" : "bg-cyan-100 text-cyan-700"
+                              }`}>
+                                {sharesData.sharedShares.length}
+                              </span>
+                            )}
+                          </span>
+                        </button>
+                      )}
+
+                      {/* Compact Regenerate Button */}
+                      <button
+                        onClick={handleGenerate}
+                        className="px-3.5 py-2 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all font-black text-xs gap-1.5 shadow-sm"
+                        title={t("meeting.summary_tab.generate_summary_btn")}
+                      >
+                        <RefreshCw className="h-3.5 w-3.5" />
+                        <span>
+                          {isVi ? "Tạo lại" : "Regenerate"}
+                        </span>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Glowing Share Whitelists Management Panel */}
+                  <AnimatePresence>
+                    {isSharePanelOpen && sharesData && (
+                      <motion.div
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: "auto" }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden border border-white/40 bg-white/40 rounded-3xl p-4 mb-4 backdrop-blur-md shadow-inner"
+                      >
+                        <div className="flex flex-col gap-4">
+                          {/* Title */}
+                          <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                            <h4 className="text-xs font-black text-slate-700 tracking-wider flex items-center gap-2">
+                              <Users className="h-4 w-4 text-cyan-500" />
+                              {isVi ? "Quyền Truy Cập Phiên Họp" : "Session Access Whitelist"}
+                            </h4>
+                          </div>
+
+                          {/* Default allowed list */}
+                          <div className="space-y-1.5">
+                            <span className="text-[10px] font-black text-slate-400 tracking-wider flex items-center gap-1.5">
+                              <Lock className="h-3.5 w-3.5 text-slate-500" />
+                              {isVi ? "Quyền mặc định (Chủ phòng & Thành viên đã tham gia):" : "Default Access (Organizer & Joined Participants):"}
+                            </span>
+                            <div className="flex flex-wrap gap-1.5 max-h-[85px] overflow-y-auto pr-1 custom-scrollbar">
+                              {sharesData.defaultEmails?.length === 0 ? (
+                                <span className="text-xs font-bold text-slate-400 italic">None</span>
+                              ) : (
+                                sharesData.defaultEmails.map((email: string) => (
+                                  <div
+                                    key={email}
+                                    className="px-2.5 py-1 text-xs font-bold bg-slate-50 border border-slate-100 rounded-xl text-slate-500 flex items-center gap-1.5"
+                                  >
+                                    <span className="h-1 w-1 rounded-full bg-slate-400" />
+                                    <span>{email}</span>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Explicitly Shared list & Add Form */}
+                          <div className="border-t border-slate-100 pt-3 flex flex-col md:flex-row gap-4 justify-between items-start md:items-stretch">
+                            {/* Explicit whitelist */}
+                            <div className="flex-1 space-y-1.5 w-full">
+                              <span className="text-[10px] font-black text-slate-400 tracking-wider flex items-center gap-1.5">
+                                <Share2 className="h-3.5 w-3.5 text-cyan-500" />
+                                {isVi ? "Chia sẻ bổ sung (Thủ công):" : "Additional Shared Whitelist (Manual):"}
+                              </span>
+                              <div className="flex flex-wrap gap-1.5 max-h-[105px] overflow-y-auto pr-1 custom-scrollbar w-full">
+                                {sharesData.sharedShares?.length === 0 ? (
+                                  <div className="text-xs font-bold text-slate-400 italic py-1">
+                                    {isVi ? "Chưa chia sẻ thêm cho ai khác." : "No manual shares yet."}
+                                  </div>
+                                ) : (
+                                  sharesData.sharedShares.map((share: any) => (
+                                    <div
+                                      key={share.id}
+                                      className="pl-2.5 pr-1.5 py-1 text-xs font-bold bg-cyan-50 border border-cyan-100/50 rounded-xl text-cyan-700 flex items-center gap-2 group hover:border-cyan-200 transition-colors"
+                                    >
+                                      <span>{share.email}</span>
+                                      {canManageShares && (
+                                        <button
+                                          type="button"
+                                          onClick={() => removeShareMutation.mutate(share.id)}
+                                          className="text-slate-400 hover:text-rose-500 hover:bg-rose-50 p-0.5 rounded-md transition-colors"
+                                          disabled={removeShareMutation.isPending}
+                                          title={isVi ? "Thu hồi quyền xem" : "Revoke Access"}
+                                        >
+                                          <Trash2 className="h-3 w-3" />
+                                        </button>
+                                      )}
+                                    </div>
+                                  ))
+                                )}
+                              </div>
+                            </div>
+
+                            {/* Add Whitelist Form */}
+                            {canManageShares && (
+                              <div className="w-full md:w-80 shrink-0 space-y-1.5">
+                                <span className="text-[10px] font-black text-slate-400 tracking-wider flex items-center gap-1">
+                                  <Plus className="h-3.5 w-3.5 text-cyan-500" />
+                                  {isVi ? "Cấp quyền xem mới:" : "Grant New Access:"}
+                                </span>
+                                <form
+                                  onSubmit={(e) => {
+                                    e.preventDefault();
+                                    if (shareEmailInput.trim()) {
+                                      addShareMutation.mutate(shareEmailInput);
+                                    }
+                                  }}
+                                  className="relative flex items-center"
+                                >
+                                  <input
+                                    type="email"
+                                    required
+                                    value={shareEmailInput}
+                                    onChange={(e) => setShareEmailInput(e.target.value)}
+                                    placeholder={isVi ? "email@example.com..." : "user@email.com..."}
+                                    className="w-full pl-3 pr-10 py-2.5 rounded-2xl bg-white border border-slate-200 text-xs font-semibold outline-none focus:border-cyan-400 transition-all text-slate-900 shadow-inner"
+                                  />
+                                  <button
+                                    type="submit"
+                                    disabled={!shareEmailInput.trim() || addShareMutation.isPending}
+                                    className="absolute right-1.5 h-7 w-7 flex items-center justify-center rounded-xl bg-cyan-500 hover:bg-cyan-400 text-white shadow-md active:scale-95 transition-all disabled:opacity-40 disabled:scale-100"
+                                  >
+                                    <Plus className="h-4 w-4" />
+                                  </button>
+                                </form>
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
 
                   <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
                     <MarkdownRenderer content={summary} />

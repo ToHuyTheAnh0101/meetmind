@@ -4,6 +4,7 @@ import {
   Get,
   Param,
   Body,
+  Query,
   UseGuards,
   Request,
 } from '@nestjs/common';
@@ -12,6 +13,13 @@ import { MeetingSessionsService } from '../../meetings/services/meeting-sessions
 import { MeetingEvent } from '../entities/meeting-event.entity';
 import { CreateEventDto } from '../dto/create-event.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
+
+interface RequestWithUser {
+  user: {
+    id: string;
+    email: string;
+  };
+}
 
 @Controller('meetings/:meetingId/events')
 export class EventController {
@@ -24,7 +32,11 @@ export class EventController {
   @UseGuards(JwtAuthGuard)
   async findAll(
     @Param('meetingId') meetingId: string,
+    @Query('sessionId') sessionId?: string,
   ): Promise<MeetingEvent[]> {
+    if (sessionId) {
+      return this.eventService.findBySessionId(sessionId);
+    }
     const session =
       await this.sessionsService.ensureSessionForMeeting(meetingId);
     return this.eventService.findBySessionId(session.id);
@@ -41,7 +53,7 @@ export class EventController {
   async create(
     @Param('meetingId') meetingId: string,
     @Body() dto: CreateEventDto,
-    @Request() req: { user: { id: string } },
+    @Request() req: RequestWithUser,
   ): Promise<MeetingEvent> {
     const session =
       await this.sessionsService.ensureSessionForMeeting(meetingId);
