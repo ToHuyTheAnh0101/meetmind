@@ -34,7 +34,7 @@ export function getStyleInstruction(summaryStyle?: string): string {
 }
 
 /**
- * Biên dịch Mẫu (Template) thành một prompt chi tiết cho Gemini
+ * Biên dịch Mẫu (Template) thành một prompt chi tiết cho Ollama
  */
 export function compileSummaryTemplatePrompt(
   title: string,

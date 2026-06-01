@@ -26,6 +26,7 @@ import { TranscriptRepository } from './repositories/transcript.repository';
 import { MeetingRecordingRepository } from './repositories/meeting-recording.repository';
 import { MeetingSessionRepository } from './repositories/meeting-session.repository';
 import { MeetingChatMessageRepository } from './repositories/meeting-chat-message.repository';
+import { ChatHistoryRepository } from './repositories/chat-history.repository';
 
 // Services
 import { MeetingsService } from './services/meetings.service';
@@ -66,6 +67,7 @@ import { AiModule } from '../../providers/ai/ai.module';
     MeetingRecordingRepository,
     MeetingSessionRepository,
     MeetingChatMessageRepository,
+    ChatHistoryRepository,
     // Services
     MeetingsService,
     ParticipantsService,
@@ -89,6 +91,7 @@ import { AiModule } from '../../providers/ai/ai.module';
     MeetingRecordingRepository,
     MeetingSessionRepository,
     MeetingChatMessageRepository,
+    ChatHistoryRepository,
     TypeOrmModule,
   ],
 })

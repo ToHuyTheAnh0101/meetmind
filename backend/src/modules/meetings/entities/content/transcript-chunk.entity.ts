@@ -14,15 +14,15 @@ import { MeetingSession } from '../core/meeting-session.entity';
 @Index(['sessionId'])
 export class TranscriptChunk {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id!: string;
 
   @Column('uuid')
-  meetingId: string;
+  meetingId!: string;
 
   @ManyToOne(() => Meeting, (meeting) => meeting.transcriptChunks, {
     onDelete: 'CASCADE',
   })
-  meeting: Meeting;
+  meeting!: Meeting;
 
   @Column('uuid', { nullable: true })
   sessionId?: string;
@@ -38,20 +38,20 @@ export class TranscriptChunk {
   speakerName?: string;
 
   @Column('text')
-  content: string;
+  content!: string;
 
-  @Column('vector', { length: 1536, nullable: true }) // 1536 là số chiều của OpenAI, tùy model bạn dùng
-  embedding: number[];
-
-  @Column({ nullable: true })
-  chunkIndex: number;
+  @Column('vector', { length: 1024, nullable: true }) // Khớp mặc định với mxbai-embed-large
+  embedding!: number[];
 
   @Column({ nullable: true })
-  startTime: number; // seconds into meeting
+  chunkIndex?: number;
 
   @Column({ nullable: true })
-  endTime: number; // seconds into meeting
+  startTime?: number; // seconds into meeting
+
+  @Column({ nullable: true })
+  endTime?: number; // seconds into meeting
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt!: Date;
 }

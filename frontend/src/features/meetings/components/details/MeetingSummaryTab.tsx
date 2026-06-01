@@ -13,6 +13,7 @@ import {
   FileText,
 } from "lucide-react";
 import apiClient from "@/lib/apiClient";
+import { getToken } from "@/lib/tokenStorage";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 
 interface MeetingSummaryTabProps {
@@ -34,6 +35,9 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   const [chatInput, setChatInput] = useState("");
+  const [isAiGenerating, setIsAiGenerating] = useState(false);
+  const [selectedSessionId, setSelectedSessionId] = useState<string>("");
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "welcome",
@@ -44,6 +48,43 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
       timestamp: new Date(),
     },
   ]);
+
+  // Load AI chat history from DB
+  const { data: chatHistory, refetch: refetchChatHistory } = useQuery<any[]>({
+    queryKey: ["ai-chat-history", meetingId, selectedSessionId],
+    queryFn: async () => {
+      if (!selectedSessionId) return [];
+      const res = await apiClient.get(`/meetings/${meetingId}/chat/history`, {
+        params: { sessionId: selectedSessionId },
+      });
+      return res.data;
+    },
+    enabled: !!selectedSessionId,
+  });
+
+  // Sync historical messages
+  useEffect(() => {
+    if (chatHistory) {
+      const formattedHistory: Message[] = chatHistory.map((h) => ({
+        id: h.id,
+        role: h.messageType === "user" ? "user" : "assistant",
+        content: h.content,
+        timestamp: new Date(h.createdAt),
+      }));
+
+      setMessages([
+        {
+          id: "welcome",
+          role: "assistant",
+          content: isVi
+            ? "Xin chào! Tôi là Trợ lý AI của MeetMind. Bạn có câu hỏi nào về nội dung hay kết quả của cuộc họp này không?"
+            : "Hello! I am the MeetMind AI Assistant. Do you have any questions about the content or outcomes of this meeting?",
+          timestamp: new Date(),
+        },
+        ...formattedHistory,
+      ]);
+    }
+  }, [chatHistory, isVi]);
 
   // 1. Fetch all AI Summaries for the meeting
   const {
@@ -128,43 +169,6 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
     },
   });
 
-  // 5. Chat Q&A Mutation
-  const chatMutation = useMutation({
-    mutationFn: async (question: string) => {
-      const res = await apiClient.post(`/meetings/${meetingId}/chat`, {
-        question,
-      });
-      return res.data;
-    },
-    onSuccess: (data) => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `ai-${Date.now()}`,
-          role: "assistant",
-          content: data.answer,
-          timestamp: new Date(),
-        },
-      ]);
-    },
-    onError: () => {
-      setMessages((prev) => [
-        ...prev,
-        {
-          id: `ai-err-${Date.now()}`,
-          role: "assistant",
-          content: isVi
-            ? "Rất tiếc, đã có lỗi xảy ra khi kết nối tới Trợ lý AI. Vui lòng thử lại!"
-            : "Sorry, an error occurred while connecting to the AI Assistant. Please try again!",
-          timestamp: new Date(),
-        },
-      ]);
-    },
-  });
-
-  const [selectedSessionId, setSelectedSessionId] = useState<string>("");
-  const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
-
   // Sort sessions: latest first
   const sortedSessions = sessions
     ? [...sessions].sort(
@@ -203,10 +207,10 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
   // Scroll to bottom of chat when new message arrives
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages, chatMutation.isPending]);
+  }, [messages, isAiGenerating]);
 
-  const handleSendMessage = (text: string) => {
-    if (!text.trim() || chatMutation.isPending) return;
+  const handleSendMessage = async (text: string) => {
+    if (!text.trim() || isAiGenerating) return;
 
     const userMsg: Message = {
       id: `user-${Date.now()}`,
@@ -215,11 +219,100 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
       timestamp: new Date(),
     };
 
+    // 1. Thêm tin nhắn của user vào UI trước
     setMessages((prev) => [...prev, userMsg]);
     setChatInput("");
+    setIsAiGenerating(true);
 
-    // Trigger API call
-    chatMutation.mutate(text);
+    // 2. Thêm một tin nhắn trống cho AI để bắt đầu append chữ dần dần
+    const aiMessageId = `ai-${Date.now()}`;
+    const aiMsg: Message = {
+      id: aiMessageId,
+      role: "assistant",
+      content: "",
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, aiMsg]);
+
+    try {
+      const token = getToken() || "";
+      const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+
+      const response = await fetch(`${apiBaseUrl}/meetings/${meetingId}/chat/stream`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          question: text,
+          sessionId: selectedSessionId,
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to connect to AI Stream");
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder("utf-8");
+      let finished = false;
+      let accumulatedText = "";
+
+      while (!finished && reader) {
+        const { value, done } = await reader.read();
+        finished = done;
+        if (value) {
+          const chunk = decoder.decode(value, { stream: true });
+          const lines = chunk.split("\n");
+          for (const line of lines) {
+            if (line.startsWith("data: ")) {
+              const dataStr = line.slice(6).trim();
+              if (dataStr === "[DONE]") {
+                finished = true;
+                break;
+              }
+              try {
+                const parsed = JSON.parse(dataStr);
+                if (parsed.error) {
+                  throw new Error(parsed.error);
+                }
+                if (parsed.text) {
+                  accumulatedText += parsed.text;
+                  setMessages((prev) =>
+                    prev.map((msg) =>
+                      msg.id === aiMessageId ? { ...msg, content: accumulatedText } : msg
+                    )
+                  );
+                }
+              } catch {
+                // Ignore parsing errors for partial stream chunks
+              }
+            }
+          }
+        }
+      }
+
+      // 3. Khi hoàn thành stream, reload lịch sử thực tế từ DB để đồng bộ các ID thật
+      refetchChatHistory();
+
+    } catch (error) {
+      console.error("Streaming error:", error);
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === aiMessageId
+            ? {
+                ...msg,
+                content: isVi
+                  ? "Rất tiếc, đã có lỗi xảy ra khi kết nối tới Trợ lý AI. Vui lòng thử lại!"
+                  : "Sorry, an error occurred while connecting to the AI Assistant. Please try again!",
+              }
+            : msg
+        )
+      );
+    } finally {
+      setIsAiGenerating(false);
+    }
   };
 
   const handlePresetQuestion = (questionKey: string) => {
@@ -597,7 +690,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
               </div>
             ))}
 
-            {chatMutation.isPending && (
+            {isAiGenerating && (
               <div className="flex gap-3 max-w-[85%] mr-auto items-center">
                 <div className="h-9 w-9 rounded-xl bg-white border border-slate-200 text-slate-500 flex items-center justify-center shrink-0 shadow-sm">
                   <Bot className="h-4 w-4 text-indigo-500" />
@@ -630,21 +723,21 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
             <div className="flex flex-wrap gap-2">
               <button
                 onClick={() => handlePresetQuestion("preset_q1")}
-                disabled={chatMutation.isPending}
+                disabled={isAiGenerating}
                 className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors text-left"
               >
                 {t("meeting.summary_tab.preset_q1")}
               </button>
               <button
                 onClick={() => handlePresetQuestion("preset_q2")}
-                disabled={chatMutation.isPending}
+                disabled={isAiGenerating}
                 className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors text-left"
               >
                 {t("meeting.summary_tab.preset_q2")}
               </button>
               <button
                 onClick={() => handlePresetQuestion("preset_q3")}
-                disabled={chatMutation.isPending}
+                disabled={isAiGenerating}
                 className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors text-left"
               >
                 {t("meeting.summary_tab.preset_q3")}
@@ -664,13 +757,13 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
               type="text"
               value={chatInput}
               onChange={(e) => setChatInput(e.target.value)}
-              disabled={chatMutation.isPending}
+              disabled={isAiGenerating}
               placeholder={t("meeting.summary_tab.chat_placeholder")}
               className="w-full pl-5 pr-14 py-4 rounded-2xl bg-slate-50 border-2 border-transparent focus:border-indigo-200 focus:bg-white text-sm font-semibold outline-none transition-all placeholder:text-slate-400 text-slate-900 shadow-inner"
             />
             <button
               type="submit"
-              disabled={!chatInput.trim() || chatMutation.isPending}
+              disabled={!chatInput.trim() || isAiGenerating}
               className="absolute right-2 h-11 w-11 flex items-center justify-center rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-500 text-white shadow-md shadow-indigo-100 hover:scale-[1.05] active:scale-95 transition-all disabled:opacity-40 disabled:scale-100 disabled:shadow-none"
             >
               <Send className="h-4 w-4" />

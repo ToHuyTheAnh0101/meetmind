@@ -5,6 +5,7 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
+import { Observable } from 'rxjs';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ConfigService } from '@nestjs/config';
@@ -19,6 +20,7 @@ import {
   ParticipantStatus,
   MeetingPermission,
   MeetingSessionStatus,
+  ChatMessageType,
 } from '../entities';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
 import { UsersService } from '../../users/users.service';
@@ -33,7 +35,8 @@ import { TranscriptRepository } from '../repositories/transcript.repository';
 import { MeetingRecordingRepository } from '../repositories/meeting-recording.repository';
 import { MeetingSessionRepository } from '../repositories/meeting-session.repository';
 import { MailService } from '../../../providers/mail/mail.service';
-import { AiService } from '../../../providers/ai/ai.service';
+import { AiService } from '../../../providers/ai/ai.service.js';
+import { ChatHistoryRepository } from '../repositories/chat-history.repository';
 
 @Injectable()
 export class MeetingsService {
@@ -50,7 +53,6 @@ export class MeetingsService {
     }
     return false;
   }
-
   constructor(
     private meetingsRepository: MeetingRepository,
     private participantsRepository: ParticipantRepository,
@@ -62,6 +64,7 @@ export class MeetingsService {
     private configService: ConfigService,
     private aiService: AiService,
     private mailService: MailService,
+    private chatHistoryRepository: ChatHistoryRepository,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -452,28 +455,210 @@ export class MeetingsService {
     meetingId: string,
     question: string,
     _userId: string,
+    sessionId?: string,
   ): Promise<{ answer: string }> {
-    this.logger.log(`User ${_userId} chatting with AI in meeting ${meetingId}`);
+    this.logger.log(
+      `User ${_userId} chatting with AI in meeting ${meetingId}${sessionId ? `, session ${sessionId}` : ''}`,
+    );
     const meeting = await this.meetingsRepository.findById(meetingId);
     if (!meeting) {
       throw new NotFoundException('Meeting not found');
     }
 
-    const transcriptChunks =
-      await this.transcriptRepository.findByMeetingId(meetingId);
-    const transcriptText = transcriptChunks.map((c) => c.content).join('\n');
+    // 1. Tạo vector embedding cho câu hỏi
+    const questionEmbedding = await this.aiService.embed(question);
 
-    if (!transcriptText || !transcriptText.trim()) {
+    if (!questionEmbedding || questionEmbedding.length === 0) {
+      throw new BadRequestException(
+        'Failed to generate embedding for the question.',
+      );
+    }
+
+    // 2. Tìm kiếm các đoạn transcript liên quan nhất theo embedding bằng pgvector trực tiếp ở DB
+    const relevantChunks =
+      await this.transcriptRepository.findRelevantByEmbedding(
+        meetingId,
+        questionEmbedding,
+        5,
+        sessionId,
+      );
+
+    // 3. Xử lý ngữ cảnh (context)
+    let contextText = '';
+    if (relevantChunks.length > 0) {
+      contextText = relevantChunks
+        .map((chunk) => {
+          const speakerLabel = chunk.speakerName
+            ? `${chunk.speakerName}: `
+            : '';
+          return `${speakerLabel}${chunk.content}`;
+        })
+        .join('\n');
+    } else {
+      // Fallback nếu không có kết quả khớp vector, lấy toàn bộ transcript làm ngữ cảnh
+      const allChunks = sessionId
+        ? await this.transcriptRepository.findBySessionId(sessionId)
+        : await this.transcriptRepository.findByMeetingId(meetingId);
+      contextText = allChunks.map((c) => c.content).join('\n');
+    }
+
+    if (!contextText || !contextText.trim()) {
       return {
         answer: `Không có bản dịch thoại trực tiếp. Đây là cuộc họp "${meeting.title}" với mô tả: ${meeting.description || 'Không có mô tả'}.`,
       };
     }
 
-    const answer = await this.aiService.answerQuestion(
-      question,
-      transcriptText,
-    );
+    // 4. Sinh phản hồi với LLM Ollama cục bộ dựa trên ngữ cảnh được lọc tối ưu
+    const answer = await this.aiService.answerQuestion(question, contextText);
+
+    // 5. Lưu lịch sử chat AI (cả câu hỏi của user và phản hồi của AI)
+    try {
+      await this.chatHistoryRepository.save({
+        meetingId,
+        sessionId,
+        userId: _userId,
+        messageType: ChatMessageType.USER,
+        content: question,
+      });
+
+      await this.chatHistoryRepository.save({
+        meetingId,
+        sessionId,
+        userId: _userId,
+        messageType: ChatMessageType.AI,
+        content: answer,
+      });
+    } catch (dbError) {
+      this.logger.error('Failed to save AI chat history:', dbError);
+    }
+
     return { answer };
+  }
+
+  async chatWithAIStream(
+    meetingId: string,
+    question: string,
+    _userId: string,
+    sessionId?: string,
+  ): Promise<Observable<string>> {
+    this.logger.log(
+      `User ${_userId} chatting with AI (Stream) in meeting ${meetingId}${sessionId ? `, session ${sessionId}` : ''}`,
+    );
+    const meeting = await this.meetingsRepository.findById(meetingId);
+    if (!meeting) {
+      throw new NotFoundException('Meeting not found');
+    }
+
+    // 1. Tạo vector embedding cho câu hỏi
+    const questionEmbedding = await this.aiService.embed(question);
+
+    if (!questionEmbedding || questionEmbedding.length === 0) {
+      throw new BadRequestException(
+        'Failed to generate embedding for the question.',
+      );
+    }
+
+    // 2. Tìm kiếm các đoạn transcript liên quan nhất theo embedding bằng pgvector trực tiếp ở DB
+    const relevantChunks =
+      await this.transcriptRepository.findRelevantByEmbedding(
+        meetingId,
+        questionEmbedding,
+        5,
+        sessionId,
+      );
+
+    // 3. Xử lý ngữ cảnh (context)
+    let contextText = '';
+    if (relevantChunks.length > 0) {
+      contextText = relevantChunks
+        .map((chunk) => {
+          const speakerLabel = chunk.speakerName
+            ? `${chunk.speakerName}: `
+            : '';
+          return `${speakerLabel}${chunk.content}`;
+        })
+        .join('\n');
+    } else {
+      // Fallback nếu không có kết quả khớp vector, lấy toàn bộ transcript làm ngữ cảnh
+      const allChunks = sessionId
+        ? await this.transcriptRepository.findBySessionId(sessionId)
+        : await this.transcriptRepository.findByMeetingId(meetingId);
+      contextText = allChunks.map((c) => c.content).join('\n');
+    }
+
+    if (!contextText || !contextText.trim()) {
+      return new Observable<string>((sub) => {
+        const text = `Không có bản dịch thoại trực tiếp. Đây là cuộc họp "${meeting.title}" với mô tả: ${meeting.description || 'Không có mô tả'}.`;
+        sub.next(text);
+        sub.complete();
+      });
+    }
+
+    // 4. Lấy stream trả lời câu hỏi từ Ollama
+    const aiStream = await this.aiService.answerQuestionStream(
+      question,
+      contextText,
+    );
+
+    let fullAnswer = '';
+
+    return new Observable<string>((sub) => {
+      const subscription = aiStream.subscribe({
+        next: (chunk) => {
+          fullAnswer += chunk;
+          sub.next(chunk);
+        },
+        error: (err) => {
+          sub.error(err);
+        },
+        complete: () => {
+          sub.complete();
+          // 5. Lưu lịch sử chat AI (cả câu hỏi của user và phản hồi của AI) khi stream kết thúc
+          (async () => {
+            try {
+              await this.chatHistoryRepository.save({
+                meetingId,
+                sessionId,
+                userId: _userId,
+                messageType: ChatMessageType.USER,
+                content: question,
+              });
+
+              await this.chatHistoryRepository.save({
+                meetingId,
+                sessionId,
+                userId: _userId,
+                messageType: ChatMessageType.AI,
+                content: fullAnswer,
+              });
+            } catch (dbError) {
+              this.logger.error(
+                'Failed to save AI chat history in stream completion:',
+                dbError,
+              );
+            }
+          })().catch((err) => {
+            this.logger.error('Stream completion unhandled error:', err);
+          });
+        },
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    });
+  }
+
+  async getAIChatHistory(
+    meetingId: string,
+    userId: string,
+    sessionId?: string,
+  ): Promise<any[]> {
+    const meeting = await this.meetingsRepository.findById(meetingId);
+    if (!meeting) {
+      throw new NotFoundException('Meeting not found');
+    }
+    return this.chatHistoryRepository.findHistory(meetingId, userId, sessionId);
   }
 
   /**
@@ -573,10 +758,18 @@ export class MeetingsService {
         }
 
         // 4. Lưu trữ TranscriptChunk vào cơ sở dữ liệu với metadata đầy đủ
+        const cleanedTranscript = transcriptText.trim();
+        const embedding = await this.aiService.embed(cleanedTranscript);
+
         const chunk = this.transcriptRepository.create({
           meetingId,
           sessionId: session.id,
-          content: transcriptText.trim(),
+          content: cleanedTranscript,
+          // Lưu null nếu mảng rỗng hoặc sai số chiều (không bằng 1024) để tránh lỗi pgvector DB crash
+          embedding:
+            embedding && embedding.length === 1024
+              ? embedding
+              : (null as unknown as number[]),
           userId,
           speakerName,
           chunkIndex: chunkIndexNum,

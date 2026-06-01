@@ -17,7 +17,9 @@ import {
   UploadedFile,
   BadRequestException,
   Logger,
+  Res,
 } from '@nestjs/common';
+import * as express from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MeetingsService } from '../services/meetings.service';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
@@ -146,9 +148,65 @@ export class MeetingsController {
   async chatWithAI(
     @Param('id') id: string,
     @Body('question') question: string,
+    @Body('sessionId') sessionId: string,
     @Request() req: { user: { id: string } },
   ): Promise<{ answer: string }> {
-    return this.meetingsService.chatWithAI(id, question, req.user.id);
+    return this.meetingsService.chatWithAI(
+      id,
+      question,
+      req.user.id,
+      sessionId,
+    );
+  }
+
+  @Post(':id/chat/stream')
+  @UseGuards(JwtAuthGuard)
+  async chatWithAIStream(
+    @Param('id') id: string,
+    @Body('question') question: string,
+    @Body('sessionId') sessionId: string,
+    @Request() req: { user: { id: string } },
+    @Res() res: express.Response,
+  ): Promise<void> {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+
+    const stream = await this.meetingsService.chatWithAIStream(
+      id,
+      question,
+      req.user.id,
+      sessionId,
+    );
+
+    const subscription = stream.subscribe({
+      next: (chunk) => {
+        res.write(`data: ${JSON.stringify({ text: chunk })}\n\n`);
+      },
+      error: (err: unknown) => {
+        const errorMsg = err instanceof Error ? err.message : String(err);
+        res.write(`data: ${JSON.stringify({ error: errorMsg })}\n\n`);
+        res.end();
+      },
+      complete: () => {
+        res.write('data: [DONE]\n\n');
+        res.end();
+      },
+    });
+
+    res.on('close', () => {
+      subscription.unsubscribe();
+    });
+  }
+
+  @Get(':id/chat/history')
+  @UseGuards(JwtAuthGuard)
+  async getAIChatHistory(
+    @Param('id') id: string,
+    @Query('sessionId') sessionId: string,
+    @Request() req: { user: { id: string } },
+  ): Promise<any[]> {
+    return this.meetingsService.getAIChatHistory(id, req.user.id, sessionId);
   }
 
   @Post('webhooks/livekit')
