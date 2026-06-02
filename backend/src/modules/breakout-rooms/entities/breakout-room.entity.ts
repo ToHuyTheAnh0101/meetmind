@@ -6,7 +6,6 @@ import {
   UpdateDateColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
   Index,
 } from 'typeorm';
 import { Meeting } from '../../meetings/entities';
@@ -26,7 +25,6 @@ export class BreakoutRoom {
   id: string;
 
   @ManyToOne(() => Meeting, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'meeting_id' })
   meeting: Meeting;
 
   @Column('uuid')
@@ -46,7 +44,6 @@ export class BreakoutRoom {
   status: BreakoutRoomStatus;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'created_by_user_id' })
   createdByUser: User;
 
   @Column('uuid')

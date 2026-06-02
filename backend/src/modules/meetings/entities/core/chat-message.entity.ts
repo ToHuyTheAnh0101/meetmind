@@ -18,24 +18,23 @@ export class MeetingChatMessage {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column('uuid', { name: 'session_id' })
+  @Column('uuid')
   sessionId: string;
 
   @ManyToOne(() => MeetingSession, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'session_id' })
   session: MeetingSession;
 
-  @Column('uuid', { name: 'sender_user_id' })
+  @Column('uuid')
   senderUserId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'sender_user_id' })
+  @JoinColumn({ name: 'senderUserId' })
   sender: User;
 
   @Column({ type: 'text' })
   message: string;
 
-  @Column('uuid', { name: 'breakout_room_id', nullable: true })
+  @Column('uuid', { nullable: true })
   breakoutRoomId?: string;
 
   @CreateDateColumn()

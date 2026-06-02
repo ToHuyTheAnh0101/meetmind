@@ -4,7 +4,6 @@ import {
   Column,
   CreateDateColumn,
   ManyToOne,
-  JoinColumn,
   Index,
 } from 'typeorm';
 import { Meeting } from '../core/meeting.entity';
@@ -28,7 +27,6 @@ export class TranscriptChunk {
   sessionId?: string;
 
   @ManyToOne(() => MeetingSession, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'session_id' })
   session?: MeetingSession;
 
   @Column({ nullable: true })

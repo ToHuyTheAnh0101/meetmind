@@ -15,27 +15,25 @@ export class MeetingAnswer {
   @PrimaryGeneratedColumn('uuid')
   id: string;
 
-  @Column({ name: 'meeting_id', type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   meetingId: string;
 
-  @Column({ name: 'question_id', type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   questionId: string;
 
   @ManyToOne(() => MeetingQuestion, (q) => q.answers, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'question_id' })
   question: MeetingQuestion;
 
-  @Column({ name: 'answered_by_user_id', type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   answeredByUserId: string; // Ai là người trả lời
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'answered_by_user_id' })
   answeredByUser: User;
 
   @ManyToOne(() => Participant)
   @JoinColumn([
-    { name: 'meeting_id', referencedColumnName: 'meetingId' },
-    { name: 'answered_by_user_id', referencedColumnName: 'userId' },
+    { name: 'meetingId', referencedColumnName: 'meetingId' },
+    { name: 'answeredByUserId', referencedColumnName: 'userId' },
   ])
   answeredByParticipant: Participant;
 

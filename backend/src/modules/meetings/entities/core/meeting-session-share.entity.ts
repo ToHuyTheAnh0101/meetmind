@@ -4,7 +4,6 @@ import {
   Column,
   ManyToOne,
   CreateDateColumn,
-  JoinColumn,
   Index,
 } from 'typeorm';
 import { MeetingSession } from './meeting-session.entity';
@@ -19,7 +18,6 @@ export class MeetingSessionShare {
   sessionId!: string;
 
   @ManyToOne(() => MeetingSession, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'session_id' })
   session!: MeetingSession;
 
   @Column()

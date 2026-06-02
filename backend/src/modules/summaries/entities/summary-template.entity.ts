@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  JoinColumn,
 } from 'typeorm';
 import { User } from '../../users/user.entity';
 
@@ -58,7 +57,6 @@ export class SummaryTemplate {
   isSystem: boolean; // true = predefined by platform
 
   @ManyToOne(() => User, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'created_by_user_id' })
   createdByUser: User;
 
   @Column('uuid', { nullable: true })

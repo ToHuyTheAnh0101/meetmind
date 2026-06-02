@@ -4,7 +4,6 @@ import {
   Column,
   CreateDateColumn,
   ManyToOne,
-  JoinColumn,
   Index,
 } from 'typeorm';
 import { MeetingSession } from '../../meetings/entities';
@@ -39,14 +38,12 @@ export class MeetingEvent {
   @ManyToOne(() => MeetingSession, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'session_id' })
   session: MeetingSession;
 
-  @Column('uuid', { name: 'session_id' })
+  @Column('uuid')
   sessionId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'triggered_by_user_id' })
   triggeredByUser: User;
 
   @Column('uuid')

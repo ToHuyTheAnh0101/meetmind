@@ -34,23 +34,21 @@ export class MeetingQuestion {
   sessionId?: string;
 
   @ManyToOne(() => MeetingSession, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'session_id' })
   session?: MeetingSession;
 
-  @Column({ name: 'meeting_id', type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   meetingId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'asked_by_user_id' })
   askedByUser: User;
 
-  @Column({ name: 'asked_by_user_id', type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   askedByUserId: string;
 
   @ManyToOne(() => Participant)
   @JoinColumn([
-    { name: 'meeting_id', referencedColumnName: 'meetingId' },
-    { name: 'asked_by_user_id', referencedColumnName: 'userId' },
+    { name: 'meetingId', referencedColumnName: 'meetingId' },
+    { name: 'askedByUserId', referencedColumnName: 'userId' },
   ])
   askedByParticipant: Participant;
 

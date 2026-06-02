@@ -6,7 +6,6 @@ import {
   UpdateDateColumn,
   ManyToOne,
   OneToMany,
-  JoinColumn,
 } from 'typeorm';
 import { User } from '../../../users/user.entity';
 import { Participant } from './participant.entity';
@@ -101,7 +100,6 @@ export class Meeting {
   participants: Participant[];
 
   @ManyToOne(() => SummaryTemplate, { nullable: true, onDelete: 'SET NULL' })
-  @JoinColumn({ name: 'template_id' })
   template: SummaryTemplate;
 
   @Column('uuid', { nullable: true })

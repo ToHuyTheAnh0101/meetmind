@@ -5,7 +5,6 @@ import {
   ManyToOne,
   CreateDateColumn,
   UpdateDateColumn,
-  JoinColumn,
   Index,
 } from 'typeorm';
 import { Meeting } from './meeting.entity';
@@ -23,7 +22,6 @@ export class MeetingSession {
   id!: string;
 
   @ManyToOne(() => Meeting, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'meeting_id' })
   meeting!: Meeting;
 
   @Column('uuid')

@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  JoinColumn,
   Index,
 } from 'typeorm';
 import { Meeting } from '../core/meeting.entity';
@@ -17,7 +16,6 @@ export class Notification {
   id: string;
 
   @ManyToOne(() => Meeting, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'meeting_id' })
   meeting: Meeting;
 
   @Column('uuid')

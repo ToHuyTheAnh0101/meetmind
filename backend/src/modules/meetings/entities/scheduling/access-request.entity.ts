@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  JoinColumn,
   Index,
 } from 'typeorm';
 import { Meeting } from '../core/meeting.entity';
@@ -25,14 +24,12 @@ export class AccessRequest {
   id: string;
 
   @ManyToOne(() => Meeting, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'meeting_id' })
   meeting: Meeting;
 
   @Column('uuid')
   meetingId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'requester_user_id' })
   requesterUser: User;
 
   @Column('uuid')

@@ -203,6 +203,19 @@ export class ParticipantsService {
         await this.meetingsRepository.save(meeting);
       }
 
+      // Ensure active session exists and is cached
+      const cacheKey = `session:${id}`;
+      let activeSession = await this.sessionRepository.findActiveByMeeting(id);
+      if (!activeSession) {
+        activeSession = this.sessionRepository.create({
+          meetingId: id,
+          actualStartTime: new Date(),
+          status: MeetingSessionStatus.ONGOING,
+        });
+        activeSession = await this.sessionRepository.save(activeSession);
+      }
+      await this.cacheManager.set(cacheKey, activeSession, 0);
+
       await this.logMeetingEvent(id, EventType.USER_JOINED, userId, {
         displayName: fullName,
         email: user.email,

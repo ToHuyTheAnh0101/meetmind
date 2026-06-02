@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  JoinColumn,
   Index,
 } from 'typeorm';
 import { Meeting } from '../../meetings/entities';
@@ -29,14 +28,12 @@ export class Attachment {
   @ManyToOne(() => Meeting, (meeting) => meeting.attachments, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'meeting_id' })
   meeting: Meeting;
 
   @Column('uuid')
   meetingId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'uploaded_by_user_id' })
   uploadedByUser: User;
 
   @Column('uuid')

@@ -4,7 +4,6 @@ import {
   Column,
   CreateDateColumn,
   ManyToOne,
-  JoinColumn,
   Index,
 } from 'typeorm';
 import { Meeting } from '../core/meeting.entity';
@@ -25,7 +24,6 @@ export class ChatHistory {
   id: string;
 
   @ManyToOne(() => Meeting, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'meeting_id' })
   meeting: Meeting;
 
   @Column('uuid')
@@ -35,11 +33,9 @@ export class ChatHistory {
   sessionId?: string;
 
   @ManyToOne(() => MeetingSession, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'session_id' })
   session?: MeetingSession;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
   user: User;
 
   @Column('uuid')

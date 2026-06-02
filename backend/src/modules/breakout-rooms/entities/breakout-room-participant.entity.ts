@@ -5,7 +5,6 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
-  JoinColumn,
   Index,
 } from 'typeorm';
 import { BreakoutRoom } from './breakout-room.entity';
@@ -20,17 +19,15 @@ export class BreakoutRoomParticipant {
   @ManyToOne(() => BreakoutRoom, (room) => room.participants, {
     onDelete: 'CASCADE',
   })
-  @JoinColumn({ name: 'breakout_room_id' })
   breakoutRoom: BreakoutRoom;
 
-  @Column({ name: 'breakout_room_id', type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   breakoutRoomId: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  @JoinColumn({ name: 'user_id' })
   user: User;
 
-  @Column({ name: 'user_id', type: 'uuid', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
   userId: string;
 
   @CreateDateColumn()

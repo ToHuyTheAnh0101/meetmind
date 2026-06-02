@@ -21,23 +21,22 @@ export class Summary {
     onDelete: 'CASCADE',
     nullable: true,
   })
-  @JoinColumn({ name: 'meeting_id' })
   meeting?: Meeting;
 
   @Column('uuid', { nullable: true })
   meetingId?: string;
 
-  @Column('uuid', { name: 'session_id', nullable: true })
+  @Column('uuid', { nullable: true })
   sessionId?: string;
 
   @OneToOne(() => MeetingSession, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn({ name: 'session_id' })
+  @JoinColumn()
   session?: MeetingSession;
 
   @Column({ type: 'text', nullable: true })
   summaryText?: string;
 
-  @Column('uuid', { name: 'template_id', nullable: true })
+  @Column('uuid', { nullable: true })
   templateId?: string;
 
   @CreateDateColumn()
