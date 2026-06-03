@@ -14,15 +14,15 @@ export enum PollType {
 
 class PollOptionDto {
   @IsString()
-  id: string;
+  id?: string;
 
   @IsString()
-  text: string;
+  text?: string;
 }
 
 export class CreatePollDto {
   @IsString()
-  question: string;
+  question?: string;
 
   @IsEnum(PollType)
   @IsOptional()
@@ -31,5 +31,5 @@ export class CreatePollDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => PollOptionDto)
-  options: PollOptionDto[];
+  options?: PollOptionDto[];
 }

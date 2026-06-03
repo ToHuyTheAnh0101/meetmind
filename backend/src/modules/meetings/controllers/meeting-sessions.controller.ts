@@ -70,7 +70,7 @@ export class MeetingSessionsController {
   async addShare(
     @Param('id') id: string,
     @Param('sessionId') sessionId: string,
-    @Body('email') email: string,
+    @Body('email') email: string | string[],
     @Request() req: RequestWithUser,
   ) {
     const isAuthorized = await this.sessionsService.isOrganizerOrCoHost(

@@ -3,5 +3,5 @@ import { EventType } from '../entities/meeting-event.entity';
 
 export class CreateEventDto {
   @IsEnum(EventType)
-  type: EventType;
+  type?: EventType;
 }

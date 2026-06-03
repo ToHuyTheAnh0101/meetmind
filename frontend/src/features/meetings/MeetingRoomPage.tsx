@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useCallback } from "react";
+import React, { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import {
   LiveKitRoom,
@@ -341,32 +341,63 @@ const MeetingRoomPage: React.FC = () => {
 
   const handleBreakoutStarted = useCallback(
     async (e?: any) => {
+      const isEvent = !!e;
       console.log(
         "[BREAKOUT] Signal received:",
         e?.detail || "Manual/Mount check",
       );
 
-      // Show a persisting loading toast
-      const loadingToastId = toast.loading("Đang chuẩn bị phòng thảo luận...", {
-        style: {
-          background: "#111115",
-          color: "#fff",
-          border: "1px solid rgba(255, 255, 255, 0.1)",
-          borderRadius: "1rem",
-        },
-      });
+      // If it's a real-time event, check if the current user is assigned first
+      if (isEvent && e.detail?.assignments) {
+        const assignments = e.detail.assignments;
+        const isAssigned = assignments.some(
+          (as: any) => String(as.userId) === String(user?.id),
+        );
+        if (!isAssigned) {
+          console.log(
+            "[BREAKOUT] User not assigned to any breakout room. Ignoring signal.",
+          );
+          return;
+        }
+      }
 
-      // Wait 1.5 seconds to make sure backend commits are done
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      let loadingToastId: string | undefined;
+
+      if (isEvent) {
+        // Show a persisting loading toast only for real-time events where we know the user is assigned
+        loadingToastId = toast.loading("Đang chuẩn bị phòng thảo luận...", {
+          style: {
+            background: "#111115",
+            color: "#fff",
+            border: "1px solid rgba(255, 255, 255, 0.1)",
+            borderRadius: "1rem",
+          },
+        });
+
+        // Wait 1.5 seconds to make sure backend commits are done
+        await new Promise((resolve) => setTimeout(resolve, 1500));
+      }
 
       try {
         const resp = await apiClient.get(
           `/meetings/${id}/breakout-rooms/my-token`,
         );
         if (resp.data && resp.data.token) {
-          toast.loading(`Đang di chuyển sang ${resp.data.roomName}...`, {
-            id: loadingToastId,
-          });
+          if (isEvent && loadingToastId) {
+            toast.loading(`Đang di chuyển sang ${resp.data.roomName}...`, {
+              id: loadingToastId,
+            });
+          } else {
+            loadingToastId = toast.loading(`Đang di chuyển sang ${resp.data.roomName}...`, {
+              style: {
+                background: "#111115",
+                color: "#fff",
+                border: "1px solid rgba(255, 255, 255, 0.1)",
+                borderRadius: "1rem",
+              },
+            });
+          }
+
           setJoinData((prev: any) => ({
             ...prev!,
             token: resp.data.token,
@@ -375,22 +406,24 @@ const MeetingRoomPage: React.FC = () => {
           }));
 
           setTimeout(() => {
-            toast.dismiss(loadingToastId);
+            if (loadingToastId) toast.dismiss(loadingToastId);
             showSuccessToast(`Đã tham gia ${resp.data.roomName}`, "🚪");
           }, 3500);
         } else {
           console.log(
             "[BREAKOUT] No token returned for this user. Staying in current room.",
           );
-          toast.dismiss(loadingToastId);
+          if (loadingToastId) toast.dismiss(loadingToastId);
         }
       } catch (err) {
         console.error("Failed to join breakout room", err);
-        toast.dismiss(loadingToastId);
-        showErrorToast("Không thể chuyển sang phòng thảo luận");
+        if (loadingToastId) toast.dismiss(loadingToastId);
+        if (isEvent) {
+          showErrorToast("Không thể chuyển sang phòng thảo luận");
+        }
       }
     },
-    [id],
+    [id, user?.id],
   );
 
   const handleBreakoutEnded = useCallback(async () => {
@@ -438,10 +471,27 @@ const MeetingRoomPage: React.FC = () => {
     }
   }, [id, originalJoinData]);
 
+  // Refs to track active tab and sidebar state without causing useEffect triggers
+  const activeTabRef = useRef(activeTab);
+  const isSidebarOpenRef = useRef(isSidebarOpen);
+
+  useEffect(() => {
+    activeTabRef.current = activeTab;
+  }, [activeTab]);
+
+  useEffect(() => {
+    isSidebarOpenRef.current = isSidebarOpen;
+  }, [isSidebarOpen]);
+
   // Effects
   useEffect(() => {
     fetchMeetingDetails();
   }, [fetchMeetingDetails]);
+
+  // Check breakout on mount
+  useEffect(() => {
+    handleBreakoutStarted();
+  }, [id, handleBreakoutStarted]);
 
   useEffect(() => {
     const handleRefreshMeeting = (e: any) => {
@@ -450,7 +500,7 @@ const MeetingRoomPage: React.FC = () => {
     const handleRefreshQA = (e: any) => {
       if (e.detail?.meetingId === id) {
         queryClient.invalidateQueries({ queryKey: ["questions", id] });
-        if (activeTab !== "qa" || !isSidebarOpen) {
+        if (activeTabRef.current !== "qa" || !isSidebarOpenRef.current) {
           setHasUnreadQA(true);
         }
       }
@@ -458,7 +508,7 @@ const MeetingRoomPage: React.FC = () => {
     const handleRefreshPolls = (e: any) => {
       if (e.detail?.meetingId === id) {
         queryClient.invalidateQueries({ queryKey: ["polls", id] });
-        if (activeTab !== "polls" || !isSidebarOpen) {
+        if (activeTabRef.current !== "polls" || !isSidebarOpenRef.current) {
           setHasUnreadPolls(true);
         }
       }
@@ -469,8 +519,6 @@ const MeetingRoomPage: React.FC = () => {
     window.addEventListener("breakout-started", handleBreakoutStarted);
     window.addEventListener("breakout-ended", handleBreakoutEnded);
 
-    // Check breakout on mount
-    handleBreakoutStarted();
     return () => {
       window.removeEventListener("refresh-meeting", handleRefreshMeeting);
       window.removeEventListener("refresh-qa", handleRefreshQA);
@@ -484,8 +532,6 @@ const MeetingRoomPage: React.FC = () => {
     queryClient,
     handleBreakoutStarted,
     handleBreakoutEnded,
-    activeTab,
-    isSidebarOpen,
   ]);
 
   useEffect(() => {

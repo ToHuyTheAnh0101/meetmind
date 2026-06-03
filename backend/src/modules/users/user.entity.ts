@@ -11,37 +11,37 @@ import { Meeting, Participant } from '../meetings/entities';
 @Entity('users')
 export class User {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @Column({ unique: true })
-  email: string;
+  email?: string;
 
   @Column()
-  firstName: string;
+  firstName?: string;
 
   @Column()
-  lastName: string;
+  lastName?: string;
 
   @Column({ nullable: true })
-  googleId: string; // Google OAuth ID
+  googleId?: string; // Google OAuth ID
 
   @Column({ nullable: true })
-  picture: string; // Google profile picture URL
+  picture?: string; // Google profile picture URL
 
   @Column({ default: true })
-  isActive: boolean;
+  isActive?: boolean;
 
   @OneToMany(() => Meeting, (meeting) => meeting.organizer)
-  organizedMeetings: Meeting[];
+  organizedMeetings?: Meeting[];
 
   @OneToMany(() => Participant, (participant) => participant.user, {
     cascade: true,
   })
-  meetingParticipations: Participant[];
+  meetingParticipations?: Participant[];
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

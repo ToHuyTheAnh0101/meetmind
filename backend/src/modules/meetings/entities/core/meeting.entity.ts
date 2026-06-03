@@ -34,106 +34,106 @@ export enum MeetingAccessType {
 @Entity('meetings')
 export class Meeting {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @Column()
-  title: string;
+  title?: string;
 
   @Column({ nullable: true })
-  description: string;
+  description?: string;
 
   @Column({
     type: 'enum',
     enum: MeetingStatus,
     default: MeetingStatus.SCHEDULED,
   })
-  status: MeetingStatus;
+  status?: MeetingStatus;
 
   @Column({
     type: 'enum',
     enum: MeetingAccessType,
     default: MeetingAccessType.PUBLIC,
   })
-  accessType: MeetingAccessType;
+  accessType?: MeetingAccessType;
 
   @Column({ default: false })
-  waitingRoomEnabled: boolean;
+  waitingRoomEnabled?: boolean;
 
   @Column({ default: false })
-  muteOnJoin: boolean;
+  muteOnJoin?: boolean;
 
   @Column({ default: true })
-  allowDisplayNameEdit: boolean;
+  allowDisplayNameEdit?: boolean;
 
   @Column({ default: true })
-  isQaEnabled: boolean;
+  isQaEnabled?: boolean;
 
   @Column({ default: true })
-  isAnonymousAllowed: boolean;
+  isAnonymousAllowed?: boolean;
 
   @Column('jsonb', { default: [] })
-  inviteeEmails: string[];
+  inviteeEmails?: string[];
 
   @Column({ default: 10 })
-  reminderMinutes: number;
+  reminderMinutes?: number;
 
   @Column()
-  startTime: Date;
+  startTime?: Date;
 
   @Column({ nullable: true })
-  endTime: Date;
+  endTime?: Date;
 
   @ManyToOne(() => User, (user) => user.organizedMeetings)
-  organizer: User;
+  organizer?: User;
 
   @Column('uuid')
-  organizerId: string;
+  organizerId?: string;
 
   @OneToMany(() => TranscriptChunk, (chunk) => chunk.meeting, {
     nullable: true,
   })
-  transcriptChunks: TranscriptChunk[];
+  transcriptChunks?: TranscriptChunk[];
 
   @OneToMany(() => Participant, (participant) => participant.meeting, {
     cascade: true,
   })
-  participants: Participant[];
+  participants?: Participant[];
 
   @ManyToOne(() => SummaryTemplate, { nullable: true, onDelete: 'SET NULL' })
-  template: SummaryTemplate;
+  template?: SummaryTemplate;
 
   @Column('uuid', { nullable: true })
-  templateId: string;
+  templateId?: string;
 
   @OneToMany(() => MeetingSession, (session) => session.meeting, {
     cascade: true,
   })
-  sessions: MeetingSession[];
+  sessions?: MeetingSession[];
 
   @OneToMany(() => Attachment, (attachment) => attachment.meeting, {
     cascade: true,
   })
-  attachments: Attachment[];
+  attachments?: Attachment[];
 
   @OneToMany(() => Notification, (notification) => notification.meeting, {
     cascade: true,
   })
-  notifications: Notification[];
+  notifications?: Notification[];
 
   @OneToMany(() => BreakoutRoom, (room) => room.meeting, {
     cascade: true,
   })
-  breakoutRooms: BreakoutRoom[];
+  breakoutRooms?: BreakoutRoom[];
 
   @OneToMany(() => AccessRequest, (accessRequest) => accessRequest.meeting, {
     cascade: true,
   })
-  accessRequests: AccessRequest[];
+  accessRequests?: AccessRequest[];
 
   @OneToMany(() => ChatHistory, (chatHistory) => chatHistory.meeting, {
     cascade: true,
   })
-  aiChatHistories: ChatHistory[];
+  aiChatHistories?: ChatHistory[];
 
   @Column({ nullable: true })
   password?: string;
@@ -142,8 +142,8 @@ export class Meeting {
   livekitRoomName: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

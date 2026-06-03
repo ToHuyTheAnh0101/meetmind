@@ -139,7 +139,7 @@ const MeetingDetailsPage: React.FC = () => {
   }, [formData.startTime, isInstant, id]);
 
   // 1. Fetch Meeting Details
-  const { data: meeting, isLoading, isError } = useQuery({
+  const { data: meeting, isLoading, isError, error: queryError } = useQuery({
     queryKey: ["meeting", id],
     queryFn: async () => {
       const response = await apiClient.get(`/meetings/${id}`);
@@ -313,6 +313,30 @@ const MeetingDetailsPage: React.FC = () => {
     return (
       <div className="flex h-[70vh] items-center justify-center">
         <Loader2 className="h-10 w-10 animate-spin text-cyan-500" />
+      </div>
+    );
+  }
+
+  const isForbidden = (queryError as any)?.response?.status === 403;
+
+  if (isForbidden && !isNew) {
+    return (
+      <div className="flex h-[70vh] flex-col items-center justify-center text-center">
+        <AlertCircle className="h-16 w-16 text-rose-500 mb-4" />
+        <h2 className="text-2xl font-black text-slate-900">
+          {t("meeting.access_denied")}
+        </h2>
+        <p className="text-slate-500 mt-2">
+          {isVi
+            ? "Bạn không có quyền truy cập vào nội dung chi tiết của cuộc họp này."
+            : "You do not have permission to view this meeting details."}
+        </p>
+        <button
+          onClick={() => navigate("/meetings")}
+          className="mt-6 px-6 py-2 bg-slate-900 text-white rounded-xl font-bold"
+        >
+          {t("meeting.back_to_hub")}
+        </button>
       </div>
     );
   }

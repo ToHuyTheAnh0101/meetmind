@@ -9,12 +9,12 @@ import { Type } from 'class-transformer';
 
 export class BreakoutRoomAssignmentDto {
   @IsUUID()
-  userId: string;
+  userId?: string;
 }
 
 export class CreateBreakoutRoomDto {
   @IsString()
-  name: string;
+  name?: string;
 
   @IsArray()
   @IsOptional()
@@ -27,7 +27,7 @@ export class SetupBreakoutRoomsDto {
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => CreateBreakoutRoomDto)
-  rooms: CreateBreakoutRoomDto[];
+  rooms?: CreateBreakoutRoomDto[];
 
   @IsOptional()
   @Type(() => Number)

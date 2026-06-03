@@ -2,15 +2,15 @@ import { IsString, IsOptional, IsArray, IsBoolean } from 'class-validator';
 
 export class CreateSummaryDto {
   @IsString()
-  summaryText: string;
+  summaryText?: string;
 
   @IsArray()
   @IsString({ each: true })
-  keyPoints: string[];
+  keyPoints?: string[];
 
   @IsArray()
   @IsString({ each: true })
-  actionItems: string[];
+  actionItems?: string[];
 
   @IsOptional()
   @IsBoolean()

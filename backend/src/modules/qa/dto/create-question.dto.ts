@@ -3,7 +3,7 @@ import { QuestionType } from '../entities/meeting-question.entity';
 
 export class CreateQuestionDto {
   @IsString()
-  content: string;
+  content?: string;
 
   @IsEnum(QuestionType)
   @IsOptional()
@@ -16,5 +16,5 @@ export class CreateQuestionDto {
 
 export class CreateAnswerDto {
   @IsString()
-  content: string;
+  content?: string;
 }

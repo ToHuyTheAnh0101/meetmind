@@ -7,6 +7,7 @@ import {
   Body,
   UseGuards,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { QuestionService } from '../services/question.service';
 import { MeetingSessionsService } from '../../meetings/services/meeting-sessions.service';
@@ -66,6 +67,9 @@ export class QuestionController {
     @Body() dto: CreateAnswerDto,
     @Request() req: { user: { id: string } },
   ): Promise<MeetingAnswer> {
+    if (!dto.content) {
+      throw new BadRequestException('Content is required');
+    }
     return this.questionService.createAnswer(id, dto.content, req.user.id);
   }
 }

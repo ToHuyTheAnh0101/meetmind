@@ -11,10 +11,10 @@ import { SummaryTemplatePurpose } from '../entities/summary-template.entity';
 
 class TemplateSectionDefDto {
   @IsString()
-  name: string;
+  name?: string;
 
   @IsString()
-  label: string;
+  label?: string;
 
   @IsOptional()
   @IsString()
@@ -33,24 +33,24 @@ class TemplateSectionDefDto {
   placeholders?: string;
 
   @IsNumber()
-  order: number;
+  order?: number;
 }
 
 export class CreateSummaryTemplateDto {
   @IsString()
-  name: string;
+  name?: string;
 
   @IsOptional()
   @IsString()
   description?: string;
 
   @IsEnum(SummaryTemplatePurpose)
-  purpose: SummaryTemplatePurpose;
+  purpose?: SummaryTemplatePurpose;
 
   @IsArray()
   @ValidateNested({ each: true })
   @Type(() => TemplateSectionDefDto)
-  sections: TemplateSectionDefDto[];
+  sections?: TemplateSectionDefDto[];
 
   @IsOptional()
   @IsString()

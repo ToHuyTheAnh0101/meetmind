@@ -82,7 +82,7 @@ export class MeetingsService {
     const meeting = this.meetingsRepository.create({
       ...meetingData,
       password: hashedPassword,
-      startTime: new Date(dto.startTime),
+      startTime: dto.startTime ? new Date(dto.startTime) : new Date(),
       organizerId: userId,
       // Default configurations if not provided
       accessType: dto.accessType || MeetingAccessType.PUBLIC,
@@ -103,8 +103,8 @@ export class MeetingsService {
     const savedMeeting = await this.meetingsRepository.save(meeting);
 
     try {
-      await this.liveKitService.createRoom(savedMeeting.id);
-      savedMeeting.livekitRoomName = savedMeeting.id;
+      await this.liveKitService.createRoom(savedMeeting.id!);
+      savedMeeting.livekitRoomName = savedMeeting.id!;
       await this.meetingsRepository.save(savedMeeting);
 
       // Gửi email mời họp và lên lịch nhắc nhở cho danh sách khách mời
@@ -120,8 +120,8 @@ export class MeetingsService {
             .sendMeetingInvitation(
               email,
               'Quý khách',
-              savedMeeting.title,
-              savedMeeting.startTime,
+              savedMeeting.title || '',
+              savedMeeting.startTime || new Date(),
               joinUrl,
               savedMeeting.password,
             )
@@ -130,14 +130,17 @@ export class MeetingsService {
             );
 
           // 2. Lên lịch nhắc nhở (Reminder)
-          if (savedMeeting.reminderMinutes > 0) {
+          if (
+            savedMeeting.reminderMinutes &&
+            savedMeeting.reminderMinutes > 0
+          ) {
             this.mailService
               .scheduleMeetingReminder(
                 email,
                 'Quý khách',
-                savedMeeting.id,
-                savedMeeting.title,
-                savedMeeting.startTime,
+                savedMeeting.id!,
+                savedMeeting.title || '',
+                savedMeeting.startTime || new Date(),
                 savedMeeting.reminderMinutes,
                 joinUrl,
                 savedMeeting.password,
@@ -153,7 +156,7 @@ export class MeetingsService {
       throw error;
     }
 
-    return this.findOne(savedMeeting.id);
+    return this.findOne(savedMeeting.id!);
   }
 
   async endMeeting(id: string, userId: string): Promise<Meeting> {
@@ -186,7 +189,7 @@ export class MeetingsService {
     // Delete the room so all users are booted
     try {
       await this.liveKitService.deleteRoom(
-        meeting.livekitRoomName || meeting.id,
+        meeting.livekitRoomName || meeting.id || '',
       );
     } catch (err) {
       this.logger.warn(
@@ -223,7 +226,7 @@ export class MeetingsService {
 
     try {
       await this.liveKitService.deleteRoom(
-        meeting.livekitRoomName || meeting.id,
+        meeting.livekitRoomName || meeting.id || '',
       );
     } catch (err) {
       this.logger.warn(
@@ -295,6 +298,35 @@ export class MeetingsService {
     return meeting;
   }
 
+  async findOneWithAccess(
+    id: string,
+    userId: string,
+    userEmail: string,
+  ): Promise<Meeting> {
+    const meeting = await this.meetingsRepository.findById(id);
+
+    if (!meeting) {
+      throw new NotFoundException('Meeting not found');
+    }
+
+    const isOrganizer = meeting.organizerId === userId;
+    const isInvited = (meeting.inviteeEmails || [])
+      .map((e) => e.trim().toLowerCase())
+      .includes(userEmail.trim().toLowerCase());
+
+    const isParticipant = meeting.participants?.some(
+      (p) => p.userId === userId,
+    );
+
+    if (!isOrganizer && !isInvited && !isParticipant) {
+      throw new ForbiddenException(
+        'You do not have permission to access this meeting details',
+      );
+    }
+
+    return meeting;
+  }
+
   async update(
     id: string,
     dto: UpdateMeetingDto,
@@ -331,14 +363,17 @@ export class MeetingsService {
       const joinUrl = `${frontendUrl}/room/${updatedMeeting.id}`;
 
       for (const email of updatedMeeting.inviteeEmails || []) {
-        if (updatedMeeting.reminderMinutes > 0) {
+        if (
+          updatedMeeting.reminderMinutes &&
+          updatedMeeting.reminderMinutes > 0
+        ) {
           this.mailService
             .scheduleMeetingReminder(
               email,
               'Quý khách',
-              updatedMeeting.id,
-              updatedMeeting.title,
-              updatedMeeting.startTime,
+              updatedMeeting.id!,
+              updatedMeeting.title || '',
+              updatedMeeting.startTime || new Date(),
               updatedMeeting.reminderMinutes,
               joinUrl,
               updatedMeeting.password,
@@ -353,7 +388,7 @@ export class MeetingsService {
           // Nếu reminderMinutes = 0, hủy job nhắc lịch cũ
           try {
             await this.mailService.removeMeetingReminder(
-              updatedMeeting.id,
+              updatedMeeting.id!,
               email,
             );
           } catch (err) {

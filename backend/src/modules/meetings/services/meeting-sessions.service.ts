@@ -200,13 +200,13 @@ export class MeetingSessionsService {
     // 2. Co-host always has access
     const requesterParticipant =
       await this.participantsRepository.findByMeetingAndUser(
-        meeting.id,
+        meeting.id!,
         userId,
       );
     if (
       requesterParticipant &&
       (requesterParticipant.isOrganizer ||
-        requesterParticipant.permissions.includes(MeetingPermission.CO_HOST))
+        requesterParticipant.permissions?.includes(MeetingPermission.CO_HOST))
     ) {
       return true;
     }
@@ -222,7 +222,7 @@ export class MeetingSessionsService {
 
     // b. Organizer email
     if (
-      meeting.organizer &&
+      meeting.organizer?.email &&
       meeting.organizer.email.trim().toLowerCase() === normalizedEmail
     ) {
       return true;
@@ -230,10 +230,13 @@ export class MeetingSessionsService {
 
     // c. Actual meeting participants' emails
     const participants = await this.participantsRepository.findByMeetingId(
-      meeting.id,
+      meeting.id!,
     );
     for (const p of participants) {
-      if (p.user && p.user.email.trim().toLowerCase() === normalizedEmail) {
+      if (
+        p.user?.email &&
+        p.user.email.trim().toLowerCase() === normalizedEmail
+      ) {
         return true;
       }
     }
@@ -263,7 +266,7 @@ export class MeetingSessionsService {
 
     // c. Participants in this meeting
     const participants = await this.participantsRepository.findByMeetingId(
-      meeting.id,
+      meeting.id!,
     );
     const participantEmails = participants
       .map((p) => p.user?.email)
@@ -289,23 +292,45 @@ export class MeetingSessionsService {
 
   async addSessionShare(
     sessionId: string,
-    email: string,
-  ): Promise<MeetingSessionShare> {
-    const trimmedEmail = email.trim().toLowerCase();
-    const isAlreadyShared =
-      await this.sessionShareRepository.existsBySessionAndEmail(
-        sessionId,
-        trimmedEmail,
-      );
-    if (isAlreadyShared) {
-      throw new Error('Email is already shared for this session');
+    email: string | string[],
+  ): Promise<MeetingSessionShare[]> {
+    const emails = Array.isArray(email)
+      ? email
+      : email
+          .split(',')
+          .map((e) => e.trim())
+          .filter((e) => !!e);
+
+    if (emails.length === 1) {
+      const trimmedEmail = emails[0].toLowerCase();
+      const isAlreadyShared =
+        await this.sessionShareRepository.existsBySessionAndEmail(
+          sessionId,
+          trimmedEmail,
+        );
+      if (isAlreadyShared) {
+        throw new Error('Email is already shared for this session');
+      }
     }
 
-    const share = this.sessionShareRepository.create({
-      sessionId,
-      email: trimmedEmail,
-    });
-    return this.sessionShareRepository.save(share);
+    const savedShares: MeetingSessionShare[] = [];
+    for (const rawEmail of emails) {
+      const trimmedEmail = rawEmail.toLowerCase();
+      const isAlreadyShared =
+        await this.sessionShareRepository.existsBySessionAndEmail(
+          sessionId,
+          trimmedEmail,
+        );
+      if (!isAlreadyShared) {
+        const share = this.sessionShareRepository.create({
+          sessionId,
+          email: trimmedEmail,
+        });
+        const saved = await this.sessionShareRepository.save(share);
+        savedShares.push(saved);
+      }
+    }
+    return savedShares;
   }
 
   async removeSessionShare(shareId: string): Promise<void> {

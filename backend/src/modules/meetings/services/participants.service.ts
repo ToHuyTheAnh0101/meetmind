@@ -177,7 +177,7 @@ export class ParticipantsService {
       }
 
       // Safety check for livekit room name
-      const roomName = meeting.livekitRoomName || meeting.id;
+      const roomName = meeting.livekitRoomName || meeting.id || '';
 
       const grants: LiveKitTokenGrants = {
         roomJoin: true,

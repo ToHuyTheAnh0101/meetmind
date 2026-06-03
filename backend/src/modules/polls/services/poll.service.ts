@@ -36,7 +36,7 @@ export class PollService {
     if (
       !participant ||
       (!participant.isOrganizer &&
-        !participant.permissions.includes(MeetingPermission.MANAGE_POLLS))
+        !participant.permissions?.includes(MeetingPermission.MANAGE_POLLS))
     ) {
       throw new ForbiddenException(
         'You do not have permission to manage polls in this meeting',
@@ -77,6 +77,10 @@ export class PollService {
 
     if (poll.closedAt) {
       throw new BadRequestException('Poll is closed');
+    }
+
+    if (!poll.options) {
+      throw new BadRequestException('Poll options are not defined');
     }
 
     const targetOption = poll.options.find((o) => o.id === optionId);
@@ -130,6 +134,10 @@ export class PollService {
   async close(id: string, userId: string): Promise<MeetingPoll> {
     const poll = await this.findById(id);
 
+    if (!poll.sessionId) {
+      throw new NotFoundException('Meeting session not found for this poll');
+    }
+
     const session = await this.sessionRepository.findById(poll.sessionId);
     if (!session) {
       throw new NotFoundException('Meeting session not found');
@@ -142,7 +150,7 @@ export class PollService {
     if (
       !participant ||
       (!participant.isOrganizer &&
-        !participant.permissions.includes(MeetingPermission.MANAGE_POLLS))
+        !participant.permissions?.includes(MeetingPermission.MANAGE_POLLS))
     ) {
       throw new ForbiddenException(
         'You do not have permission to manage polls in this meeting',

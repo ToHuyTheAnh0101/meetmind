@@ -14,25 +14,25 @@ import { User } from '../../users/user.entity';
 @Index(['breakoutRoomId', 'userId'], { unique: true })
 export class BreakoutRoomParticipant {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @ManyToOne(() => BreakoutRoom, (room) => room.participants, {
     onDelete: 'CASCADE',
   })
-  breakoutRoom: BreakoutRoom;
+  breakoutRoom?: BreakoutRoom;
 
   @Column({ type: 'uuid', nullable: true })
-  breakoutRoomId: string;
+  breakoutRoomId?: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  user: User;
+  user?: User;
 
   @Column({ type: 'uuid', nullable: true })
-  userId: string;
+  userId?: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

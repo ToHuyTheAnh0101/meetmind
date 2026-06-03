@@ -11,10 +11,10 @@ import { SummaryTemplatePurpose } from '../entities/summary-template.entity';
 
 class TemplateSectionDefDto {
   @IsString()
-  name: string;
+  name?: string;
 
   @IsString()
-  label: string;
+  label?: string;
 
   @IsOptional()
   @IsString()
@@ -33,7 +33,7 @@ class TemplateSectionDefDto {
   placeholders?: string;
 
   @IsNumber()
-  order: number;
+  order?: number;
 }
 
 export class UpdateSummaryTemplateDto {

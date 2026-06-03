@@ -7,6 +7,7 @@ import {
   Query,
   UseGuards,
   Request,
+  BadRequestException,
 } from '@nestjs/common';
 import { EventService } from '../services/event.service';
 import { MeetingSessionsService } from '../../meetings/services/meeting-sessions.service';
@@ -55,6 +56,9 @@ export class EventController {
     @Body() dto: CreateEventDto,
     @Request() req: RequestWithUser,
   ): Promise<MeetingEvent> {
+    if (!dto.type) {
+      throw new BadRequestException('Event type is required');
+    }
     const session =
       await this.sessionsService.ensureSessionForMeeting(meetingId);
     return this.eventService.logEvent(session.id, dto.type, req.user.id);

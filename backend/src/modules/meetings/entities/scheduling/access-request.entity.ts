@@ -21,39 +21,39 @@ export enum AccessRequestStatus {
 @Index(['meetingId'])
 export class AccessRequest {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @ManyToOne(() => Meeting, { onDelete: 'CASCADE' })
-  meeting: Meeting;
+  meeting?: Meeting;
 
   @Column('uuid')
-  meetingId: string;
+  meetingId?: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  requesterUser: User;
+  requesterUser?: User;
 
   @Column('uuid')
-  requesterUserId: string;
+  requesterUserId?: string;
 
   @Column({
     type: 'enum',
     enum: AccessRequestStatus,
     default: AccessRequestStatus.WAITING,
   })
-  status: AccessRequestStatus;
+  status?: AccessRequestStatus;
 
   @Column()
-  requestedAt: Date;
+  requestedAt?: Date;
 
   @Column({ nullable: true })
-  approvedAt: Date;
+  approvedAt?: Date;
 
   @Column({ nullable: true })
-  rejectedAt: Date;
+  rejectedAt?: Date;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

@@ -51,7 +51,7 @@ export class BreakoutRoomService {
     await this.breakoutRoomRepository.removeAllForMeeting(meetingId);
 
     // 2. Tạo các phòng mới và gán người tham gia
-    for (const roomDto of dto.rooms) {
+    for (const roomDto of dto.rooms || []) {
       const livekitRoomName = `breakout-${meetingId}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
 
       const room = this.breakoutRoomRepository.create({
@@ -83,7 +83,7 @@ export class BreakoutRoomService {
 
     return Promise.all(
       rooms.map(async (room) => {
-        if (room.status === BreakoutRoomStatus.ACTIVE) {
+        if (room.status === BreakoutRoomStatus.ACTIVE && room.livekitRoomName) {
           try {
             const activeParticipants =
               await this.liveKitService.listParticipants(room.livekitRoomName);
@@ -94,7 +94,7 @@ export class BreakoutRoomService {
             if (room.participants) {
               room.participants = room.participants.map((p) => ({
                 ...p,
-                isOnline: activeUserIds.has(p.userId),
+                isOnline: !!p.userId && activeUserIds.has(p.userId),
               }));
             }
           } catch {
@@ -131,7 +131,9 @@ export class BreakoutRoomService {
       await this.breakoutRoomRepository.save(room);
 
       // Tạo phòng trên LiveKit server
-      await this.liveKitService.createRoom(room.livekitRoomName);
+      if (room.livekitRoomName) {
+        await this.liveKitService.createRoom(room.livekitRoomName);
+      }
     }
 
     // Log BREAKOUT_STARTED event
@@ -235,6 +237,11 @@ export class BreakoutRoomService {
     }
 
     const room = foundRoom;
+    const livekitRoomName = room.livekitRoomName;
+    if (!livekitRoomName) {
+      this.logger.debug(`Room livekitRoomName is not defined.`);
+      return null;
+    }
     const participant = foundParticipant;
 
     // Tên hiển thị
@@ -250,7 +257,7 @@ export class BreakoutRoomService {
 
     const grants = {
       roomJoin: true,
-      room: room.livekitRoomName,
+      room: livekitRoomName,
       canPublish: true,
       canSubscribe: true,
       canPublishData: true,
@@ -258,7 +265,7 @@ export class BreakoutRoomService {
     };
 
     const token = await this.liveKitService.generateToken(
-      room.livekitRoomName,
+      livekitRoomName,
       userId,
       participantName,
       grants,

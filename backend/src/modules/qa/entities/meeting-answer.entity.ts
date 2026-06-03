@@ -13,33 +13,33 @@ import { Participant } from '../../meetings/entities';
 @Entity('meeting_answers')
 export class MeetingAnswer {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @Column({ type: 'uuid', nullable: true })
-  meetingId: string;
+  meetingId?: string;
 
   @Column({ type: 'uuid', nullable: true })
-  questionId: string;
+  questionId?: string;
 
   @ManyToOne(() => MeetingQuestion, (q) => q.answers, { onDelete: 'CASCADE' })
-  question: MeetingQuestion;
+  question?: MeetingQuestion;
 
   @Column({ type: 'uuid', nullable: true })
-  answeredByUserId: string; // Ai là người trả lời
+  answeredByUserId?: string; // Ai là người trả lời
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  answeredByUser: User;
+  answeredByUser?: User;
 
   @ManyToOne(() => Participant)
   @JoinColumn([
     { name: 'meetingId', referencedColumnName: 'meetingId' },
     { name: 'answeredByUserId', referencedColumnName: 'userId' },
   ])
-  answeredByParticipant: Participant;
+  answeredByParticipant?: Participant;
 
   @Column('text')
-  content: string; // Nội dung câu trả lời
+  content?: string; // Nội dung câu trả lời
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 }

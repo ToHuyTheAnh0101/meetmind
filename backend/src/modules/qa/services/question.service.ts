@@ -38,7 +38,7 @@ export class QuestionService {
     });
 
     const savedQuestion = await this.questionRepository.save(question);
-    return this.findById(savedQuestion.id);
+    return this.findById(savedQuestion.id!);
   }
 
   async findById(id: string): Promise<MeetingQuestion> {

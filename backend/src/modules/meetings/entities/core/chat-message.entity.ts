@@ -16,30 +16,30 @@ import { User } from '../../../users/user.entity';
 @Index(['breakoutRoomId'])
 export class MeetingChatMessage {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @Column('uuid')
-  sessionId: string;
+  sessionId?: string;
 
   @ManyToOne(() => MeetingSession, { onDelete: 'CASCADE' })
-  session: MeetingSession;
+  session?: MeetingSession;
 
   @Column('uuid')
-  senderUserId: string;
+  senderUserId?: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   @JoinColumn({ name: 'senderUserId' })
-  sender: User;
+  sender?: User;
 
   @Column({ type: 'text' })
-  message: string;
+  message?: string;
 
   @Column('uuid', { nullable: true })
   breakoutRoomId?: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

@@ -19,40 +19,40 @@ export enum PollType {
 @Index(['sessionId'])
 export class MeetingPoll {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @ManyToOne(() => MeetingSession, {
     onDelete: 'CASCADE',
   })
-  session: MeetingSession;
+  session?: MeetingSession;
 
   @Column('uuid')
-  sessionId: string;
+  sessionId?: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  createdByUser: User;
+  createdByUser?: User;
 
   @Column('uuid')
-  createdByUserId: string;
+  createdByUserId?: string;
 
   @Column()
-  question: string;
+  question?: string;
 
   @Column({ type: 'enum', enum: PollType, default: PollType.SINGLE })
-  type: PollType;
+  type?: PollType;
 
   @Column({ type: 'jsonb' })
-  options: Array<{ id: string; text: string; voterIds: string[] }>;
+  options?: Array<{ id: string; text: string; voterIds: string[] }>;
 
   @Column({ nullable: true })
-  offsetSeconds: number;
+  offsetSeconds?: number;
 
   @Column({ nullable: true })
-  closedAt: Date;
+  closedAt?: Date;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

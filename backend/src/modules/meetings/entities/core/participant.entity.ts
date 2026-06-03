@@ -31,43 +31,43 @@ export enum ParticipantStatus {
 @Unique(['meetingId', 'userId'])
 export class Participant {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @ManyToOne(() => Meeting, (meeting) => meeting.participants, {
     onDelete: 'CASCADE',
   })
-  meeting: Meeting;
+  meeting?: Meeting;
 
   @Column('uuid')
-  meetingId: string;
+  meetingId?: string;
 
   @ManyToOne(() => User, (user) => user.meetingParticipations, {
     onDelete: 'CASCADE',
   })
-  user: User;
+  user?: User;
 
   @Column('uuid')
-  userId: string;
+  userId?: string;
 
   @Column('jsonb', { default: [] })
-  permissions: MeetingPermission[];
+  permissions?: MeetingPermission[];
 
   @Column({ default: false })
-  isOrganizer: boolean;
+  isOrganizer?: boolean;
 
   @Column({ default: false })
-  isInMeeting: boolean;
+  isInMeeting?: boolean;
 
   @Column({
     type: 'enum',
     enum: ParticipantStatus,
     default: ParticipantStatus.ADMITTED,
   })
-  status: ParticipantStatus;
+  status?: ParticipantStatus;
 
   @Column({ nullable: true })
-  displayName: string;
+  displayName?: string;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

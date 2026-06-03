@@ -23,44 +23,44 @@ export enum AttachmentType {
 @Index(['meetingId'])
 export class Attachment {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @ManyToOne(() => Meeting, (meeting) => meeting.attachments, {
     onDelete: 'CASCADE',
   })
-  meeting: Meeting;
+  meeting?: Meeting;
 
   @Column('uuid')
-  meetingId: string;
+  meetingId?: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  uploadedByUser: User;
+  uploadedByUser?: User;
 
   @Column('uuid')
-  uploadedByUserId: string;
+  uploadedByUserId?: string;
 
   @Column({
     type: 'enum',
     enum: AttachmentType,
     default: AttachmentType.DOCUMENT,
   })
-  type: AttachmentType;
+  type?: AttachmentType;
 
   @Column()
-  fileName: string;
+  fileName?: string;
 
   @Column()
-  fileUrl: string;
+  fileUrl?: string;
 
   @Column({ nullable: true })
-  fileSize: number; // in bytes
+  fileSize?: number; // in bytes
 
   @Column({ nullable: true })
-  mimeType: string;
+  mimeType?: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

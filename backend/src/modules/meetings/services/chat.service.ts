@@ -2,7 +2,6 @@ import { Injectable, BadRequestException } from '@nestjs/common';
 import { MeetingChatMessageRepository } from '../repositories/meeting-chat-message.repository';
 import { MeetingSessionsService } from './meeting-sessions.service';
 import { MeetingChatMessage } from '../entities';
-import { User } from '../../users/user.entity';
 
 export interface ChatMessageDto {
   id: string;
@@ -55,16 +54,16 @@ export class ChatService {
     );
 
     return messages.map((m) => {
-      const sender = m.sender as User | undefined;
+      const sender = m.sender;
       return {
-        id: m.id,
-        message: m.message,
-        senderUserId: m.senderUserId,
+        id: m.id || '',
+        message: m.message || '',
+        senderUserId: m.senderUserId || '',
         senderName: sender
           ? `${sender.firstName || ''} ${sender.lastName || ''}`.trim()
-          : m.senderUserId,
+          : m.senderUserId || 'Unknown',
         senderAvatar: sender?.picture ?? null,
-        createdAt: m.createdAt,
+        createdAt: m.createdAt || new Date(),
       };
     });
   }

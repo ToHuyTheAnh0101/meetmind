@@ -2,10 +2,10 @@ import { IsString, IsOptional, IsNumber } from 'class-validator';
 
 export class CreateAttachmentDto {
   @IsString()
-  fileName: string;
+  fileName?: string;
 
   @IsString()
-  fileUrl: string;
+  fileUrl?: string;
 
   @IsOptional()
   @IsNumber()

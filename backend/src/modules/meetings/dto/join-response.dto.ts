@@ -1,20 +1,20 @@
 import { MeetingPermission, ParticipantStatus } from '../entities';
 
 export class ParticipantSummaryDto {
-  id: string;
-  firstName: string;
-  lastName: string;
+  id?: string;
+  firstName?: string;
+  lastName?: string;
   picture?: string;
-  isOrganizer: boolean;
-  permissions: MeetingPermission[];
-  status: ParticipantStatus;
+  isOrganizer?: boolean;
+  permissions?: MeetingPermission[];
+  status?: ParticipantStatus;
 }
 
 export class JoinResponseDto {
-  meetingId: string;
-  organizerId: string;
-  status: ParticipantStatus;
-  token: string;
-  liveKitUrl: string;
-  participants: ParticipantSummaryDto[];
+  meetingId?: string;
+  organizerId?: string;
+  status?: ParticipantStatus;
+  token?: string;
+  liveKitUrl?: string;
+  participants?: ParticipantSummaryDto[];
 }

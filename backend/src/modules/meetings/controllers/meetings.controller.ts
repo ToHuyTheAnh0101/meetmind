@@ -117,8 +117,15 @@ export class MeetingsController {
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  async findOne(@Param('id') id: string): Promise<Meeting> {
-    return this.meetingsService.findOne(id);
+  async findOne(
+    @Param('id') id: string,
+    @Request() req: RequestWithUser,
+  ): Promise<Meeting> {
+    return this.meetingsService.findOneWithAccess(
+      id,
+      req.user.id,
+      req.user.email,
+    );
   }
 
   @Put(':id')

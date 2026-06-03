@@ -22,46 +22,46 @@ export enum BreakoutRoomStatus {
 @Index(['meetingId'])
 export class BreakoutRoom {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @ManyToOne(() => Meeting, { onDelete: 'CASCADE' })
-  meeting: Meeting;
+  meeting?: Meeting;
 
   @Column('uuid')
-  meetingId: string;
+  meetingId?: string;
 
   @Column()
-  name: string;
+  name?: string;
 
   @Column({ unique: true })
-  livekitRoomName: string;
+  livekitRoomName?: string;
 
   @Column({
     type: 'enum',
     enum: BreakoutRoomStatus,
     default: BreakoutRoomStatus.CREATED,
   })
-  status: BreakoutRoomStatus;
+  status?: BreakoutRoomStatus;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  createdByUser: User;
+  createdByUser?: User;
 
   @Column('uuid')
-  createdByUserId: string;
+  createdByUserId?: string;
 
   @Column({ nullable: true })
-  closedAt: Date;
+  closedAt?: Date;
 
   @OneToMany(
     () => BreakoutRoomParticipant,
     (participant) => participant.breakoutRoom,
     { cascade: true },
   )
-  participants: BreakoutRoomParticipant[];
+  participants?: BreakoutRoomParticipant[];
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

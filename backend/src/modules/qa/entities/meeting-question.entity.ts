@@ -28,7 +28,7 @@ export enum QuestionStatus {
 @Index(['sessionId'])
 export class MeetingQuestion {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @Column('uuid', { nullable: true })
   sessionId?: string;
@@ -37,49 +37,49 @@ export class MeetingQuestion {
   session?: MeetingSession;
 
   @Column({ type: 'uuid', nullable: true })
-  meetingId: string;
+  meetingId?: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  askedByUser: User;
+  askedByUser?: User;
 
   @Column({ type: 'uuid', nullable: true })
-  askedByUserId: string;
+  askedByUserId?: string;
 
   @ManyToOne(() => Participant)
   @JoinColumn([
     { name: 'meetingId', referencedColumnName: 'meetingId' },
     { name: 'askedByUserId', referencedColumnName: 'userId' },
   ])
-  askedByParticipant: Participant;
+  askedByParticipant?: Participant;
 
   @Column()
-  content: string;
+  content?: string;
 
   @Column({
     type: 'enum',
     enum: QuestionType,
   })
-  type: QuestionType;
+  type?: QuestionType;
 
   @Column({ default: false })
-  isAnonymous: boolean;
+  isAnonymous?: boolean;
 
   @Column({
     type: 'enum',
     enum: QuestionStatus,
     default: QuestionStatus.PENDING,
   })
-  status: QuestionStatus;
+  status?: QuestionStatus;
 
   @Column({ nullable: true })
-  offsetSeconds: number;
+  offsetSeconds?: number;
 
   @OneToMany(() => MeetingAnswer, (answer) => answer.question)
-  answers: MeetingAnswer[];
+  answers?: MeetingAnswer[];
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

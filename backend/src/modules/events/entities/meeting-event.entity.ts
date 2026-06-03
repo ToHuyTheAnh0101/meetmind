@@ -33,28 +33,28 @@ export enum EventType {
 @Index(['sessionId'])
 export class MeetingEvent {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @ManyToOne(() => MeetingSession, {
     onDelete: 'CASCADE',
   })
-  session: MeetingSession;
+  session?: MeetingSession;
 
   @Column('uuid')
-  sessionId: string;
+  sessionId?: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  triggeredByUser: User;
+  triggeredByUser?: User;
 
   @Column('uuid')
-  triggeredByUserId: string;
+  triggeredByUserId?: string;
 
   @Column({ type: 'enum', enum: EventType })
-  type: EventType;
+  type?: EventType;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata: Record<string, any>;
+  metadata?: Record<string, any>;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 }

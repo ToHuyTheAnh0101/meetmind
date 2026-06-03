@@ -18,7 +18,7 @@ export class CreateMeetingDto {
   @IsString()
   @IsNotEmpty()
   @MaxLength(255)
-  title: string;
+  title?: string;
 
   @IsString()
   @IsOptional()
@@ -30,7 +30,7 @@ export class CreateMeetingDto {
   password?: string;
 
   @IsDateString()
-  startTime: string;
+  startTime?: string;
 
   @IsEnum(MeetingAccessType)
   @IsOptional()

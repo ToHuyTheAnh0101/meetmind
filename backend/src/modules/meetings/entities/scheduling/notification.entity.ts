@@ -13,29 +13,29 @@ import { Meeting } from '../core/meeting.entity';
 @Index(['meetingId'])
 export class Notification {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @ManyToOne(() => Meeting, { onDelete: 'CASCADE' })
-  meeting: Meeting;
+  meeting?: Meeting;
 
   @Column('uuid')
-  meetingId: string;
+  meetingId?: string;
 
   @Column({ type: 'jsonb', default: [] })
-  recipientUserIds: string[];
+  recipientUserIds?: string[];
 
   @Column({ nullable: true })
-  sentTime: Date;
+  sentTime?: Date;
 
   @Column()
-  title: string;
+  title?: string;
 
   @Column('text')
-  content: string;
+  content?: string;
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 
   @UpdateDateColumn()
-  updatedAt: Date;
+  updatedAt?: Date;
 }

@@ -21,13 +21,13 @@ export enum ChatMessageType {
 @Index(['sessionId', 'createdAt'])
 export class ChatHistory {
   @PrimaryGeneratedColumn('uuid')
-  id: string;
+  id?: string;
 
   @ManyToOne(() => Meeting, { onDelete: 'CASCADE' })
-  meeting: Meeting;
+  meeting?: Meeting;
 
   @Column('uuid')
-  meetingId: string;
+  meetingId?: string;
 
   @Column('uuid', { nullable: true })
   sessionId?: string;
@@ -36,20 +36,20 @@ export class ChatHistory {
   session?: MeetingSession;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
-  user: User;
+  user?: User;
 
   @Column('uuid')
-  userId: string;
+  userId?: string;
 
   @Column({ type: 'enum', enum: ChatMessageType })
-  messageType: ChatMessageType;
+  messageType?: ChatMessageType;
 
   @Column({ type: 'text' })
-  content: string;
+  content?: string;
 
   @Column({ type: 'jsonb', nullable: true })
-  metadata: Record<string, any>; // For storing context, tokens used, etc.
+  metadata?: Record<string, any>; // For storing context, tokens used, etc.
 
   @CreateDateColumn()
-  createdAt: Date;
+  createdAt?: Date;
 }

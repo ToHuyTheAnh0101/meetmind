@@ -102,7 +102,7 @@ export class SummaryService {
           `Không có bản dịch thoại trực tiếp. Đây là cuộc họp "${meeting.title}" với mô tả: ${meeting.description || 'Không có mô tả'}.`;
 
         return this.generateSummaryTextInBackground(
-          meeting.title,
+          meeting.title || '',
           transcriptText,
           resolvedTemplateId,
         );
@@ -121,7 +121,7 @@ export class SummaryService {
       .catch((err) => {
         console.error('[Background Summary] Failed to generate:', err);
         // On error, clear the placeholder so user can regenerate
-        this.resetGeneratingSummaryOnError(meetingId, sessionId);
+        void this.resetGeneratingSummaryOnError(meetingId, sessionId);
       });
 
     return savedSummary;
@@ -160,7 +160,19 @@ export class SummaryService {
           return await this.aiService.generateSummaryWithTemplate(
             title,
             transcriptText,
-            template,
+            {
+              summaryStyle: template.summaryStyle,
+              globalRules: template.globalRules,
+              sections: (template.sections || []).map((sec) => ({
+                name: sec.name || '',
+                label: sec.label || 'Mục tóm tắt',
+                description: sec.description,
+                blockType: sec.blockType,
+                aiInstructions: sec.aiInstructions,
+                placeholders: sec.placeholders,
+                order: sec.order || 0,
+              })),
+            },
           );
         }
       } catch {
