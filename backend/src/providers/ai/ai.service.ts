@@ -42,30 +42,72 @@ export class AiService {
   }
 
   private async generateText(prompt: string): Promise<string> {
-    const url = `${this.getOllamaUrl()}/api/generate`;
-    const model = this.getOllamaModel();
+    const apiKey =
+      this.configService.get<string>('GROQ_API_KEY') ||
+      this.configService.get<string>('WHISPER_API_KEY');
+    const model =
+      this.configService.get<string>('GROQ_CHAT_MODEL') ||
+      this.configService.get<string>('GROQ_MODEL') ||
+      'llama-3.1-8b-instant';
 
-    try {
-      const response = await axios.post<{
-        response: string;
-        done: boolean;
-        error?: string;
-      }>(
-        url,
-        { model, prompt, stream: false, keep_alive: '5m' },
-        { timeout: 120_000 },
-      );
-
-      if (response.data.error) {
-        throw new Error(`Ollama error: ${response.data.error}`);
+    if (apiKey && apiKey !== 'your_groq_api_key_here') {
+      const url = 'https://api.groq.com/openai/v1/chat/completions';
+      try {
+        const response = await axios.post<{
+          choices: Array<{
+            message: {
+              content: string;
+            };
+          }>;
+        }>(
+          url,
+          {
+            model,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0,
+            stream: false,
+          },
+          {
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${apiKey}`,
+            },
+            timeout: 60_000,
+          },
+        );
+        return response.data.choices?.[0]?.message?.content?.trim() || '';
+      } catch (error) {
+        this.logger.error(
+          `Groq text generation failed: ${error instanceof Error ? error.message : error}`,
+        );
+        throw new Error('Failed to generate AI response from Groq');
       }
+    } else {
+      const url = `${this.getOllamaUrl()}/api/generate`;
+      const ollamaModel = this.getOllamaModel();
 
-      return response.data.response?.trim() || '';
-    } catch (error) {
-      this.logger.error(
-        `Ollama text generation failed (${url}, model=${model}): ${error instanceof Error ? error.message : error}`,
-      );
-      throw new Error('Failed to generate AI response from Ollama');
+      try {
+        const response = await axios.post<{
+          response: string;
+          done: boolean;
+          error?: string;
+        }>(
+          url,
+          { model: ollamaModel, prompt, stream: false, keep_alive: '5m' },
+          { timeout: 120_000 },
+        );
+
+        if (response.data.error) {
+          throw new Error(`Ollama error: ${response.data.error}`);
+        }
+
+        return response.data.response?.trim() || '';
+      } catch (error) {
+        this.logger.error(
+          `Ollama text generation failed (${url}, model=${ollamaModel}): ${error instanceof Error ? error.message : error}`,
+        );
+        throw new Error('Failed to generate AI response from Ollama');
+      }
     }
   }
 
@@ -80,74 +122,158 @@ export class AiService {
   }
 
   async generateTextStream(prompt: string): Promise<Observable<string>> {
-    const url = `${this.getOllamaUrl()}/api/generate`;
-    const model = this.getOllamaModel();
+    const apiKey =
+      this.configService.get<string>('GROQ_API_KEY') ||
+      this.configService.get<string>('WHISPER_API_KEY');
+    const model =
+      this.configService.get<string>('GROQ_CHAT_MODEL') ||
+      this.configService.get<string>('GROQ_MODEL') ||
+      'llama-3.1-8b-instant';
 
-    try {
-      const response = await axios.post(
-        url,
-        { model, prompt, stream: true, keep_alive: '5m' },
-        { responseType: 'stream', timeout: 120_000 },
-      );
+    if (apiKey && apiKey !== 'your_groq_api_key_here') {
+      const url = 'https://api.groq.com/openai/v1/chat/completions';
+      try {
+        const response = await axios.post(
+          url,
+          {
+            model,
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0,
+            stream: true,
+          },
+          {
+            responseType: 'stream',
+            headers: {
+              'Content-Type': 'application/json',
+              Authorization: `Bearer ${apiKey}`,
+            },
+            timeout: 60_000,
+          },
+        );
 
-      return new Observable<string>((subscriber) => {
-        const stream = response.data as Readable;
-        let buffer = '';
+        return new Observable<string>((subscriber) => {
+          const stream = response.data as Readable;
+          let buffer = '';
 
-        stream.on('data', (chunk: Buffer) => {
-          buffer += chunk.toString('utf8');
-          const lines = buffer.split('\n');
-          buffer = lines.pop() || '';
+          stream.on('data', (chunk: Buffer) => {
+            buffer += chunk.toString('utf8');
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
 
-          for (const line of lines) {
-            if (line.trim().length === 0) continue;
-            try {
-              const parsed = JSON.parse(line) as {
-                response?: string;
-                done?: boolean;
-                error?: string;
-              };
-              if (parsed.error) {
-                subscriber.error(new Error(parsed.error));
+            for (const line of lines) {
+              const trimmed = line.trim();
+              if (trimmed.length === 0) continue;
+              if (trimmed === 'data: [DONE]') {
+                subscriber.complete();
                 return;
               }
-              if (parsed.response) {
-                subscriber.next(parsed.response);
+              if (trimmed.startsWith('data: ')) {
+                try {
+                  const jsonStr = trimmed.slice(6);
+                  const parsed = JSON.parse(jsonStr) as {
+                    choices?: Array<{
+                      delta?: {
+                        content?: string;
+                      };
+                    }>;
+                  };
+                  const content = parsed.choices?.[0]?.delta?.content;
+                  if (content) {
+                    subscriber.next(content);
+                  }
+                } catch {
+                  // ignore parse errors
+                }
               }
-              if (parsed.done) {
-                subscriber.complete();
-              }
-            } catch {
-              // ignore parse errors for partial lines
             }
-          }
-        });
+          });
 
-        stream.on('end', () => {
-          if (buffer.trim().length > 0) {
-            try {
-              const parsed = JSON.parse(buffer) as { response?: string };
-              if (parsed.response) {
-                subscriber.next(parsed.response);
+          stream.on('end', () => {
+            subscriber.complete();
+          });
+
+          stream.on('error', (err) => {
+            subscriber.error(err);
+          });
+
+          return () => {
+            stream.destroy();
+          };
+        });
+      } catch (error) {
+        this.logger.error(`Groq stream initialization failed: ${error}`);
+        throw error;
+      }
+    } else {
+      const url = `${this.getOllamaUrl()}/api/generate`;
+      const ollamaModel = this.getOllamaModel();
+
+      try {
+        const response = await axios.post(
+          url,
+          { model: ollamaModel, prompt, stream: true, keep_alive: '5m' },
+          { responseType: 'stream', timeout: 120_000 },
+        );
+
+        return new Observable<string>((subscriber) => {
+          const stream = response.data as Readable;
+          let buffer = '';
+
+          stream.on('data', (chunk: Buffer) => {
+            buffer += chunk.toString('utf8');
+            const lines = buffer.split('\n');
+            buffer = lines.pop() || '';
+
+            for (const line of lines) {
+              if (line.trim().length === 0) continue;
+              try {
+                const parsed = JSON.parse(line) as {
+                  response?: string;
+                  done?: boolean;
+                  error?: string;
+                };
+                if (parsed.error) {
+                  subscriber.error(new Error(parsed.error));
+                  return;
+                }
+                if (parsed.response) {
+                  subscriber.next(parsed.response);
+                }
+                if (parsed.done) {
+                  subscriber.complete();
+                }
+              } catch {
+                // ignore parse errors for partial lines
               }
-            } catch {
-              // ignore end of stream parsing errors
             }
-          }
-          subscriber.complete();
-        });
+          });
 
-        stream.on('error', (err) => {
-          subscriber.error(err);
-        });
+          stream.on('end', () => {
+            if (buffer.trim().length > 0) {
+              try {
+                const parsed = JSON.parse(buffer) as { response?: string };
+                if (parsed.response) {
+                  subscriber.next(parsed.response);
+                }
+              } catch {
+                // ignore end of stream parsing errors
+              }
+            }
+            subscriber.complete();
+          });
 
-        return () => {
-          stream.destroy();
-        };
-      });
-    } catch (error) {
-      this.logger.error(`Ollama stream initialization failed: ${error}`);
-      throw error;
+          stream.on('error', (err) => {
+            subscriber.error(err);
+          });
+
+          return () => {
+            stream.destroy();
+          };
+        });
+      } catch (error) {
+        this.logger.error(`Ollama stream initialization failed: ${error}`);
+        throw error;
+      }
     }
   }
 
@@ -195,11 +321,13 @@ export class AiService {
     audioBuffer: Buffer,
     mimeType: string,
   ): Promise<string> {
-    const whisperUrl = this.configService.get<string>('WHISPER_API_URL');
+    const whisperUrl =
+      this.configService.get<string>('GROQ_API_URL') ||
+      this.configService.get<string>('WHISPER_API_URL');
 
     if (!whisperUrl) {
       throw new Error(
-        'WHISPER_API_URL is not configured. Audio transcription requires a local Whisper instance.',
+        'GROQ_API_URL is not configured. Audio transcription requires a Whisper instance.',
       );
     }
 
@@ -210,26 +338,35 @@ export class AiService {
         type: mimeType,
       });
       const whisperModel =
-        this.configService.get<string>('WHISPER_MODEL') || 'large-v3';
+        this.configService.get<string>('GROQ_WHISPER_MODEL') ||
+        this.configService.get<string>('WHISPER_MODEL') ||
+        'whisper-large-v3';
 
       formData.append('file', fileBlob, 'audio.webm');
       formData.append('model', whisperModel);
       formData.append('language', 'vi');
       formData.append('temperature', '0.0');
 
+      const headers: Record<string, string> = {
+        'Content-Type': 'multipart/form-data',
+      };
+
+      const whisperApiKey =
+        this.configService.get<string>('GROQ_API_KEY') ||
+        this.configService.get<string>('WHISPER_API_KEY');
+      if (whisperApiKey && whisperApiKey !== 'your_groq_api_key_here') {
+        headers['Authorization'] = `Bearer ${whisperApiKey}`;
+      }
+
       const response = await axios.post<{ text?: string }>(
         `${whisperUrl}/v1/audio/transcriptions`,
         formData,
-        {
-          headers: {
-            'Content-Type': 'multipart/form-data',
-          },
-        },
+        { headers },
       );
       return response.data.text?.trim() || '';
     } catch (error) {
-      this.logger.error('Error transcribing audio with Local Whisper:', error);
-      throw new Error('Failed to transcribe audio with Local Whisper');
+      this.logger.error('Error transcribing audio:', error);
+      throw new Error('Failed to transcribe audio');
     }
   }
 

@@ -20,6 +20,7 @@ import {
   MeetingPermission,
   MeetingSessionStatus,
   ChatMessageType,
+  ScreenCapture,
 } from '../entities';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
 import { UsersService } from '../../users/users.service';
@@ -35,6 +36,7 @@ import { MeetingSessionRepository } from '../repositories/meeting-session.reposi
 import { MailService } from '../../../providers/mail/mail.service';
 import { AiService } from '../../../providers/ai/ai.service.js';
 import { ChatHistoryRepository } from '../repositories/chat-history.repository';
+import { ScreenCaptureRepository } from '../repositories/screen-capture.repository';
 
 @Injectable()
 export class MeetingsService {
@@ -62,6 +64,7 @@ export class MeetingsService {
     private aiService: AiService,
     private mailService: MailService,
     private chatHistoryRepository: ChatHistoryRepository,
+    private screenCaptureRepository: ScreenCaptureRepository,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -522,6 +525,69 @@ export class MeetingsService {
     // 4. Sinh phản hồi với LLM Ollama cục bộ dựa trên ngữ cảnh được lọc tối ưu
     const answer = await this.aiService.answerQuestion(question, contextText);
 
+    // 4.5. Tìm các screen capture liên quan trong khoảng thời gian của các relevantChunks
+    const imageInfoList: Array<{ url: string; timestamp: number }> = [];
+    if (relevantChunks.length > 0) {
+      const timeRanges = relevantChunks
+        .filter((c) => c.startTime !== undefined && c.startTime !== null)
+        .map((c) => ({
+          start: Math.max(0, c.startTime! - 5),
+          end: (c.endTime || c.startTime!) + 15,
+        }));
+
+      if (timeRanges.length > 0) {
+        try {
+          const query = this.screenCaptureRepository
+            .createQueryBuilder('capture')
+            .where('capture.meetingId = :meetingId', { meetingId });
+
+          if (sessionId) {
+            query.andWhere('capture.sessionId = :sessionId', { sessionId });
+          }
+
+          const rangeConditions = timeRanges.map((range, index) => {
+            return `(capture.timestamp BETWEEN :start${index} AND :end${index})`;
+          });
+          query.andWhere(`(${rangeConditions.join(' OR ')})`);
+
+          timeRanges.forEach((range, index) => {
+            query.setParameter(`start${index}`, range.start);
+            query.setParameter(`end${index}`, range.end);
+          });
+
+          const captures = await query
+            .orderBy('capture.timestamp', 'ASC')
+            .getMany();
+          const uniqueUrls = new Set<string>();
+          for (const cap of captures) {
+            if (!uniqueUrls.has(cap.imageUrl)) {
+              uniqueUrls.add(cap.imageUrl);
+              imageInfoList.push({
+                url: cap.imageUrl,
+                timestamp: cap.timestamp,
+              });
+            }
+          }
+        } catch (err) {
+          this.logger.error(
+            'Failed to query screen captures in chatWithAI:',
+            err,
+          );
+        }
+      }
+    }
+
+    let finalAnswer = answer;
+    if (imageInfoList.length > 0) {
+      finalAnswer +=
+        '\n\n**Hình ảnh slide được nhắc đến:**\n' +
+        imageInfoList
+          .map(
+            (img) => `![Slide tại ${Math.round(img.timestamp)}s](${img.url})`,
+          )
+          .join('\n');
+    }
+
     // 5. Lưu lịch sử chat AI (cả câu hỏi của user và phản hồi của AI)
     try {
       await this.chatHistoryRepository.save({
@@ -537,13 +603,15 @@ export class MeetingsService {
         sessionId,
         userId: _userId,
         messageType: ChatMessageType.AI,
-        content: answer,
+        content: finalAnswer,
+        metadata:
+          imageInfoList.length > 0 ? { images: imageInfoList } : undefined,
       });
     } catch (dbError) {
       this.logger.error('Failed to save AI chat history:', dbError);
     }
 
-    return { answer };
+    return { answer: finalAnswer };
   }
 
   async chatWithAIStream(
@@ -623,9 +691,83 @@ export class MeetingsService {
           sub.error(err);
         },
         complete: () => {
-          sub.complete();
-          // 5. Lưu lịch sử chat AI (cả câu hỏi của user và phản hồi của AI) khi stream kết thúc
           (async () => {
+            // Fetch matching screen captures
+            let markdownAppendix = '';
+            const imageInfoList: Array<{ url: string; timestamp: number }> = [];
+            if (relevantChunks.length > 0) {
+              const timeRanges = relevantChunks
+                .filter(
+                  (c) => c.startTime !== undefined && c.startTime !== null,
+                )
+                .map((c) => ({
+                  start: Math.max(0, c.startTime! - 5),
+                  end: (c.endTime || c.startTime!) + 15,
+                }));
+
+              if (timeRanges.length > 0) {
+                const query = this.screenCaptureRepository
+                  .createQueryBuilder('capture')
+                  .where('capture.meetingId = :meetingId', { meetingId });
+
+                if (sessionId) {
+                  query.andWhere('capture.sessionId = :sessionId', {
+                    sessionId,
+                  });
+                }
+
+                const rangeConditions = timeRanges.map((range, index) => {
+                  return `(capture.timestamp BETWEEN :start${index} AND :end${index})`;
+                });
+                query.andWhere(`(${rangeConditions.join(' OR ')})`);
+
+                timeRanges.forEach((range, index) => {
+                  query.setParameter(`start${index}`, range.start);
+                  query.setParameter(`end${index}`, range.end);
+                });
+
+                try {
+                  const captures = await query
+                    .orderBy('capture.timestamp', 'ASC')
+                    .getMany();
+                  const uniqueUrls = new Set<string>();
+                  for (const cap of captures) {
+                    if (!uniqueUrls.has(cap.imageUrl)) {
+                      uniqueUrls.add(cap.imageUrl);
+                      imageInfoList.push({
+                        url: cap.imageUrl,
+                        timestamp: cap.timestamp,
+                      });
+                    }
+                  }
+
+                  if (imageInfoList.length > 0) {
+                    markdownAppendix =
+                      '\n\n**Hình ảnh slide được nhắc đến:**\n' +
+                      imageInfoList
+                        .map(
+                          (img) =>
+                            `![Slide tại ${Math.round(img.timestamp)}s](${img.url})`,
+                        )
+                        .join('\n');
+                  }
+                } catch (err) {
+                  this.logger.error(
+                    'Failed to query screen captures in stream:',
+                    err,
+                  );
+                }
+              }
+            }
+
+            if (markdownAppendix) {
+              sub.next(markdownAppendix);
+              fullAnswer += markdownAppendix;
+            }
+
+            sub.complete();
+
+            // 5. Lưu lịch sử chat AI (cả câu hỏi của user và phản hồi của AI) khi stream kết thúc
             try {
               await this.chatHistoryRepository.save({
                 meetingId,
@@ -641,6 +783,10 @@ export class MeetingsService {
                 userId: _userId,
                 messageType: ChatMessageType.AI,
                 content: fullAnswer,
+                metadata:
+                  imageInfoList.length > 0
+                    ? { images: imageInfoList }
+                    : undefined,
               });
             } catch (dbError) {
               this.logger.error(
@@ -810,5 +956,81 @@ export class MeetingsService {
       success: true,
       message: 'Audio chunk successfully uploaded and queued for transcription',
     };
+  }
+
+  async saveScreenCapture(
+    meetingId: string,
+    file: any,
+    timestamp: number,
+    sessionId?: string,
+  ): Promise<ScreenCapture> {
+    const meeting = await this.meetingsRepository.findById(meetingId);
+    if (!meeting) throw new NotFoundException('Meeting not found');
+
+    let session = sessionId
+      ? await this.sessionRepository.findById(sessionId)
+      : await this.sessionRepository.findActiveByMeeting(meetingId);
+
+    if (!session) {
+      session = await this.sessionRepository.findLatestByMeeting(meetingId);
+    }
+
+    if (!session) {
+      throw new BadRequestException('No session found for this meeting');
+    }
+
+    // Check if AI Assistant is activated
+    if (!session.aiActivated) {
+      throw new BadRequestException(
+        'AI Assistant is not activated. Screen capturing is disabled.',
+      );
+    }
+
+    // Save the image file to the file system (uploads/captures/{meetingId}/)
+    const f = file as {
+      originalname?: string;
+      buffer?: Buffer | Uint8Array | string;
+      mimetype?: string;
+    };
+    const buffer = Buffer.isBuffer(f.buffer)
+      ? f.buffer
+      : Buffer.from(f.buffer || '');
+    const mimetype = typeof f.mimetype === 'string' ? f.mimetype : 'image/jpeg';
+    const ext = mimetype.includes('png') ? 'png' : 'jpg';
+
+    let relativeUrl = '';
+    try {
+      const dirPath = path.join(
+        process.cwd(),
+        'uploads',
+        'captures',
+        meetingId,
+      );
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+
+      const fileName = `capture_${Date.now()}.${ext}`;
+      const filePath = path.join(dirPath, fileName);
+      fs.writeFileSync(filePath, buffer);
+
+      const backendUrl =
+        this.configService.get<string>('BACKEND_URL') ||
+        'http://localhost:3000';
+      relativeUrl = `${backendUrl}/meetings/${meetingId}/screen-captures/${fileName}`;
+      this.logger.log(`Saved screen capture to: ${filePath}`);
+    } catch (err) {
+      this.logger.error(`Failed to save screen capture:`, err);
+      throw new BadRequestException('Failed to save screen capture file');
+    }
+
+    const capture = this.screenCaptureRepository.create({
+      meetingId,
+      sessionId: session.id,
+      imageUrl: relativeUrl,
+      timestamp,
+    });
+
+    return await this.screenCaptureRepository.save(capture);
   }
 }

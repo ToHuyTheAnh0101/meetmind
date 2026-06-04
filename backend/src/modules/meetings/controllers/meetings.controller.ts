@@ -19,7 +19,10 @@ import {
   Logger,
   Res,
   ForbiddenException,
+  NotFoundException,
 } from '@nestjs/common';
+import * as path from 'path';
+import * as fs from 'fs';
 import * as express from 'express';
 import { MeetingSessionsService } from '../services/meeting-sessions.service';
 import { FileInterceptor } from '@nestjs/platform-express';
@@ -315,5 +318,50 @@ export class MeetingsController {
       throw new BadRequestException('No audio file provided');
     }
     return await this.meetingsService.transcribeAndSave(id, file, body);
+  }
+
+  @Post(':id/screen-captures')
+  @UseGuards(JwtAuthGuard)
+  @UseInterceptors(FileInterceptor('image'))
+  async uploadScreenCapture(
+    @Param('id') id: string,
+    @UploadedFile() file: any,
+    @Body('timestamp') timestampStr: string,
+    @Body('sessionId') sessionId?: string,
+  ) {
+    if (!file) {
+      throw new BadRequestException('No image file provided');
+    }
+
+    const timestamp = parseFloat(timestampStr);
+    if (isNaN(timestamp)) {
+      throw new BadRequestException('Invalid timestamp format');
+    }
+
+    return await this.meetingsService.saveScreenCapture(
+      id,
+      file,
+      timestamp,
+      sessionId,
+    );
+  }
+
+  @Get(':id/screen-captures/:filename')
+  getScreenCapture(
+    @Param('id') id: string,
+    @Param('filename') filename: string,
+    @Res() res: express.Response,
+  ) {
+    const filePath = path.join(
+      process.cwd(),
+      'uploads',
+      'captures',
+      id,
+      filename,
+    );
+    if (!fs.existsSync(filePath)) {
+      throw new NotFoundException('Screen capture not found');
+    }
+    res.sendFile(filePath);
   }
 }

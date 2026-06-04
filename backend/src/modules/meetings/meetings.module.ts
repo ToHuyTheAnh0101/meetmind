@@ -11,6 +11,7 @@ import {
   MeetingSession,
   MeetingChatMessage,
   MeetingSessionShare,
+  ScreenCapture,
 } from './entities';
 
 // Controllers
@@ -27,6 +28,7 @@ import { MeetingSessionRepository } from './repositories/meeting-session.reposit
 import { MeetingChatMessageRepository } from './repositories/meeting-chat-message.repository';
 import { ChatHistoryRepository } from './repositories/chat-history.repository';
 import { MeetingSessionShareRepository } from './repositories/meeting-session-share.repository';
+import { ScreenCaptureRepository } from './repositories/screen-capture.repository';
 
 // Services
 import { MeetingsService } from './services/meetings.service';
@@ -54,6 +56,7 @@ import { AiModule } from '../../providers/ai/ai.module';
       MeetingSession,
       MeetingChatMessage,
       MeetingSessionShare,
+      ScreenCapture,
     ]),
     LiveKitModule,
     UsersModule,
@@ -68,6 +71,7 @@ import { AiModule } from '../../providers/ai/ai.module';
     MeetingChatMessageRepository,
     ChatHistoryRepository,
     MeetingSessionShareRepository,
+    ScreenCaptureRepository,
     // Services
     MeetingsService,
     ParticipantsService,
@@ -92,6 +96,7 @@ import { AiModule } from '../../providers/ai/ai.module';
     MeetingChatMessageRepository,
     ChatHistoryRepository,
     MeetingSessionShareRepository,
+    ScreenCaptureRepository,
     TypeOrmModule,
   ],
 })

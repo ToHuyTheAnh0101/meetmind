@@ -31,3 +31,4 @@ export { ChatHistory, ChatMessageType } from './ai/chat-history.entity';
 export { MeetingChatMessage } from './core/chat-message.entity';
 
 export { MeetingSessionShare } from './core/meeting-session-share.entity';
+export { ScreenCapture } from './content/screen-capture.entity';

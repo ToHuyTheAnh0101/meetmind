@@ -290,7 +290,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
 
         recorder.start();
 
-        // Cứ mỗi 30 giây, khởi chạy gối đầu recorder tiếp theo trước khi dừng hẳn recorder cũ
+        // Cứ mỗi 15 giây, khởi chạy gối đầu recorder tiếp theo trước khi dừng hẳn recorder cũ
         timeoutRef.current = setTimeout(() => {
           if (!isRecordingRef.current) return;
 
@@ -303,7 +303,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
               recorder.stop();
             }
           }, 5000);
-        }, 30000);
+        }, 15000);
       };
 
       startNewRecorder();
