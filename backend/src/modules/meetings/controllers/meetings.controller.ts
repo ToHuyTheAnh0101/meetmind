@@ -27,6 +27,7 @@ import * as express from 'express';
 import { MeetingSessionsService } from '../services/meeting-sessions.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MeetingsService } from '../services/meetings.service';
+import { MeetingsWebhookService } from '../services/meetings-webhook.service';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
 import { Meeting } from '../entities';
 import { CreateMeetingDto } from '../dto/create-meeting.dto';
@@ -53,6 +54,7 @@ export class MeetingsController {
     private readonly meetingsService: MeetingsService,
     private readonly liveKitService: LiveKitService,
     private readonly sessionsService: MeetingSessionsService,
+    private readonly webhookService: MeetingsWebhookService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
 
@@ -256,47 +258,7 @@ export class MeetingsController {
     @Req() req: Request & { rawBody?: string },
   ) {
     const payload = String(req.rawBody || JSON.stringify(req.body));
-    const event = (await this.liveKitService.receiveWebhook(
-      payload,
-      authHeader,
-    )) as Record<string, any>;
-
-    if (event.event === 'egress_ended') {
-      const egressInfo = event?.egressInfo as Record<string, any> | undefined;
-      if (
-        egressInfo &&
-        Array.isArray(egressInfo.fileResults) &&
-        egressInfo.fileResults.length > 0
-      ) {
-        const meetingId = String(egressInfo.roomName || '');
-        const fileResult = egressInfo.fileResults[0] as Record<string, any>;
-        const participantIdentity = String(
-          egressInfo.participantIdentity || '',
-        );
-
-        const location = String(fileResult.location || '');
-        const size = Number(fileResult.size || 0);
-        const duration = Number(fileResult.duration || 0) / 1000000000;
-        const startedAt = egressInfo.startedAt
-          ? Number(egressInfo.startedAt) / 1000000000
-          : 0;
-
-        await this.meetingsService.saveAudioRecording(
-          meetingId,
-          participantIdentity,
-          location,
-          size,
-          duration,
-          startedAt,
-        );
-
-        this.logger.log(
-          `LiveKit Egress Ended for room ${meetingId}. Audio saved at: ${location}`,
-        );
-      }
-    }
-
-    return { status: 'ok' };
+    return this.webhookService.handleWebhook(payload, authHeader);
   }
 
   @Post(':id/transcribe')

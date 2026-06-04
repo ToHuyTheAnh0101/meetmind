@@ -35,6 +35,7 @@ import { MeetingsService } from './services/meetings.service';
 import { ParticipantsService } from './services/participants.service';
 import { MeetingSessionsService } from './services/meeting-sessions.service';
 import { ChatService } from './services/chat.service';
+import { MeetingsWebhookService } from './services/meetings-webhook.service';
 
 // External modules
 import { LiveKitModule } from '../../providers/livekit/livekit.module';
@@ -77,6 +78,7 @@ import { AiModule } from '../../providers/ai/ai.module';
     ParticipantsService,
     MeetingSessionsService,
     ChatService,
+    MeetingsWebhookService,
   ],
   controllers: [
     MeetingsController,
@@ -85,6 +87,7 @@ import { AiModule } from '../../providers/ai/ai.module';
     ChatController,
   ],
   exports: [
+    MeetingsWebhookService,
     MeetingsService,
     ParticipantsService,
     MeetingSessionsService,

@@ -58,4 +58,17 @@ export class BreakoutRoomController {
   ) {
     return this.breakoutRoomService.getBreakoutToken(id, req.user.id);
   }
+
+  @Get(':roomId/token-host')
+  async getHostToken(
+    @Param('id') id: string,
+    @Param('roomId') roomId: string,
+    @Request() req: { user: { id: string } },
+  ) {
+    return this.breakoutRoomService.getHostBreakoutToken(
+      id,
+      roomId,
+      req.user.id,
+    );
+  }
 }

@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ForbiddenException,
+  BadRequestException,
   Logger,
 } from '@nestjs/common';
 import { MeetingRepository } from '../../meetings/repositories/meeting.repository';
@@ -266,6 +267,64 @@ export class BreakoutRoomService {
 
     const token = await this.liveKitService.generateToken(
       livekitRoomName,
+      userId,
+      participantName,
+      grants,
+      metadata,
+    );
+
+    return {
+      token,
+      roomName: room.name,
+      livekitRoomName: room.livekitRoomName,
+      isBreakoutRoom: true,
+    };
+  }
+
+  async getHostBreakoutToken(
+    meetingId: string,
+    roomId: string,
+    userId: string,
+  ) {
+    const meeting = await this.meetingRepository.findById(meetingId);
+    if (!meeting) {
+      throw new NotFoundException('Meeting not found');
+    }
+    if (meeting.organizerId !== userId) {
+      throw new ForbiddenException(
+        'Only the organizer can join breakout rooms as host',
+      );
+    }
+
+    const room = await this.breakoutRoomRepository.findById(roomId);
+    if (!room || room.meetingId !== meetingId) {
+      throw new NotFoundException('Breakout room not found');
+    }
+    if (room.status !== BreakoutRoomStatus.ACTIVE || !room.livekitRoomName) {
+      throw new BadRequestException('Breakout room is not active');
+    }
+
+    const organizer = meeting.organizer;
+    const participantName =
+      `${organizer?.firstName || 'Host'} ${organizer?.lastName || ''}`.trim();
+    const metadata = JSON.stringify({
+      picture: organizer?.picture,
+      firstName: organizer?.firstName,
+      lastName: organizer?.lastName,
+      isOrganizer: true,
+    });
+
+    const grants = {
+      roomJoin: true,
+      room: room.livekitRoomName,
+      canPublish: true,
+      canSubscribe: true,
+      canPublishData: true,
+      roomRecord: true,
+    };
+
+    const token = await this.liveKitService.generateToken(
+      room.livekitRoomName,
       userId,
       participantName,
       grants,

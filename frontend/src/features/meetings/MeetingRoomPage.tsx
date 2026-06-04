@@ -26,6 +26,7 @@ import ConfirmEndBreakoutModal from "./components/room/ConfirmEndBreakoutModal";
 import DataHandler from "./components/room/DataHandler";
 import BreakoutSignalHandler from "./components/room/BreakoutSignalHandler";
 import BreakoutModalWrapper from "./components/room/BreakoutModalWrapper";
+import { useBreakoutRoom } from "./hooks/useBreakoutRoom";
 
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Toaster, toast } from "react-hot-toast";
@@ -50,11 +51,19 @@ const MeetingRoomPage: React.FC = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
+  // Custom Breakout Room Hook
+  const {
+    joinData,
+    setJoinData,
+    handleBreakoutEnded,
+    handleJoinBreakoutAsHost,
+    isInBreakout,
+  } = useBreakoutRoom(id, user?.id);
+
   // State
   const [preJoinChoices, setPreJoinChoices] = useState<
     LocalUserChoices | undefined
   >(undefined);
-  const [joinData, setJoinData] = useState<JoinResponse | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [requiresPassword, setRequiresPassword] = useState(false);
@@ -91,16 +100,6 @@ const MeetingRoomPage: React.FC = () => {
   );
   const [isBreakoutModalOpen, setIsBreakoutModalOpen] = useState(false);
   const [isConfirmEndOpen, setIsConfirmEndOpen] = useState(false);
-  const [originalJoinData, setOriginalJoinData] = useState<JoinResponse | null>(
-    null,
-  );
-
-  // Lưu lại joinData gốc để quay lại phòng chính sau khi breakout kết thúc
-  useEffect(() => {
-    if (joinData && !originalJoinData && !joinData.token.includes("breakout")) {
-      setOriginalJoinData(joinData);
-    }
-  }, [joinData, originalJoinData]);
 
   // Derived Values
   const organizerId = useMemo(() => {
@@ -339,137 +338,7 @@ const MeetingRoomPage: React.FC = () => {
     [id, password, t, localVideoTrack],
   );
 
-  const handleBreakoutStarted = useCallback(
-    async (e?: any) => {
-      const isEvent = !!e;
-      console.log(
-        "[BREAKOUT] Signal received:",
-        e?.detail || "Manual/Mount check",
-      );
 
-      // If it's a real-time event, check if the current user is assigned first
-      if (isEvent && e.detail?.assignments) {
-        const assignments = e.detail.assignments;
-        const isAssigned = assignments.some(
-          (as: any) => String(as.userId) === String(user?.id),
-        );
-        if (!isAssigned) {
-          console.log(
-            "[BREAKOUT] User not assigned to any breakout room. Ignoring signal.",
-          );
-          return;
-        }
-      }
-
-      let loadingToastId: string | undefined;
-
-      if (isEvent) {
-        // Show a persisting loading toast only for real-time events where we know the user is assigned
-        loadingToastId = toast.loading("Đang chuẩn bị phòng thảo luận...", {
-          style: {
-            background: "#111115",
-            color: "#fff",
-            border: "1px solid rgba(255, 255, 255, 0.1)",
-            borderRadius: "1rem",
-          },
-        });
-
-        // Wait 1.5 seconds to make sure backend commits are done
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-      }
-
-      try {
-        const resp = await apiClient.get(
-          `/meetings/${id}/breakout-rooms/my-token`,
-        );
-        if (resp.data && resp.data.token) {
-          if (isEvent && loadingToastId) {
-            toast.loading(`Đang di chuyển sang ${resp.data.roomName}...`, {
-              id: loadingToastId,
-            });
-          } else {
-            loadingToastId = toast.loading(`Đang di chuyển sang ${resp.data.roomName}...`, {
-              style: {
-                background: "#111115",
-                color: "#fff",
-                border: "1px solid rgba(255, 255, 255, 0.1)",
-                borderRadius: "1rem",
-              },
-            });
-          }
-
-          setJoinData((prev: any) => ({
-            ...prev!,
-            token: resp.data.token,
-            room: resp.data.roomName,
-            isBreakoutRoom: true,
-          }));
-
-          setTimeout(() => {
-            if (loadingToastId) toast.dismiss(loadingToastId);
-            showSuccessToast(`Đã tham gia ${resp.data.roomName}`, "🚪");
-          }, 3500);
-        } else {
-          console.log(
-            "[BREAKOUT] No token returned for this user. Staying in current room.",
-          );
-          if (loadingToastId) toast.dismiss(loadingToastId);
-        }
-      } catch (err) {
-        console.error("Failed to join breakout room", err);
-        if (loadingToastId) toast.dismiss(loadingToastId);
-        if (isEvent) {
-          showErrorToast("Không thể chuyển sang phòng thảo luận");
-        }
-      }
-    },
-    [id, user?.id],
-  );
-
-  const handleBreakoutEnded = useCallback(async () => {
-    console.log("[BREAKOUT] End signal received.");
-
-    const loadingToastId = toast.loading("Đang di chuyển về phòng chính...", {
-      style: {
-        background: "#111115",
-        color: "#fff",
-        border: "1px solid rgba(255, 255, 255, 0.1)",
-        borderRadius: "1rem",
-      },
-    });
-
-    // Notify backend that this user is leaving the breakout room
-    try {
-      await apiClient.post(`/meetings/${id}/breakout-rooms/leave`);
-    } catch (err) {
-      console.error("Failed to clear breakout room assignment on backend", err);
-    }
-
-    if (originalJoinData) {
-      setJoinData(originalJoinData);
-      setTimeout(() => {
-        toast.dismiss(loadingToastId);
-        showSuccessToast("Đã quay lại phòng chính", "🏠");
-      }, 3500);
-    } else {
-      try {
-        const res = await apiClient.post(`/meetings/${id}/join`);
-        setJoinData((prev: any) =>
-          prev
-            ? { ...prev, token: res.data.token, isBreakoutRoom: false }
-            : res.data,
-        );
-        setTimeout(() => {
-          toast.dismiss(loadingToastId);
-          showSuccessToast("Đã quay lại phòng chính", "🏠");
-        }, 3500);
-      } catch (err) {
-        console.error("Failed to return to main room", err);
-        toast.dismiss(loadingToastId);
-        showErrorToast("Lỗi khi quay lại phòng chính");
-      }
-    }
-  }, [id, originalJoinData]);
 
   // Refs to track active tab and sidebar state without causing useEffect triggers
   const activeTabRef = useRef(activeTab);
@@ -487,11 +356,6 @@ const MeetingRoomPage: React.FC = () => {
   useEffect(() => {
     fetchMeetingDetails();
   }, [fetchMeetingDetails]);
-
-  // Check breakout on mount
-  useEffect(() => {
-    handleBreakoutStarted();
-  }, [id, handleBreakoutStarted]);
 
   useEffect(() => {
     const handleRefreshMeeting = (e: any) => {
@@ -516,53 +380,13 @@ const MeetingRoomPage: React.FC = () => {
     window.addEventListener("refresh-meeting", handleRefreshMeeting);
     window.addEventListener("refresh-qa", handleRefreshQA);
     window.addEventListener("refresh-polls", handleRefreshPolls);
-    window.addEventListener("breakout-started", handleBreakoutStarted);
-    window.addEventListener("breakout-ended", handleBreakoutEnded);
 
     return () => {
       window.removeEventListener("refresh-meeting", handleRefreshMeeting);
       window.removeEventListener("refresh-qa", handleRefreshQA);
       window.removeEventListener("refresh-polls", handleRefreshPolls);
-      window.removeEventListener("breakout-started", handleBreakoutStarted);
-      window.removeEventListener("breakout-ended", handleBreakoutEnded);
     };
-  }, [
-    id,
-    fetchMeetingDetails,
-    queryClient,
-    handleBreakoutStarted,
-    handleBreakoutEnded,
-  ]);
-
-  useEffect(() => {
-    let interval: NodeJS.Timeout;
-    const isInBreakout = joinData?.isBreakoutRoom;
-
-    if (isInBreakout && id) {
-      interval = setInterval(async () => {
-        try {
-          const resp = await apiClient.get(
-            `/meetings/${id}/breakout-rooms/my-token`,
-          );
-          // Nếu không còn token breakout (phòng đã đóng), tự động quay về
-          if (!resp.data || !resp.data.token) {
-            console.log(
-              "[BREAKOUT] Room no longer active (from poll). Returning to main.",
-            );
-            handleBreakoutEnded();
-          }
-        } catch (err) {
-          console.error("Polling breakout status failed", err);
-          // Nếu lỗi 404 hoặc lỗi không tìm thấy phòng, cũng quay về
-          handleBreakoutEnded();
-        }
-      }, 5000);
-    }
-
-    return () => {
-      if (interval) clearInterval(interval);
-    };
-  }, [id, joinData?.token, handleBreakoutEnded]);
+  }, [id, fetchMeetingDetails, queryClient]);
 
   useEffect(() => {
     let interval: NodeJS.Timeout;
@@ -760,9 +584,7 @@ const MeetingRoomPage: React.FC = () => {
         token={joinData.token}
         serverUrl={joinData.liveKitUrl}
         onDisconnected={() => {
-          const isBreakout =
-            joinData.token.includes("breakout") || !!joinData.isBreakoutRoom;
-          if (isBreakout) {
+          if (isInBreakout) {
             handleBreakoutEnded();
           } else {
             navigate("/");
@@ -795,7 +617,7 @@ const MeetingRoomPage: React.FC = () => {
               onEndSession={handleEndSession}
               onLeaveSession={handleLeaveSession}
               onReturnToMain={handleBreakoutEnded}
-              isInBreakout={joinData.token.includes("breakout")}
+              isInBreakout={isInBreakout}
             />
           </motion.div>
           <MeetingSidebar
@@ -823,7 +645,9 @@ const MeetingRoomPage: React.FC = () => {
             onOpenBreakoutModal={handleOpenBreakoutModal}
             onOpenConfirmEndModal={() => setIsConfirmEndOpen(true)}
             onReturnToMain={handleBreakoutEnded}
-            isInBreakout={!!joinData?.isBreakoutRoom}
+            onJoinBreakoutAsHost={handleJoinBreakoutAsHost}
+            currentRoomName={joinData?.room}
+            isInBreakout={isInBreakout}
           />
         </LayoutContextProvider>
         <PollModal

@@ -42,6 +42,8 @@ interface MeetingSidebarProps {
   onOpenBreakoutModal: () => void;
   onOpenConfirmEndModal: () => void;
   onReturnToMain: () => void;
+  onJoinBreakoutAsHost?: (roomId: string) => void;
+  currentRoomName?: string;
   isInBreakout: boolean;
   hasUnreadPolls?: boolean;
   hasUnreadQA?: boolean;
@@ -65,6 +67,8 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   onOpenBreakoutModal,
   onOpenConfirmEndModal,
   onReturnToMain,
+  onJoinBreakoutAsHost,
+  currentRoomName,
   isInBreakout,
   hasUnreadPolls,
   hasUnreadQA,
@@ -204,10 +208,24 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                       {breakoutRooms.map(room => (
                         <div key={room.id} className="p-4 rounded-2xl bg-white/5 border border-white/10">
                           <div className="flex items-center justify-between mb-3">
-                            <span className="text-sm font-bold text-white">{room.name}</span>
-                            <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/20">
-                              {room.status === 'active' ? 'Đang họp' : 'Đã kết thúc'}
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-sm font-bold text-white">{room.name}</span>
+                              <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/20">
+                                {room.status === 'active' ? 'Đang họp' : 'Đã kết thúc'}
+                              </span>
+                            </div>
+                            {isOrganizer && room.status === 'active' && onJoinBreakoutAsHost && (
+                              room.name === currentRoomName ? (
+                                <span className="text-[11px] font-bold text-slate-500">Đang ở đây</span>
+                              ) : (
+                                <button
+                                  onClick={() => onJoinBreakoutAsHost(room.id)}
+                                  className="px-3 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500 text-teal-400 hover:text-white text-[11px] font-bold transition-all border border-teal-500/20 shadow-lg shadow-teal-500/5 cursor-pointer"
+                                >
+                                  Vào
+                                </button>
+                              )
+                            )}
                           </div>
                           <div className="flex flex-wrap gap-2">
                             {room.participants?.length > 0 ? (
