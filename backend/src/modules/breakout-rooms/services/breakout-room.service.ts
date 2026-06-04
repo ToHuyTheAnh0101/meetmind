@@ -80,43 +80,7 @@ export class BreakoutRoomService {
   }
 
   async getBreakoutRooms(meetingId: string) {
-    const rooms = await this.breakoutRoomRepository.findByMeetingId(meetingId);
-
-    return Promise.all(
-      rooms.map(async (room) => {
-        if (room.status === BreakoutRoomStatus.ACTIVE && room.livekitRoomName) {
-          try {
-            const activeParticipants =
-              await this.liveKitService.listParticipants(room.livekitRoomName);
-            const activeUserIds = new Set(
-              activeParticipants.map((p) => p.identity),
-            );
-
-            if (room.participants) {
-              room.participants = room.participants.map((p) => ({
-                ...p,
-                isOnline: !!p.userId && activeUserIds.has(p.userId),
-              }));
-            }
-          } catch {
-            if (room.participants) {
-              room.participants = room.participants.map((p) => ({
-                ...p,
-                isOnline: false,
-              }));
-            }
-          }
-        } else {
-          if (room.participants) {
-            room.participants = room.participants.map((p) => ({
-              ...p,
-              isOnline: false,
-            }));
-          }
-        }
-        return room;
-      }),
-    );
+    return this.breakoutRoomRepository.findByMeetingId(meetingId);
   }
 
   async startBreakout(meetingId: string, userId: string) {

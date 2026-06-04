@@ -230,12 +230,10 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                           <div className="flex flex-wrap gap-2">
                             {room.participants?.length > 0 ? (
                               room.participants.map((p: any) => {
-                                const isConnecting = room.status === 'active' && !p.isOnline;
                                 return (
                                   <div 
                                     key={p.id} 
-                                    className={`flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/5 transition-all duration-300 ${isConnecting ? 'opacity-40 saturate-[0.25]' : ''}`}
-                                    title={isConnecting ? 'Đang kết nối...' : 'Đã kết nối'}
+                                    className="flex items-center gap-1.5 px-2 py-1 rounded-lg bg-white/5 border border-white/5"
                                   >
                                     <div className="w-4 h-4 rounded-md bg-teal-500/20 flex items-center justify-center text-[8px] text-teal-400 overflow-hidden relative">
                                       <img 
@@ -243,9 +241,6 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                                         alt="" 
                                         className="w-full h-full object-cover" 
                                       />
-                                      {room.status === 'active' && (
-                                        <div className={`absolute bottom-0 right-0 w-1 h-1 rounded-full ${p.isOnline ? 'bg-emerald-500 animate-pulse shadow-[0_0_4px_rgba(16,185,129,0.8)]' : 'bg-slate-400'}`} />
-                                      )}
                                     </div>
                                     <span className="text-[10px] text-slate-300 truncate max-w-[60px]">
                                       {p.user?.firstName || 'Người dùng'}

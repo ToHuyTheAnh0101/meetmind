@@ -146,9 +146,10 @@ Mọi API nằm dưới tiền tố `/meetings/:id/breakout-rooms` (Yêu cầu J
 * **Endpoint:** `GET /meetings/:id/breakout-rooms/:roomId/token-host`
 * **Phản hồi:** Trả về LiveKit token cho phép Host tham gia phòng nhỏ `roomId` đó mà không cần ghi nhận gán vĩnh viễn trong DB.
 
-### 7. Lấy danh sách trạng thái các phòng nhỏ (Cho giao diện Host)
+### 7. Lấy danh sách các phòng nhỏ
 * **Endpoint:** `GET /meetings/:id/breakout-rooms`
-* **Phản hồi:** Trả về danh sách phòng kèm trạng thái Online/Offline của từng thành viên (kết quả so sánh thời gian thực với active participants trên LiveKit Server).
+* **Phản hồi:** Trả về danh sách phòng nhỏ kèm danh sách các thành viên được gán vào phòng.
+
 
 ---
 
@@ -166,6 +167,6 @@ Nằm tại [useBreakoutRoom.ts](file:///home/theanh/meetmind/frontend/src/featu
 
 ### 2. Các component giao diện
 * **[MeetingRoomPage.tsx](file:///home/theanh/meetmind/frontend/src/features/meetings/MeetingRoomPage.tsx):** Sử dụng hook `useBreakoutRoom` để lấy trạng thái kết nối (`joinData`), cung cấp thông tin cho stage chính và thanh tác vụ.
-* **[MeetingSidebar.tsx](file:///home/theanh/meetmind/frontend/src/features/meetings/components/room/MeetingSidebar.tsx):** Tab chia phòng hiển thị các nhóm đang thảo luận, danh sách thành viên trực tuyến/ngoại tuyến trong nhóm, và cung cấp nút **"Vào"** cho Host nhảy vào phòng nhỏ.
+* **[MeetingSidebar.tsx](file:///home/theanh/meetmind/frontend/src/features/meetings/components/room/MeetingSidebar.tsx):** Tab chia phòng hiển thị các nhóm đang thảo luận, danh sách thành viên trong nhóm, và cung cấp nút **"Vào"** cho Host nhảy vào phòng nhỏ.
 * **[BreakoutManagementModal.tsx](file:///home/theanh/meetmind/frontend/src/features/meetings/components/room/BreakoutManagementModal.tsx):** Modal kéo thả phân bổ người dùng vào các phòng nhỏ (Host sử dụng trước khi bắt đầu).
 * **[BreakoutSignalHandler.tsx](file:///home/theanh/meetmind/frontend/src/features/meetings/components/room/BreakoutSignalHandler.tsx):** Nhận tín hiệu điều phối thời gian thực qua hệ thống Data Channel để phát ra các event cục bộ cho hook `useBreakoutRoom` xử lý.
