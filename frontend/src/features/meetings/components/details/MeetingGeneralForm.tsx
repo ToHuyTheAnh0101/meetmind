@@ -21,8 +21,10 @@ import {
 import { MeetingAccessType } from "@/types/api";
 import SettingToggle from "./SettingToggle";
 import EmailTagInput from "./EmailTagInput";
+import { AttachmentManager } from "./AttachmentManager";
 
 interface MeetingGeneralFormProps {
+  meetingId?: string;
   formData: {
     title: string;
     description: string;
@@ -65,6 +67,7 @@ interface MeetingGeneralFormProps {
 }
 
 export const MeetingGeneralForm: React.FC<MeetingGeneralFormProps> = ({
+  meetingId,
   formData,
   setFormData,
   canEdit,
@@ -579,18 +582,34 @@ export const MeetingGeneralForm: React.FC<MeetingGeneralFormProps> = ({
         </>
       )}
 
-      {/* 4. ATTACHMENTS & RESOURCES - Always visible */}
+      {/* 4. ATTACHMENTS & RESOURCES */}
       <section className="pt-10 space-y-8 border-t border-slate-100">
-        <div className="relative group p-8 rounded-3xl border-2 border-dashed border-slate-200 hover:border-cyan-200 transition-all text-center">
-          <div className="mx-auto h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-4">
-            <Paperclip className="h-6 w-6" />
-          </div>
-          <h4 className="text-sm font-black text-slate-900">
-            {t("meeting.attachments")}
-          </h4>
-          <p className="text-xs font-bold text-slate-500 mt-1">
-            {t("meeting.coming_soon")}
+        <div>
+          <h3 className="text-xl font-black text-slate-900 tracking-tight mb-2">
+            {t("meeting.attachments") || "Tài liệu đính kèm"}
+          </h3>
+          <p className="text-xs font-bold text-slate-500 mb-6">
+            {isVi 
+              ? "Tải lên và quản lý các tài liệu, tệp đính kèm chia sẻ trong cuộc họp"
+              : "Upload and manage documents and shared files for this meeting"}
           </p>
+          {meetingId ? (
+            <AttachmentManager meetingId={meetingId} canUpload={canEdit} />
+          ) : (
+            <div className="relative group p-8 rounded-3xl border-2 border-dashed border-slate-200 transition-all text-center bg-slate-50/50">
+              <div className="mx-auto h-12 w-12 rounded-full bg-slate-50 flex items-center justify-center text-slate-400 mb-4 border border-slate-100">
+                <Paperclip className="h-6 w-6" />
+              </div>
+              <h4 className="text-sm font-black text-slate-800">
+                {isVi ? "Vui lòng lưu cuộc họp trước" : "Please save the meeting first"}
+              </h4>
+              <p className="text-xs font-bold text-slate-400 mt-1 leading-relaxed max-w-[280px] mx-auto">
+                {isVi 
+                  ? "Bạn chỉ có thể tải lên tài liệu đính kèm sau khi cuộc họp đã được tạo và lưu thành công."
+                  : "You can only upload attachments after the meeting has been created and successfully saved."}
+              </p>
+            </div>
+          )}
         </div>
       </section>
     </motion.div>

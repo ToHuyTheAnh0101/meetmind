@@ -6,6 +6,7 @@ import { MeetingRepository } from '../../meetings/repositories/meeting.repositor
 import { TranscriptRepository } from '../../meetings/repositories/transcript.repository';
 import { AiService } from '../../../providers/ai/ai.service';
 import { MeetingsService } from '../../meetings/services/meetings.service';
+import { MeetingSessionRepository } from '../../meetings/repositories/meeting-session.repository';
 
 @Injectable()
 export class SummaryService {
@@ -16,6 +17,7 @@ export class SummaryService {
     private summaryTemplateRepository: SummaryTemplateRepository,
     private aiService: AiService,
     private meetingsService: MeetingsService,
+    private sessionRepository: MeetingSessionRepository,
   ) {}
 
   async create(meetingId: string, data: Partial<Summary>): Promise<Summary> {
@@ -71,9 +73,25 @@ export class SummaryService {
 
     const resolvedTemplateId = templateId || meeting.templateId;
 
+    // Resolve undefined sessionId to the active or latest session of the meeting
+    let resolvedSessionId = sessionId;
+    if (!resolvedSessionId) {
+      const activeSession =
+        await this.sessionRepository.findActiveByMeeting(meetingId);
+      if (activeSession) {
+        resolvedSessionId = activeSession.id;
+      } else {
+        const latestSession =
+          await this.sessionRepository.findLatestByMeeting(meetingId);
+        if (latestSession) {
+          resolvedSessionId = latestSession.id;
+        }
+      }
+    }
+
     // 1. Immediately find or create a summary record and set status to '[GENERATING]'
-    let summary = sessionId
-      ? await this.summaryRepository.findBySessionId(sessionId)
+    let summary = resolvedSessionId
+      ? await this.summaryRepository.findBySessionId(resolvedSessionId)
       : await this.summaryRepository.findOverallByMeetingId(meetingId);
 
     if (summary) {
@@ -82,7 +100,7 @@ export class SummaryService {
     } else {
       summary = this.summaryRepository.create({
         meetingId,
-        sessionId,
+        sessionId: resolvedSessionId,
         summaryText: '[GENERATING]',
         templateId: resolvedTemplateId,
       });
@@ -92,8 +110,8 @@ export class SummaryService {
     // 2. Launch AI summarization as an asynchronous non-blocking background job
     this.waitForPendingTranscripts(meetingId)
       .then(async () => {
-        return sessionId
-          ? await this.transcriptRepository.findBySessionId(sessionId)
+        return resolvedSessionId
+          ? await this.transcriptRepository.findBySessionId(resolvedSessionId)
           : await this.transcriptRepository.findByMeetingId(meetingId);
       })
       .then(async (chunks) => {
@@ -109,8 +127,8 @@ export class SummaryService {
       })
       .then(async (summaryText) => {
         // Update the DB record with the actual text
-        const current = sessionId
-          ? await this.summaryRepository.findBySessionId(sessionId)
+        const current = resolvedSessionId
+          ? await this.summaryRepository.findBySessionId(resolvedSessionId)
           : await this.summaryRepository.findOverallByMeetingId(meetingId);
 
         if (current) {
@@ -121,7 +139,7 @@ export class SummaryService {
       .catch((err) => {
         console.error('[Background Summary] Failed to generate:', err);
         // On error, clear the placeholder so user can regenerate
-        void this.resetGeneratingSummaryOnError(meetingId, sessionId);
+        void this.resetGeneratingSummaryOnError(meetingId, resolvedSessionId);
       });
 
     return savedSummary;

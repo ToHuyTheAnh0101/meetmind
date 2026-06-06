@@ -9,7 +9,8 @@ import {
   BarChart3,
   MessageCircle,
   Shield,
-  Grid2X2
+  Grid2X2,
+  Paperclip
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '@/lib/apiClient';
@@ -24,12 +25,13 @@ import InRoomSettings from './InRoomSettings';
 import MeetingPermissionsTab from '../details/MeetingPermissionsTab';
 import PollTab from './PollTab';
 import QATab from './QATab';
+import { AttachmentManager } from '../details/AttachmentManager';
 
 interface MeetingSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  activeTab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa' | 'permissions' | 'breakout';
-  setActiveTab: (tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa' | 'permissions' | 'breakout') => void;
+  activeTab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa' | 'permissions' | 'breakout' | 'attachments';
+  setActiveTab: (tab: 'chat' | 'roster' | 'lobby' | 'settings' | 'polls' | 'qa' | 'permissions' | 'breakout' | 'attachments') => void;
   meetingId: string;
   userId: string;
   organizerId: string;
@@ -109,6 +111,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
     { id: 'roster', icon: Users, label: t('meeting.participants'), color: 'text-indigo-400' },
     { id: 'qa', icon: MessageCircle, label: t('meeting.qa'), color: 'text-lime-400' },
     { id: 'polls', icon: BarChart3, label: t('meeting.polls'), color: 'text-rose-400' },
+    { id: 'attachments', icon: Paperclip, label: t('meeting.attachments') || 'Tài liệu', color: 'text-amber-400' },
   ];
 
   if (isOrganizer || isCoHost) {
@@ -190,6 +193,15 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                   hasManagePrivilege={canManageQA} 
                   onOpenQuestionModal={onOpenQuestionModal}
                 />
+              )}
+              {activeTab === 'attachments' && (
+                <div className="flex-1 overflow-hidden p-4 flex flex-col">
+                  <AttachmentManager 
+                    meetingId={meetingId} 
+                    canUpload={isOrganizer || isCoHost} 
+                    isInRoom={true} 
+                  />
+                </div>
               )}
               {activeTab === 'breakout' && (
                 <div className="flex-1 flex flex-col p-4 overflow-y-auto custom-scrollbar">

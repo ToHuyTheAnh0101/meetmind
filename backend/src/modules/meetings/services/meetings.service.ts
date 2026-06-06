@@ -489,11 +489,12 @@ export class MeetingsService {
     }
 
     // 2. Tìm kiếm các đoạn transcript liên quan nhất theo embedding bằng pgvector trực tiếp ở DB
+    // k=8 để có đủ candidates sau khi threshold lọc
     const relevantChunks =
       await this.transcriptRepository.findRelevantByEmbedding(
         meetingId,
         questionEmbedding,
-        5,
+        8,
         sessionId,
       );
 
@@ -509,11 +510,18 @@ export class MeetingsService {
         })
         .join('\n');
     } else {
-      // Fallback nếu không có kết quả khớp vector, lấy toàn bộ transcript làm ngữ cảnh
-      const allChunks = sessionId
-        ? await this.transcriptRepository.findBySessionId(sessionId)
-        : await this.transcriptRepository.findByMeetingId(meetingId);
-      contextText = allChunks.map((c) => c.content).join('\n');
+      // Fallback thông minh: không tải toàn bộ transcript mà chỉ lấy 25 chunks gần nhất
+      // Tránh context quá dài làm AI bị overwhelm và tốn token
+      this.logger.warn(
+        `No relevant chunks found above threshold for meeting ${meetingId}. Using recent chunks fallback.`,
+      );
+      const recentChunks = await this.transcriptRepository.findRecentChunks(
+        meetingId,
+        sessionId,
+      );
+      contextText = recentChunks
+        .map((c) => (c.speakerName ? `${c.speakerName}: ${c.content}` : c.content))
+        .join('\n');
     }
 
     if (!contextText || !contextText.trim()) {
@@ -638,11 +646,12 @@ export class MeetingsService {
     }
 
     // 2. Tìm kiếm các đoạn transcript liên quan nhất theo embedding bằng pgvector trực tiếp ở DB
+    // k=8 để có đủ candidates sau khi threshold lọc
     const relevantChunks =
       await this.transcriptRepository.findRelevantByEmbedding(
         meetingId,
         questionEmbedding,
-        5,
+        8,
         sessionId,
       );
 
@@ -658,11 +667,18 @@ export class MeetingsService {
         })
         .join('\n');
     } else {
-      // Fallback nếu không có kết quả khớp vector, lấy toàn bộ transcript làm ngữ cảnh
-      const allChunks = sessionId
-        ? await this.transcriptRepository.findBySessionId(sessionId)
-        : await this.transcriptRepository.findByMeetingId(meetingId);
-      contextText = allChunks.map((c) => c.content).join('\n');
+      // Fallback thông minh: không tải toàn bộ transcript mà chỉ lấy 25 chunks gần nhất
+      // Tránh context quá dài làm AI bị overwhelm và tốn token
+      this.logger.warn(
+        `No relevant chunks found above threshold for meeting ${meetingId} (stream). Using recent chunks fallback.`,
+      );
+      const recentChunks = await this.transcriptRepository.findRecentChunks(
+        meetingId,
+        sessionId,
+      );
+      contextText = recentChunks
+        .map((c) => (c.speakerName ? `${c.speakerName}: ${c.content}` : c.content))
+        .join('\n');
     }
 
     if (!contextText || !contextText.trim()) {

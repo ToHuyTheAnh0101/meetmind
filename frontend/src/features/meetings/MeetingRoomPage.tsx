@@ -89,7 +89,7 @@ const MeetingRoomPage: React.FC = () => {
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [activeTab, setActiveTab] = useState<
-    "chat" | "roster" | "lobby" | "settings" | "polls" | "qa" | "permissions"
+    "chat" | "roster" | "lobby" | "settings" | "polls" | "qa" | "permissions" | "breakout" | "attachments"
   >("roster");
   const [isPollModalOpen, setIsPollModalOpen] = useState(false);
   const [hasUnreadPolls, setHasUnreadPolls] = useState(false);

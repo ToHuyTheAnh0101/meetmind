@@ -514,6 +514,7 @@ const MeetingDetailsPage: React.FC = () => {
             {/* LEFT: UNIFIED CONFIGURATION FORM */}
             <div className="lg:col-span-8 space-y-8">
               <MeetingGeneralForm
+                meetingId={id}
                 formData={formData}
                 setFormData={setFormData}
                 canEdit={canEdit}

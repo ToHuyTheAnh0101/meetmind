@@ -147,7 +147,8 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   isInBreakout,
 }) => {
   const { t } = useTranslation();
-  const { localParticipant } = useLocalParticipant();
+  const { localParticipant, isScreenShareEnabled } = useLocalParticipant();
+  const screenShareTrack = localParticipant.getTrackPublication(Track.Source.ScreenShare);
   const [isControlsExpanded, setIsControlsExpanded] = useState(true);
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
 
@@ -158,10 +159,14 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const chunkIndexRef = useRef(0);
+  const hiddenVideoRef = useRef<HTMLVideoElement>(null);
+  const prevPixelsRef = useRef<Uint8ClampedArray | null>(null);
+  const recordingStartTimeRef = useRef<number | null>(null);
 
   const stopRecording = () => {
     isRecordingRef.current = false;
     setIsRecording(false);
+    recordingStartTimeRef.current = null;
 
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
@@ -226,6 +231,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
 
       isRecordingRef.current = true;
       setIsRecording(true);
+      recordingStartTimeRef.current = Date.now();
 
       // Helper function to start a recorder instance
       const startNewRecorder = () => {
@@ -353,6 +359,108 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
       }
     };
   }, [isOrganizer, localParticipant]);
+
+  // Effect 1: Attach local screen share track to the hidden video element
+  useEffect(() => {
+    const videoEl = hiddenVideoRef.current;
+    if (!videoEl || !screenShareTrack?.track) return;
+
+    const track = screenShareTrack.track;
+    track.attach(videoEl);
+
+    return () => {
+      track.detach(videoEl);
+    };
+  }, [screenShareTrack]);
+
+  // Effect 2: Capture frames from the local screen share track and upload on changes
+  useEffect(() => {
+    if (!isScreenShareEnabled || !screenShareTrack?.track || !isRecording) {
+      prevPixelsRef.current = null;
+      return;
+    }
+
+    const intervalId = setInterval(() => {
+      const videoEl = hiddenVideoRef.current;
+      if (!videoEl || videoEl.paused || videoEl.ended) return;
+
+      try {
+        // 1. Create a tiny offscreen canvas for change detection (64x64)
+        const checkCanvas = document.createElement("canvas");
+        checkCanvas.width = 64;
+        checkCanvas.height = 64;
+        const checkCtx = checkCanvas.getContext("2d");
+        if (!checkCtx) return;
+
+        checkCtx.drawImage(videoEl, 0, 0, 64, 64);
+        const imgData = checkCtx.getImageData(0, 0, 64, 64).data;
+
+        let hasChanged = false;
+        if (!prevPixelsRef.current) {
+          hasChanged = true;
+        } else {
+          let diff = 0;
+          for (let i = 0; i < imgData.length; i += 4) {
+            diff += Math.abs(imgData[i] - prevPixelsRef.current[i]) +
+                    Math.abs(imgData[i + 1] - prevPixelsRef.current[i + 1]) +
+                    Math.abs(imgData[i + 2] - prevPixelsRef.current[i + 2]);
+          }
+          const avgDiff = diff / (64 * 64 * 3);
+          // Threshold is set to 8 (out of 255), meaning about 3.1% average color difference
+          if (avgDiff > 8) {
+            hasChanged = true;
+          }
+        }
+
+        if (hasChanged) {
+          prevPixelsRef.current = imgData;
+
+          // 2. Draw high resolution frame for upload (1280x720 Jpeg 75% quality)
+          const uploadCanvas = document.createElement("canvas");
+          uploadCanvas.width = 1280;
+          uploadCanvas.height = 720;
+          const uploadCtx = uploadCanvas.getContext("2d");
+          if (uploadCtx) {
+            uploadCtx.drawImage(videoEl, 0, 0, 1280, 720);
+            uploadCanvas.toBlob(async (blob) => {
+              if (blob) {
+                const formData = new FormData();
+                formData.append("image", blob, `capture_${Date.now()}.jpg`);
+                
+                const elapsedSeconds = recordingStartTimeRef.current
+                  ? (Date.now() - recordingStartTimeRef.current) / 1000
+                  : 0;
+
+                formData.append("timestamp", String(Math.round(elapsedSeconds)));
+                if (meetingId) {
+                  try {
+                    await apiClient.post(
+                      `/meetings/${meetingId}/screen-captures`,
+                      formData,
+                      {
+                        headers: {
+                          "Content-Type": "multipart/form-data",
+                        },
+                      }
+                    );
+                    console.log("Uploaded screen capture at timestamp:", elapsedSeconds);
+                  } catch (err) {
+                    console.error("Failed to upload screen capture:", err);
+                  }
+                }
+              }
+            }, "image/jpeg", 0.75);
+          }
+        }
+      } catch (err) {
+        console.error("Error capturing screen share frame:", err);
+      }
+    }, 15000); // Check every 15 seconds
+
+    return () => {
+      clearInterval(intervalId);
+    };
+  }, [isScreenShareEnabled, screenShareTrack, isRecording, meetingId]);
 
   const tracks = useTracks([
     { source: Track.Source.Camera, withPlaceholder: true },
@@ -530,6 +638,14 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
           )}
         </button>
       </div>
+      {/* Hidden Video element for screen capturing */}
+      <video
+        ref={hiddenVideoRef}
+        autoPlay
+        playsInline
+        muted
+        style={{ display: "none" }}
+      />
     </div>
   );
 };
