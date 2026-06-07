@@ -10,7 +10,6 @@ import {
   ChatHistory,
   MeetingSession,
   MeetingChatMessage,
-  MeetingSessionShare,
   ScreenCapture,
 } from './entities';
 
@@ -27,7 +26,6 @@ import { TranscriptRepository } from './repositories/transcript.repository';
 import { MeetingSessionRepository } from './repositories/meeting-session.repository';
 import { MeetingChatMessageRepository } from './repositories/meeting-chat-message.repository';
 import { ChatHistoryRepository } from './repositories/chat-history.repository';
-import { MeetingSessionShareRepository } from './repositories/meeting-session-share.repository';
 import { ScreenCaptureRepository } from './repositories/screen-capture.repository';
 
 // Services
@@ -56,7 +54,6 @@ import { AiModule } from '../../providers/ai/ai.module';
       ChatHistory,
       MeetingSession,
       MeetingChatMessage,
-      MeetingSessionShare,
       ScreenCapture,
     ]),
     LiveKitModule,
@@ -71,7 +68,6 @@ import { AiModule } from '../../providers/ai/ai.module';
     MeetingSessionRepository,
     MeetingChatMessageRepository,
     ChatHistoryRepository,
-    MeetingSessionShareRepository,
     ScreenCaptureRepository,
     // Services
     MeetingsService,
@@ -98,7 +94,6 @@ import { AiModule } from '../../providers/ai/ai.module';
     MeetingSessionRepository,
     MeetingChatMessageRepository,
     ChatHistoryRepository,
-    MeetingSessionShareRepository,
     ScreenCaptureRepository,
     TypeOrmModule,
   ],

@@ -47,6 +47,9 @@ export class MeetingSession {
   @Column({ type: 'boolean', default: false })
   aiActivated!: boolean;
 
+  @Column('jsonb', { default: [] })
+  sharedEmails!: string[];
+
   @CreateDateColumn()
   createdAt!: Date;
 

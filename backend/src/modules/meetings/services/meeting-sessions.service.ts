@@ -1,4 +1,9 @@
-import { Injectable, Inject, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  Inject,
+  NotFoundException,
+  BadRequestException,
+} from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { MeetingSessionRepository } from '../repositories/meeting-session.repository';
@@ -7,16 +12,15 @@ import { TranscriptRepository } from '../repositories/transcript.repository';
 import {
   MeetingSession,
   MeetingSessionStatus,
-  MeetingSessionShare,
   MeetingPermission,
 } from '../entities';
-import { MeetingSessionShareRepository } from '../repositories/meeting-session-share.repository';
 import { ParticipantRepository } from '../repositories/participant.repository';
 import { EntityManager } from 'typeorm';
 import {
   MeetingEvent,
   EventType,
 } from '../../events/entities/meeting-event.entity';
+import { User } from '../../users/user.entity';
 
 @Injectable()
 export class MeetingSessionsService {
@@ -24,7 +28,6 @@ export class MeetingSessionsService {
     private readonly sessionRepository: MeetingSessionRepository,
     private readonly meetingsRepository: MeetingRepository,
     private readonly transcriptRepository: TranscriptRepository,
-    private readonly sessionShareRepository: MeetingSessionShareRepository,
     private readonly participantsRepository: ParticipantRepository,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly entityManager: EntityManager,
@@ -241,11 +244,10 @@ export class MeetingSessionsService {
       }
     }
 
-    // d. Explicitly shared via MeetingSessionShare
-    const isShared = await this.sessionShareRepository.existsBySessionAndEmail(
-      sessionId,
-      normalizedEmail,
-    );
+    // d. Explicitly shared via session.sharedEmails
+    const isShared = (session.sharedEmails || [])
+      .map((e) => e.trim().toLowerCase())
+      .includes(normalizedEmail);
     if (isShared) return true;
 
     return false;
@@ -279,13 +281,37 @@ export class MeetingSessionsService {
     participantEmails.forEach((e) => defaultEmailsSet.add(e));
 
     const defaultEmails = Array.from(defaultEmailsSet);
+    const defaultEmailsList: any[] = [];
+    for (const email of defaultEmails) {
+      const user = await this.entityManager.findOne(User, {
+        where: { email: email.trim().toLowerCase() },
+      });
+      defaultEmailsList.push({
+        email,
+        firstName: user?.firstName || null,
+        lastName: user?.lastName || null,
+        avatarUrl: user?.picture || null,
+      });
+    }
 
     // d. Explicitly shared
-    const sharedShares =
-      await this.sessionShareRepository.findBySessionId(sessionId);
+    const sharedShares: any[] = [];
+    for (const email of session.sharedEmails || []) {
+      const user = await this.entityManager.findOne(User, {
+        where: { email: email.trim().toLowerCase() },
+      });
+      sharedShares.push({
+        id: email,
+        email,
+        firstName: user?.firstName || null,
+        lastName: user?.lastName || null,
+        avatarUrl: user?.picture || null,
+        createdAt: session.updatedAt || session.createdAt,
+      });
+    }
 
     return {
-      defaultEmails,
+      defaultEmails: defaultEmailsList,
       sharedShares,
     };
   }
@@ -293,7 +319,10 @@ export class MeetingSessionsService {
   async addSessionShare(
     sessionId: string,
     email: string | string[],
-  ): Promise<MeetingSessionShare[]> {
+  ): Promise<any[]> {
+    const session = await this.sessionRepository.findById(sessionId);
+    if (!session) throw new NotFoundException('Session not found');
+
     const emails = Array.isArray(email)
       ? email
       : email
@@ -301,41 +330,65 @@ export class MeetingSessionsService {
           .map((e) => e.trim())
           .filter((e) => !!e);
 
+    const currentSharedEmails = session.sharedEmails || [];
+    const updatedSharedEmails = [...currentSharedEmails];
+
     if (emails.length === 1) {
       const trimmedEmail = emails[0].toLowerCase();
-      const isAlreadyShared =
-        await this.sessionShareRepository.existsBySessionAndEmail(
-          sessionId,
-          trimmedEmail,
+      if (updatedSharedEmails.includes(trimmedEmail)) {
+        throw new BadRequestException(
+          'Email is already shared for this session',
         );
-      if (isAlreadyShared) {
-        throw new Error('Email is already shared for this session');
       }
     }
 
-    const savedShares: MeetingSessionShare[] = [];
     for (const rawEmail of emails) {
       const trimmedEmail = rawEmail.toLowerCase();
-      const isAlreadyShared =
-        await this.sessionShareRepository.existsBySessionAndEmail(
-          sessionId,
-          trimmedEmail,
+
+      // Check if user exists in database
+      const userExists = await this.entityManager.findOne(User, {
+        where: { email: trimmedEmail },
+      });
+      if (!userExists) {
+        throw new BadRequestException(
+          `Email "${rawEmail}" chưa đăng ký tài khoản trên hệ thống.`,
         );
-      if (!isAlreadyShared) {
-        const share = this.sessionShareRepository.create({
-          sessionId,
-          email: trimmedEmail,
-        });
-        const saved = await this.sessionShareRepository.save(share);
-        savedShares.push(saved);
+      }
+
+      if (!updatedSharedEmails.includes(trimmedEmail)) {
+        updatedSharedEmails.push(trimmedEmail);
       }
     }
-    return savedShares;
+
+    session.sharedEmails = updatedSharedEmails;
+    await this.sessionRepository.save(session);
+
+    const resultShares: any[] = [];
+    for (const e of session.sharedEmails) {
+      const user = await this.entityManager.findOne(User, {
+        where: { email: e.trim().toLowerCase() },
+      });
+      resultShares.push({
+        id: e,
+        email: e,
+        firstName: user?.firstName || null,
+        lastName: user?.lastName || null,
+        avatarUrl: user?.picture || null,
+        createdAt: session.updatedAt || session.createdAt,
+      });
+    }
+    return resultShares;
   }
 
-  async removeSessionShare(shareId: string): Promise<void> {
-    const share = await this.sessionShareRepository.findById(shareId);
-    if (!share) throw new NotFoundException('Share record not found');
-    await this.sessionShareRepository.remove(share);
+  async removeSessionShare(sessionId: string, email: string): Promise<void> {
+    const session = await this.sessionRepository.findById(sessionId);
+    if (!session) throw new NotFoundException('Session not found');
+
+    const normalizedEmail = email.trim().toLowerCase();
+    session.sharedEmails = (session.sharedEmails || []).filter(
+      (e) => e.trim().toLowerCase() !== normalizedEmail,
+    );
+
+    await this.sessionRepository.save(session);
   }
 }

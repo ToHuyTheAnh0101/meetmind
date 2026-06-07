@@ -572,7 +572,7 @@ const MeetingDetailsPage: React.FC = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
           >
-            <MeetingSummaryTab meetingId={id!} />
+            <MeetingSummaryTab meetingId={id!} canEdit={canEdit} theme={theme} />
           </motion.div>
         ) : (
           <motion.div

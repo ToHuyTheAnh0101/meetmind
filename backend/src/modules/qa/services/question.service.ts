@@ -9,7 +9,11 @@ import { QuestionRepository } from '../repositories/question.repository';
 import { MeetingSessionRepository } from '../../meetings/repositories/meeting-session.repository';
 import { MeetingSessionsService } from '../../meetings/services/meeting-sessions.service';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, EntityManager } from 'typeorm';
+import {
+  MeetingEvent,
+  EventType,
+} from '../../events/entities/meeting-event.entity';
 
 @Injectable()
 export class QuestionService {
@@ -19,6 +23,7 @@ export class QuestionService {
     private sessionsService: MeetingSessionsService,
     @InjectRepository(MeetingAnswer)
     private answerRepository: Repository<MeetingAnswer>,
+    private entityManager: EntityManager,
   ) {}
 
   async create(
@@ -38,6 +43,23 @@ export class QuestionService {
     });
 
     const savedQuestion = await this.questionRepository.save(question);
+
+    // Log QA_OPENED event
+    try {
+      const newEvent = this.entityManager.create(MeetingEvent, {
+        sessionId: session.id,
+        type: EventType.QA_OPENED,
+        triggeredByUserId: savedQuestion.askedByUserId,
+        metadata: {
+          questionId: savedQuestion.id,
+          content: savedQuestion.content,
+        },
+      });
+      await this.entityManager.save(MeetingEvent, newEvent);
+    } catch (err) {
+      console.error('Failed to log QA_OPENED event:', err);
+    }
+
     return this.findById(savedQuestion.id!);
   }
 

@@ -54,6 +54,20 @@ export class MeetingRepository {
     return query.getManyAndCount();
   }
 
+  async hasSharedSession(meetingId: string, email: string): Promise<boolean> {
+    const normalizedEmail = email.trim().toLowerCase();
+    const result = await this.repo.manager
+      .createQueryBuilder()
+      .select('1')
+      .from('meeting_sessions', 'session')
+      .where('session.meetingId = :meetingId', { meetingId })
+      .andWhere('session.sharedEmails @> :emailJson', {
+        emailJson: JSON.stringify([normalizedEmail]),
+      })
+      .getRawOne<object>();
+    return !!result;
+  }
+
   create(data: Partial<Meeting>): Meeting {
     return this.repo.create(data);
   }

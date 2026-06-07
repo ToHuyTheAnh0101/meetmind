@@ -10,6 +10,11 @@ import { PollRepository } from '../repositories/poll.repository';
 import { MeetingSessionRepository } from '../../meetings/repositories/meeting-session.repository';
 import { ParticipantRepository } from '../../meetings/repositories/participant.repository';
 import { MeetingSessionsService } from '../../meetings/services/meeting-sessions.service';
+import { EntityManager } from 'typeorm';
+import {
+  MeetingEvent,
+  EventType,
+} from '../../events/entities/meeting-event.entity';
 
 @Injectable()
 export class PollService {
@@ -18,6 +23,7 @@ export class PollService {
     private sessionRepository: MeetingSessionRepository,
     private participantRepository: ParticipantRepository,
     private sessionsService: MeetingSessionsService,
+    private entityManager: EntityManager,
   ) {}
 
   async create(
@@ -53,7 +59,26 @@ export class PollService {
       })),
     });
 
-    return this.pollRepository.save(poll);
+    const savedPoll = await this.pollRepository.save(poll);
+
+    // Log POLL_STARTED event
+    try {
+      const newEvent = this.entityManager.create(MeetingEvent, {
+        sessionId: session.id,
+        type: EventType.POLL_STARTED,
+        triggeredByUserId: userId,
+        metadata: {
+          pollId: savedPoll.id,
+          question: savedPoll.question,
+          options: savedPoll.options?.map((o) => o.text) || [],
+        },
+      });
+      await this.entityManager.save(MeetingEvent, newEvent);
+    } catch (err) {
+      console.error('Failed to log POLL_STARTED event:', err);
+    }
+
+    return savedPoll;
   }
 
   async findById(id: string): Promise<MeetingPoll> {
@@ -163,6 +188,24 @@ export class PollService {
 
     poll.closedAt = new Date();
 
-    return this.pollRepository.save(poll);
+    const savedPoll = await this.pollRepository.save(poll);
+
+    // Log POLL_ENDED event
+    try {
+      const newEvent = this.entityManager.create(MeetingEvent, {
+        sessionId: session.id,
+        type: EventType.POLL_ENDED,
+        triggeredByUserId: userId,
+        metadata: {
+          pollId: savedPoll.id,
+          question: savedPoll.question,
+        },
+      });
+      await this.entityManager.save(MeetingEvent, newEvent);
+    } catch (err) {
+      console.error('Failed to log POLL_ENDED event:', err);
+    }
+
+    return savedPoll;
   }
 }

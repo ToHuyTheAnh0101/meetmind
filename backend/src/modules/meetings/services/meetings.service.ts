@@ -69,6 +69,19 @@ export class MeetingsService {
   ) {}
 
   async create(dto: CreateMeetingDto, userId: string): Promise<Meeting> {
+    if (dto.inviteeEmails && dto.inviteeEmails.length > 0) {
+      for (const email of dto.inviteeEmails) {
+        const user = await this.usersService.findByEmail(
+          email.trim().toLowerCase(),
+        );
+        if (!user) {
+          throw new BadRequestException(
+            `Email "${email}" chưa đăng ký tài khoản trên hệ thống.`,
+          );
+        }
+      }
+    }
+
     const { password, ...meetingData } = dto;
     const hashedPassword = password; // Raw text
 
@@ -322,9 +335,15 @@ export class MeetingsService {
     );
 
     if (!isOrganizer && !isInvited && !isParticipant) {
-      throw new ForbiddenException(
-        'You do not have permission to access this meeting details',
+      const isShared = await this.meetingsRepository.hasSharedSession(
+        id,
+        userEmail,
       );
+      if (!isShared) {
+        throw new ForbiddenException(
+          'You do not have permission to access this meeting details',
+        );
+      }
     }
 
     return meeting;
@@ -335,6 +354,19 @@ export class MeetingsService {
     dto: UpdateMeetingDto,
     userId: string,
   ): Promise<Meeting> {
+    if (dto.inviteeEmails && dto.inviteeEmails.length > 0) {
+      for (const email of dto.inviteeEmails) {
+        const user = await this.usersService.findByEmail(
+          email.trim().toLowerCase(),
+        );
+        if (!user) {
+          throw new BadRequestException(
+            `Email "${email}" chưa đăng ký tài khoản trên hệ thống.`,
+          );
+        }
+      }
+    }
+
     const meeting = await this.findOne(id);
 
     if (meeting.organizerId !== userId) {
@@ -520,7 +552,9 @@ export class MeetingsService {
         sessionId,
       );
       contextText = recentChunks
-        .map((c) => (c.speakerName ? `${c.speakerName}: ${c.content}` : c.content))
+        .map((c) =>
+          c.speakerName ? `${c.speakerName}: ${c.content}` : c.content,
+        )
         .join('\n');
     }
 
@@ -677,7 +711,9 @@ export class MeetingsService {
         sessionId,
       );
       contextText = recentChunks
-        .map((c) => (c.speakerName ? `${c.speakerName}: ${c.content}` : c.content))
+        .map((c) =>
+          c.speakerName ? `${c.speakerName}: ${c.content}` : c.content,
+        )
         .join('\n');
     }
 

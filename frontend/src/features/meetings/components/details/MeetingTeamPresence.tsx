@@ -49,7 +49,7 @@ export const MeetingTeamPresence: React.FC<MeetingTeamPresenceProps> = ({
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Tìm kiếm thành viên..."
-            className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:border-slate-200 focus:bg-white transition-all outline-none"
+            className="w-full pl-11 pr-4 py-3 bg-slate-50 border-2 border-transparent rounded-2xl text-sm font-bold placeholder:text-slate-400 focus:border-slate-200 focus:bg-white transition-all outline-none text-slate-900"
           />
         </div>
 

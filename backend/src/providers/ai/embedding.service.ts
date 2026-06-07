@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import axios from 'axios';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export interface EmbeddingVector {
   embedding: number[];
@@ -10,78 +10,59 @@ export interface EmbeddingVector {
 @Injectable()
 export class OllamaEmbeddingService {
   private readonly logger = new Logger(OllamaEmbeddingService.name);
+  private genAI: GoogleGenerativeAI | null = null;
 
   constructor(private configService: ConfigService) {
-    const url = this.getOllamaUrl();
-    const model = this.getModel();
-    this.logger.log(`Ollama Embedding initialized: ${url} / model: ${model}`);
-  }
-
-  private getOllamaUrl(): string {
-    return (
-      this.configService.get<string>('OLLAMA_EMBEDDING_URL') ||
-      'http://localhost:11434'
-    );
-  }
-
-  private getModel(): string {
-    return (
-      this.configService.get<string>('OLLAMA_EMBEDDING_MODEL') ||
-      'mxbai-embed-large'
-    );
+    const geminiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (geminiKey) {
+      this.genAI = new GoogleGenerativeAI(geminiKey);
+      this.logger.log(
+        'Embedding initialized: Gemini gemini-embedding-001 (1024 dimensions)',
+      );
+    } else {
+      this.logger.warn('GEMINI_API_KEY not set — embedding disabled.');
+    }
   }
 
   /**
-   * Gọi Ollama /api/embeddings để embed 1 đoạn text.
-   * Trả về vector (mảng số) với số chiều phụ thuộc model:
+   * Embed một đoạn text bằng Gemini gemini-embedding-001.
+   * Trả về vector 1024 chiều, hoặc [] nếu chưa cấu hình / lỗi.
    */
   async embed(text: string): Promise<number[]> {
-    if (!text || text.trim().length === 0) {
-      return [];
-    }
-
-    const url = `${this.getOllamaUrl()}/api/embeddings`;
-    const model = this.getModel();
+    if (!text || text.trim().length === 0) return [];
+    if (!this.genAI) return [];
 
     try {
-      const response = await axios.post<EmbeddingVector>(
-        url,
-        {
-          model,
-          prompt: text.trim(),
-          options: {
-            // truncate: true, // nếu text quá dài, truncate theo context window của model
-          },
-        },
-        {
-          timeout: 30_000, // 30s timeout — Ollama local nhanh, nhưng chờ phòng trường hợp cold start
-          // Ollama trả về JSON mỗi dòng khi stream, nhưng gửi { stream: false } hoặc
-          // nhận về single object nếu model là embedding-only
-        },
-      );
+      const model = this.genAI.getGenerativeModel({
+        model: 'gemini-embedding-001',
+      });
 
-      const vector = response.data.embedding;
+      const result = await model.embedContent({
+        content: { role: 'user', parts: [{ text: text.trim() }] },
+        // @ts-expect-error: outputDimensionality is supported in the API but missing in legacy SDK typings
+        outputDimensionality: 1024,
+      });
+      const vector = result.embedding?.values;
+
       if (!Array.isArray(vector) || vector.length === 0) {
-        this.logger.warn(`Ollama returned empty embedding for model ${model}`);
+        this.logger.warn('Gemini returned empty embedding vector');
         return [];
       }
 
       return vector;
     } catch (error) {
       this.logger.error(
-        `Failed to call Ollama embedding (${url}, model=${model}): ${error instanceof Error ? error.message : error}`,
+        `Gemini embedding failed: ${error instanceof Error ? error.message : error}`,
       );
-      // Không throw — cho phép transcript flow tiếp tục dù embedding fail
-      // Backfill có thể chạy lại sau
+      // Không throw — transcript flow tiếp tục bình thường
       return [];
     }
   }
 
   /**
-   * Embed batch — dùng cho backfill hoặc bulk insert.
-   * Giới hạn concurrency để không overflow Ollama local.
+   * Embed batch — giới hạn concurrency để tránh vượt quota Gemini.
    */
-  async embedBatch(texts: string[], concurrency = 4): Promise<number[][]> {
+  async embedBatch(texts: string[], concurrency = 3): Promise<number[][]> {
     const results: number[][] = [];
     for (let i = 0; i < texts.length; i += concurrency) {
       const batch = texts.slice(i, i + concurrency);

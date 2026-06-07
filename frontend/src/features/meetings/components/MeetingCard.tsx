@@ -158,7 +158,7 @@ const MeetingCard: React.FC<MeetingCardProps> = ({ meeting, onClick }) => {
                   style={{ zIndex: 3 - idx }}
                 >
                   <img 
-                    src={p.user?.profilePictureUrl || `https://ui-avatars.com/api/?name=${p.user?.firstName || 'User'}+${p.user?.lastName || ''}&background=random`} 
+                    src={p.user?.picture || p.user?.profilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent((p.user?.firstName || 'User') + ' ' + (p.user?.lastName || ''))}&background=random&color=fff`} 
                     alt={p.user?.firstName || 'Participant'}
                     className="h-full w-full rounded-full object-cover"
                   />

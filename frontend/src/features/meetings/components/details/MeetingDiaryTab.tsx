@@ -616,7 +616,7 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({
                                 {meta && Object.keys(meta).length > 0 && (
                                   <div className="mt-2 flex flex-wrap gap-1.5">
                                     {Object.entries(meta)
-                                      .filter(([key]) => key !== "displayName" && key !== "email" && key !== "avatar" && key !== "picture")
+                                      .filter(([key]) => key !== "displayName" && key !== "email" && key !== "avatar" && key !== "picture" && key !== "timestamp")
                                       .map(([key, value]) => (
                                         <span
                                           key={key}

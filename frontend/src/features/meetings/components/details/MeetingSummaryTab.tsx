@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
 import {
   Sparkles,
   MessageSquare,
@@ -11,6 +11,10 @@ import {
   Bot,
   User,
   FileText,
+  Users,
+  Trash2,
+  X,
+  Plus,
 } from "lucide-react";
 import apiClient from "@/lib/apiClient";
 import { getToken } from "@/lib/tokenStorage";
@@ -18,7 +22,27 @@ import MarkdownRenderer from "@/components/MarkdownRenderer";
 
 interface MeetingSummaryTabProps {
   meetingId: string;
+  canEdit: boolean;
+  theme: any;
 }
+
+const getEmailColor = (email: string) => {
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    hash = email.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash % 360);
+  return `hsl(${h}, 70%, 93%)`;
+};
+
+const getEmailTextColor = (email: string) => {
+  let hash = 0;
+  for (let i = 0; i < email.length; i++) {
+    hash = email.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const h = Math.abs(hash % 360);
+  return `hsl(${h}, 80%, 35%)`;
+};
 
 interface Message {
   id: string;
@@ -29,6 +53,8 @@ interface Message {
 
 export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
   meetingId,
+  canEdit,
+  theme,
 }) => {
   const { t, i18n } = useTranslation();
   const isVi = i18n.language === "vi";
@@ -38,6 +64,125 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
   const [isAiGenerating, setIsAiGenerating] = useState(false);
   const [selectedSessionId, setSelectedSessionId] = useState<string>("");
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>("");
+
+  const [isShareDropdownOpen, setIsShareDropdownOpen] = useState(false);
+  const [dropdownMode, setDropdownMode] = useState<"list" | "share">("list");
+  const [shareEmailInput, setShareEmailInput] = useState("");
+  const [shareError, setShareError] = useState("");
+  const [shareSearchQuery, setShareSearchQuery] = useState("");
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close share dropdown on click outside
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setIsShareDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  // Reset query on close
+  useEffect(() => {
+    if (!isShareDropdownOpen) {
+      setShareSearchQuery("");
+      setShareEmailInput("");
+      setShareError("");
+    }
+  }, [isShareDropdownOpen]);
+
+  // Fetch session shares
+  const { data: shareData, refetch: refetchShares } = useQuery<{
+    defaultEmails: Array<{ email: string; firstName: string | null; lastName: string | null; avatarUrl: string | null }>;
+    sharedShares: Array<{ id: string; email: string; firstName: string | null; lastName: string | null; avatarUrl: string | null; createdAt?: string }>;
+  }>({
+    queryKey: ["session-shares", meetingId, selectedSessionId],
+    queryFn: async () => {
+      if (!selectedSessionId) return { defaultEmails: [], sharedShares: [] };
+      const res = await apiClient.get(
+        `/meetings/${meetingId}/sessions/${selectedSessionId}/shares`
+      );
+      return res.data;
+    },
+    enabled: !!selectedSessionId,
+  });
+
+  // Add session share mutation
+  const addShareMutation = useMutation({
+    mutationFn: async (email: string) => {
+      const res = await apiClient.post(
+        `/meetings/${meetingId}/sessions/${selectedSessionId}/shares`,
+        { email }
+      );
+      return res.data;
+    },
+    onSuccess: () => {
+      setShareEmailInput("");
+      setShareError("");
+      refetchShares();
+    },
+    onError: (err: any) => {
+      const errMsg = err?.response?.data?.message || err?.message || "Error sharing access";
+      setShareError(errMsg);
+    },
+  });
+
+  // Remove session share mutation
+  const removeShareMutation = useMutation({
+    mutationFn: async (shareIdOrEmail: string) => {
+      await apiClient.delete(
+        `/meetings/${meetingId}/sessions/${selectedSessionId}/shares/${shareIdOrEmail}`
+      );
+    },
+    onSuccess: () => {
+      refetchShares();
+    },
+    onError: (err: any) => {
+      console.error("Failed to revoke access:", err);
+    },
+  });
+
+  // Fetch meeting detail for organizer/participant info
+  const { data: meetingDetail } = useQuery<any>({
+    queryKey: ["meeting-detail", meetingId],
+    queryFn: async () => {
+      const res = await apiClient.get(`/meetings/${meetingId}`);
+      return res.data;
+    },
+  });
+
+  const getEmailRole = (email: string) => {
+    const normalizedEmail = email.toLowerCase().trim();
+    if (meetingDetail?.organizer?.email?.toLowerCase().trim() === normalizedEmail) {
+      return {
+        text: isVi ? "Chủ trì" : "Organizer",
+        badge: "bg-cyan-50 text-cyan-700 border border-cyan-100",
+      };
+    }
+    const isParticipant = (meetingDetail?.participants || []).some(
+      (p: any) => p.user?.email?.toLowerCase().trim() === normalizedEmail
+    );
+    if (isParticipant) {
+      return {
+        text: isVi ? "Đã tham gia" : "Joined",
+        badge: "bg-emerald-50 text-emerald-700 border border-emerald-100",
+      };
+    }
+    const isInvitee = (meetingDetail?.inviteeEmails || [])
+      .map((e: string) => e.toLowerCase().trim())
+      .includes(normalizedEmail);
+    if (isInvitee) {
+      return {
+        text: isVi ? "Được mời" : "Invited",
+        badge: "bg-amber-50 text-amber-700 border border-amber-100",
+      };
+    }
+    return {
+      text: isVi ? "Thành viên" : "Member",
+      badge: "bg-slate-100 text-slate-600 border border-slate-200",
+    };
+  };
 
   const [messages, setMessages] = useState<Message[]>([
     {
@@ -120,7 +265,9 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
 
       // Kích hoạt Polling khi cuộc họp/phiên đang diễn ra (ongoing) hoặc đang biên dịch âm thanh (processing/summarizing)
       const hasOngoing = data.some((s: any) => s.status === "ongoing");
-      const hasProcessing = data.some((s: any) => s.aiActivated === true && !s.hasTranscripts);
+      const hasProcessing = data.some(
+        (s: any) => s.aiActivated === true && !s.hasTranscripts,
+      );
 
       // Chỉ poll nếu phiên họp chưa hoàn thành hoặc chưa có bản dịch xong
       if (hasOngoing || hasProcessing) {
@@ -237,19 +384,23 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
 
     try {
       const token = getToken() || "";
-      const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+      const apiBaseUrl =
+        import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-      const response = await fetch(`${apiBaseUrl}/meetings/${meetingId}/chat/stream`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`,
+      const response = await fetch(
+        `${apiBaseUrl}/meetings/${meetingId}/chat/stream`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({
+            question: text,
+            sessionId: selectedSessionId,
+          }),
         },
-        body: JSON.stringify({
-          question: text,
-          sessionId: selectedSessionId,
-        }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error("Failed to connect to AI Stream");
@@ -282,8 +433,10 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                   accumulatedText += parsed.text;
                   setMessages((prev) =>
                     prev.map((msg) =>
-                      msg.id === aiMessageId ? { ...msg, content: accumulatedText } : msg
-                    )
+                      msg.id === aiMessageId
+                        ? { ...msg, content: accumulatedText }
+                        : msg,
+                    ),
                   );
                 }
               } catch {
@@ -296,7 +449,6 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
 
       // 3. Khi hoàn thành stream, reload lịch sử thực tế từ DB để đồng bộ các ID thật
       refetchChatHistory();
-
     } catch (error) {
       console.error("Streaming error:", error);
       setMessages((prev) =>
@@ -308,27 +460,22 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                   ? "Rất tiếc, đã có lỗi xảy ra khi kết nối tới Trợ lý AI. Vui lòng thử lại!"
                   : "Sorry, an error occurred while connecting to the AI Assistant. Please try again!",
               }
-            : msg
-        )
+            : msg,
+        ),
       );
     } finally {
       setIsAiGenerating(false);
     }
   };
 
-  const handlePresetQuestion = (questionKey: string) => {
-    const questionText = t(`meeting.summary_tab.${questionKey}`);
-    handleSendMessage(questionText);
-  };
-
-
-
   const selectedSession = sessions?.find((s) => s.id === selectedSessionId);
   const isSelectedSessionOngoing = selectedSession?.status === "ongoing";
 
   // AI was activated (recording started) but Whisper hasn't saved any transcript yet
   const isAiActivatedButNoTranscripts =
-    selectedSession?.aiActivated === true && !selectedSession?.hasTranscripts && !summary;
+    selectedSession?.aiActivated === true &&
+    !selectedSession?.hasTranscripts &&
+    !summary;
 
   const handleGenerate = () => {
     if (!selectedSessionId) return;
@@ -341,14 +488,14 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
       {/* LEFT COLUMN: AI SUMMARY VIEW */}
-      <div className="lg:col-span-8 space-y-6">
+      <div className="lg:col-span-7 space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           className="rounded-[2.5rem] border border-white/80 bg-white/70 p-5 sm:p-6 shadow-2xl backdrop-blur-xl min-h-[550px] flex flex-col"
         >
           {/* Header section */}
-          <div className="flex items-center justify-between border-b border-slate-100 pb-6 mb-6">
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-6 mb-6 gap-4">
             <div className="flex items-center gap-4">
               <div className="h-12 w-12 rounded-[1.25rem] bg-cyan-500/10 flex items-center justify-center text-cyan-600 shadow-inner">
                 <Sparkles className="h-6 w-6" />
@@ -358,6 +505,237 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                   {t("meeting.summary_tab.summary_card_title")}
                 </h3>
               </div>
+            </div>
+
+            {/* Sharing & Access Control Group */}
+            <div className="flex items-center gap-3 relative self-end sm:self-auto" ref={dropdownRef}>
+              {/* Dropdown Button showing Users Icon & Count */}
+              <button
+                onClick={() => {
+                  if (isShareDropdownOpen && dropdownMode === "list") {
+                    setIsShareDropdownOpen(false);
+                  } else {
+                    setDropdownMode("list");
+                    setIsShareDropdownOpen(true);
+                  }
+                }}
+                className="flex items-center gap-2 px-3 py-2 rounded-xl bg-slate-50 border border-slate-200 text-slate-600 hover:bg-slate-100 transition-all font-bold text-xs shadow-sm hover:border-slate-300"
+                title={isVi ? "Danh sách người truy cập" : "Access list"}
+              >
+                <Users className="h-4 w-4 text-slate-500" />
+                <span className="text-slate-800">
+                  {shareData
+                    ? (shareData.defaultEmails.length + shareData.sharedShares.length)
+                    : 0} {isVi ? "người" : "people"}
+                </span>
+              </button>
+
+              {/* Share Button (Only if canEdit is true) */}
+              {canEdit && (
+                <button
+                  onClick={() => {
+                    if (isShareDropdownOpen && dropdownMode === "share") {
+                      setIsShareDropdownOpen(false);
+                    } else {
+                      setDropdownMode("share");
+                      setIsShareDropdownOpen(true);
+                    }
+                  }}
+                  className={`px-3 py-2 flex items-center justify-center rounded-xl text-white bg-gradient-to-r ${theme?.colors?.bgGradient || "from-cyan-500 to-indigo-500"} hover:scale-[1.03] active:scale-95 transition-all font-black text-xs gap-1.5 shadow-md shadow-indigo-100`}
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>{isVi ? "Chia sẻ" : "Share"}</span>
+                </button>
+              )}
+
+              {/* Unified Share & Access List Dropdown */}
+              <AnimatePresence>
+                {isShareDropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    className="absolute right-0 top-full mt-2 w-80 rounded-[1.5rem] border border-slate-100 bg-white p-4 shadow-2xl z-50 overflow-hidden"
+                  >
+                    <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-3">
+                      <h4 className="text-xs font-black text-slate-800 tracking-wider">
+                        {dropdownMode === "share"
+                          ? (isVi ? "Chia sẻ quyền truy cập" : "Share access")
+                          : (isVi ? "Quyền truy cập phiên họp" : "Session access")}
+                      </h4>
+                      <button
+                        onClick={() => setIsShareDropdownOpen(false)}
+                        className="text-slate-400 hover:text-slate-600 transition-colors"
+                      >
+                        <X className="h-4 w-4" />
+                      </button>
+                    </div>
+
+                    {/* Search Input (Only show in 'list' mode) */}
+                    {dropdownMode === "list" && (
+                      <div className="mb-3">
+                        <input
+                          type="text"
+                          value={shareSearchQuery}
+                          onChange={(e) => setShareSearchQuery(e.target.value)}
+                          placeholder={isVi ? "Tìm kiếm email..." : "Search email..."}
+                          className="w-full px-3 py-1.5 text-xs border border-slate-200 rounded-xl outline-none focus:border-cyan-500 transition-colors bg-slate-50 font-bold shadow-inner"
+                        />
+                      </div>
+                    )}
+
+                    {/* Add share form (Only if canEdit is true and mode is share) */}
+                    {canEdit && dropdownMode === "share" && (
+                      <div className="mb-4 space-y-1.5 border-b border-slate-100 pb-3">
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            type="email"
+                            value={shareEmailInput}
+                            onChange={(e) => setShareEmailInput(e.target.value)}
+                            placeholder={isVi ? "Nhập email muốn chia sẻ..." : "Enter email to share..."}
+                            className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-xl outline-none focus:border-cyan-500 transition-colors bg-slate-50 font-bold"
+                          />
+                          <button
+                            onClick={() => {
+                              if (shareEmailInput.trim()) {
+                                addShareMutation.mutate(shareEmailInput.trim());
+                              }
+                            }}
+                            disabled={addShareMutation.isPending || !shareEmailInput.trim()}
+                            className={`px-3 py-2 rounded-xl text-white font-black text-xs bg-gradient-to-r ${theme?.colors?.bgGradient || "from-cyan-500 to-indigo-500"} disabled:opacity-50 flex items-center justify-center shrink-0 min-w-[60px]`}
+                          >
+                            {addShareMutation.isPending ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              isVi ? "Thêm" : "Add"
+                            )}
+                          </button>
+                        </div>
+                        {shareError && (
+                          <p className="text-[10px] font-bold text-rose-500 leading-tight mt-1">
+                            {shareError}
+                          </p>
+                        )}
+                      </div>
+                    )}
+
+                    {/* List of people with access */}
+                    <div className="max-h-60 overflow-y-auto space-y-2 custom-scrollbar pr-1">
+                      {/* 1. Default Access List (Only show in 'list' mode) */}
+                      {dropdownMode === "list" &&
+                        (shareData?.defaultEmails || [])
+                          .filter((item) => item.email.toLowerCase().includes(shareSearchQuery.toLowerCase()))
+                          .map((item) => {
+                            const role = getEmailRole(item.email);
+                            const emailColor = getEmailColor(item.email);
+                            const emailTextColor = getEmailTextColor(item.email);
+                            const hasName = !!(item.firstName || item.lastName);
+                            const displayName = hasName
+                              ? `${item.firstName || ""} ${item.lastName || ""}`.trim()
+                              : item.email;
+
+                            return (
+                              <div key={item.email} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition-colors">
+                                <div className="flex items-center gap-2.5 min-w-0">
+                                  {item.avatarUrl ? (
+                                    <img
+                                      src={item.avatarUrl}
+                                      alt={displayName}
+                                      className="h-8 w-8 rounded-full object-cover shadow-sm shrink-0"
+                                    />
+                                  ) : (
+                                    <div
+                                      className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-black uppercase shrink-0 shadow-sm"
+                                      style={{ backgroundColor: emailColor, color: emailTextColor }}
+                                    >
+                                      {hasName
+                                        ? (item.firstName || item.lastName || "?").charAt(0)
+                                        : item.email.charAt(0)}
+                                    </div>
+                                  )}
+                                  <div className="min-w-0">
+                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                      <span className="text-xs font-bold text-slate-700 truncate">{displayName}</span>
+                                      <span className={`inline-block text-[9px] font-black px-1.5 py-0.5 rounded-md shrink-0 ${role.badge}`}>
+                                        {role.text}
+                                      </span>
+                                    </div>
+                                    {hasName && (
+                                      <p className="text-[10px] font-bold text-slate-400 mt-0.5 truncate">{item.email}</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+
+                      {/* 2. Explicitly Shared List */}
+                      {(shareData?.sharedShares || [])
+                        .filter((share) => share.email.toLowerCase().includes(shareSearchQuery.toLowerCase()))
+                        .map((share) => {
+                          const emailColor = getEmailColor(share.email);
+                          const emailTextColor = getEmailTextColor(share.email);
+                          const hasName = !!(share.firstName || share.lastName);
+                          const displayName = hasName
+                            ? `${share.firstName || ""} ${share.lastName || ""}`.trim()
+                            : share.email;
+
+                          return (
+                            <div key={share.id} className="flex items-center justify-between p-2 rounded-xl hover:bg-slate-50 transition-colors">
+                              <div className="flex items-center gap-2.5 min-w-0">
+                                {share.avatarUrl ? (
+                                  <img
+                                    src={share.avatarUrl}
+                                    alt={displayName}
+                                    className="h-8 w-8 rounded-full object-cover shadow-sm shrink-0"
+                                  />
+                                ) : (
+                                  <div
+                                    className="h-8 w-8 rounded-full flex items-center justify-center text-xs font-black uppercase shrink-0 shadow-sm"
+                                    style={{ backgroundColor: emailColor, color: emailTextColor }}
+                                  >
+                                    {hasName
+                                      ? (share.firstName || share.lastName || "?").charAt(0)
+                                      : share.email.charAt(0)}
+                                  </div>
+                                )}
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-1.5 flex-wrap">
+                                    <span className="text-xs font-bold text-slate-700 truncate">{displayName}</span>
+                                    <span className="inline-block text-[9px] font-black px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 border border-indigo-100 shrink-0">
+                                      {isVi ? "Được chia sẻ" : "Shared"}
+                                    </span>
+                                  </div>
+                                  {hasName && (
+                                    <p className="text-[10px] font-bold text-slate-400 mt-0.5 truncate">{share.email}</p>
+                                  )}
+                                </div>
+                              </div>
+                              {canEdit && (
+                                <button
+                                  onClick={() => removeShareMutation.mutate(share.id)}
+                                  className="text-slate-400 hover:text-rose-500 p-1.5 rounded-lg hover:bg-rose-50 transition-colors"
+                                  title={isVi ? "Thu hồi quyền truy cập" : "Revoke access"}
+                                >
+                                  <Trash2 className="h-3.5 w-3.5" />
+                                </button>
+                              )}
+                            </div>
+                          );
+                        })}
+
+                      {dropdownMode === "share" &&
+                        (shareData?.sharedShares || []).filter((share) =>
+                          share.email.toLowerCase().includes(shareSearchQuery.toLowerCase())
+                        ).length === 0 && (
+                          <p className="text-[10px] font-bold text-slate-400 text-center py-4">
+                            {isVi ? "Chưa chia sẻ với email nào khác" : "Not shared with any other emails"}
+                          </p>
+                        )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
           </div>
 
@@ -450,6 +828,21 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                     {t("meeting.permissions.loading")}
                   </span>
                 </div>
+              ) : sortedSessions.length === 0 ? (
+                /* No sessions at all */
+                <div className="text-center py-16 px-4 flex-1 flex flex-col justify-center animate-fade-in">
+                  <div className="mx-auto h-16 w-16 rounded-[1.5rem] bg-slate-100/80 flex items-center justify-center text-slate-300 mb-6 shadow-inner">
+                    <FileText className="h-8 w-8" />
+                  </div>
+                  <h4 className="text-lg font-black text-slate-900">
+                    {isVi ? "Chưa có phiên họp nào" : "No sessions yet"}
+                  </h4>
+                  <p className="text-xs font-bold text-slate-500 mt-2 max-w-sm mx-auto leading-relaxed">
+                    {isVi
+                      ? "Cuộc họp chưa có phiên họp nào được ghi lại. Bản tóm tắt AI sẽ khả dụng sau khi cuộc họp diễn ra và kết thúc."
+                      : "This meeting has no recorded sessions yet. AI summary will be available after the meeting takes place and ends."}
+                  </p>
+                </div>
               ) : isSelectedSessionOngoing ? (
                 /* Ongoing session prenote */
                 <div className="text-center py-16 px-4 flex-1 flex flex-col justify-center">
@@ -458,9 +851,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                     <Sparkles className="h-8 w-8 text-emerald-500 animate-pulse" />
                   </div>
                   <h4 className="text-lg font-black text-slate-900">
-                    {isVi
-                      ? "Phiên họp đang diễn ra"
-                      : "Session is ongoing"}
+                    {isVi ? "Phiên họp đang diễn ra" : "Session is ongoing"}
                   </h4>
                   <p className="text-xs font-bold text-slate-500 mt-2 max-w-sm mx-auto leading-relaxed">
                     {isVi
@@ -485,7 +876,9 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                       : "AI assistant is transcribing the meeting content. Please wait a moment."}
                   </p>
                 </div>
-              ) : selectedSession && !selectedSession.hasTranscripts && !summary ? (
+              ) : selectedSession &&
+                !selectedSession.hasTranscripts &&
+                !summary ? (
                 /* No transcripts and no summary state (AI not activated) */
                 <div className="text-center py-16 px-4 flex-1 flex flex-col justify-center animate-fade-in">
                   <div className="mx-auto h-16 w-16 rounded-[1.5rem] bg-amber-50/80 text-amber-500 flex items-center justify-center mb-6 shadow-inner">
@@ -527,9 +920,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                   <div className="flex flex-col gap-3 border-b border-slate-100 pb-4 mb-4 md:flex-row md:items-end md:justify-between">
                     <div className="flex flex-col gap-1.5 min-w-0 flex-1">
                       <span className="text-[11px] font-black text-slate-400 tracking-wider">
-                        {isVi
-                          ? "Mẫu tóm tắt:"
-                          : "Template:"}
+                        {isVi ? "Mẫu tóm tắt:" : "Template:"}
                       </span>
                       <select
                         value={selectedTemplateId}
@@ -537,9 +928,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                         className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none focus:border-cyan-500 transition-colors animate-fade-in min-w-[220px] max-w-[320px]"
                       >
                         <option value="">
-                          {isVi
-                            ? "Mẫu mặc định"
-                            : "Default Template"}
+                          {isVi ? "Mẫu mặc định" : "Default Template"}
                         </option>
                         {templates?.map((t) => (
                           <option key={t.id} value={t.id}>
@@ -549,7 +938,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                       </select>
                     </div>
 
-                     <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2">
                       {/* Compact Regenerate Button */}
                       <button
                         onClick={handleGenerate}
@@ -557,9 +946,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                         title={t("meeting.summary_tab.generate_summary_btn")}
                       >
                         <RefreshCw className="h-3.5 w-3.5" />
-                        <span>
-                          {isVi ? "Tạo lại" : "Regenerate"}
-                        </span>
+                        <span>{isVi ? "Tạo lại" : "Regenerate"}</span>
                       </button>
                     </div>
                   </div>
@@ -594,9 +981,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                       className="text-xs font-bold text-slate-600 bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 outline-none focus:border-cyan-500 transition-colors w-full animate-fade-in"
                     >
                       <option value="">
-                        {isVi
-                          ? "Mẫu mặc định"
-                          : "Default Template"}
+                        {isVi ? "Mẫu mặc định" : "Default Template"}
                       </option>
                       {templates?.map((t) => (
                         <option key={t.id} value={t.id}>
@@ -621,11 +1006,11 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
       </div>
 
       {/* RIGHT COLUMN: Q&A CHATBOT VIEW */}
-      <div className="lg:col-span-4 space-y-6">
+      <div className="lg:col-span-5 space-y-6">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-[2.5rem] border border-white/80 bg-white/70 p-6 sm:p-8 shadow-2xl backdrop-blur-xl h-[600px] flex flex-col"
+          className="rounded-[2.5rem] border border-white/80 bg-white/70 p-6 sm:p-8 shadow-2xl backdrop-blur-xl h-[720px] flex flex-col"
         >
           <div className="flex items-center gap-4 border-b border-slate-100 pb-6 mb-4">
             <div className="h-12 w-12 rounded-[1.25rem] bg-indigo-500/10 flex items-center justify-center text-indigo-600 shadow-inner">
@@ -674,13 +1059,17 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                   )}
                 </div>
                 <div
-                  className={`p-3.5 rounded-2xl text-sm leading-relaxed font-semibold shadow-sm ${
+                  className={`p-3.5 rounded-2xl text-[13px] leading-relaxed font-semibold shadow-sm ${
                     msg.role === "user"
                       ? "bg-gradient-to-br from-indigo-600 to-indigo-700 text-white rounded-tr-none"
                       : "bg-slate-100/80 text-slate-800 border border-slate-200/50 rounded-tl-none"
                   }`}
                 >
-                  <p className="whitespace-pre-line">{msg.content}</p>
+                  {msg.role === "user" ? (
+                    <p className="whitespace-pre-line">{msg.content}</p>
+                  ) : (
+                    <MarkdownRenderer content={msg.content} />
+                  )}
                   <span
                     className={`block text-[10px] mt-1.5 text-right font-medium opacity-60 ${
                       msg.role === "user" ? "text-indigo-100" : "text-slate-400"
@@ -718,36 +1107,6 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
             )}
 
             <div ref={chatEndRef} />
-          </div>
-
-          {/* Quick Preset Buttons */}
-          <div className="mb-4">
-            <p className="text-[11px] font-black text-slate-400 uppercase tracking-wider mb-2">
-              {t("meeting.summary_tab.suggested_questions")}
-            </p>
-            <div className="flex flex-wrap gap-2">
-              <button
-                onClick={() => handlePresetQuestion("preset_q1")}
-                disabled={isAiGenerating}
-                className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors text-left"
-              >
-                {t("meeting.summary_tab.preset_q1")}
-              </button>
-              <button
-                onClick={() => handlePresetQuestion("preset_q2")}
-                disabled={isAiGenerating}
-                className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors text-left"
-              >
-                {t("meeting.summary_tab.preset_q2")}
-              </button>
-              <button
-                onClick={() => handlePresetQuestion("preset_q3")}
-                disabled={isAiGenerating}
-                className="px-3 py-1.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-bold text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors text-left"
-              >
-                {t("meeting.summary_tab.preset_q3")}
-              </button>
-            </div>
           </div>
 
           {/* Input Panel */}

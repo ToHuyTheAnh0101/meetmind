@@ -22,6 +22,8 @@ import {
   Users as UsersIcon,
   Mic,
   Radio,
+  Monitor,
+  MonitorOff,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import apiClient from "@/lib/apiClient";
@@ -42,7 +44,13 @@ interface MeetingMainStageProps {
   isInBreakout?: boolean;
 }
 
-const ParticipantAvatarOverlay = () => {
+interface ParticipantAvatarOverlayProps {
+  trackSource?: Track.Source;
+}
+
+const ParticipantAvatarOverlay = ({
+  trackSource,
+}: ParticipantAvatarOverlayProps) => {
   const p = useParticipantContext();
   const avatarUrl = useMemo(() => {
     if (!p?.metadata) return null;
@@ -53,6 +61,9 @@ const ParticipantAvatarOverlay = () => {
       return null;
     }
   }, [p?.metadata]);
+
+  // Don't show avatar overlay on Screen Share track
+  if (trackSource === Track.Source.ScreenShare) return null;
 
   // Only show avatar if camera is NOT enabled AND NOT currently publishing
   if (p?.isCameraEnabled) return null;
@@ -82,16 +93,31 @@ const ParticipantAvatarOverlay = () => {
   );
 };
 
-const ParticipantStatusOverlay = () => {
+const ParticipantStatusOverlay = ({
+  trackSource,
+}: {
+  trackSource?: Track.Source;
+}) => {
   const p = useParticipantContext();
+  const isScreenShare = trackSource === Track.Source.ScreenShare;
+
   return (
     <div className="absolute bottom-6 left-6 z-[110] flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-2xl border border-white/20 shadow-2xl">
       <div className="flex items-center gap-2">
-        <TrackMutedIndicator
-          trackRef={{ participant: p, source: Track.Source.Microphone }}
-          className="scale-110"
-        />
-        {p.isCameraEnabled && (
+        {!isScreenShare && (
+          <TrackMutedIndicator
+            trackRef={{ participant: p, source: Track.Source.Microphone }}
+            className="scale-110"
+          />
+        )}
+        {isScreenShare ? (
+          <div className="flex items-center gap-1.5 text-emerald-400">
+            <Monitor className="h-3.5 w-3.5 animate-pulse" />
+            <span className="text-xs font-bold uppercase tracking-wider">
+              Màn hình của <ParticipantName />
+            </span>
+          </div>
+        ) : (
           <span className="text-xs font-bold text-white truncate max-w-[120px]">
             <ParticipantName />
           </span>
@@ -120,21 +146,26 @@ const CustomParticipantTile = ({
   className,
   ...props
 }: ParticipantTileProps) => {
+  const isScreenShare = trackRef?.source === Track.Source.ScreenShare;
   return (
     <ParticipantTile
       trackRef={trackRef}
       {...props}
-      className={`relative group overflow-hidden rounded-[3rem] border-2 border-white/30 bg-[#0a0a0b] aspect-video ${className}`}
+      className={`relative group overflow-hidden rounded-[3rem] border-2 bg-[#0a0a0b] aspect-video transition-all ${
+        isScreenShare
+          ? "border-emerald-500/80 shadow-[0_0_30px_rgba(16,185,129,0.2)]"
+          : "border-white/30"
+      } ${className}`}
     >
       <VideoTrack
         trackRef={trackRef as any}
         className="absolute inset-0 w-full h-full z-0 object-contain"
       />
-      <ParticipantAvatarOverlay />
+      <ParticipantAvatarOverlay trackSource={trackRef?.source} />
       <div className="absolute top-8 left-8 z-[30]">
         <CustomConnectionIndicator />
       </div>
-      <ParticipantStatusOverlay />
+      <ParticipantStatusOverlay trackSource={trackRef?.source} />
     </ParticipantTile>
   );
 };
@@ -148,7 +179,9 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
 }) => {
   const { t } = useTranslation();
   const { localParticipant, isScreenShareEnabled } = useLocalParticipant();
-  const screenShareTrack = localParticipant.getTrackPublication(Track.Source.ScreenShare);
+  const screenShareTrack = localParticipant.getTrackPublication(
+    Track.Source.ScreenShare,
+  );
   const [isControlsExpanded, setIsControlsExpanded] = useState(true);
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
 
@@ -401,9 +434,10 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
         } else {
           let diff = 0;
           for (let i = 0; i < imgData.length; i += 4) {
-            diff += Math.abs(imgData[i] - prevPixelsRef.current[i]) +
-                    Math.abs(imgData[i + 1] - prevPixelsRef.current[i + 1]) +
-                    Math.abs(imgData[i + 2] - prevPixelsRef.current[i + 2]);
+            diff +=
+              Math.abs(imgData[i] - prevPixelsRef.current[i]) +
+              Math.abs(imgData[i + 1] - prevPixelsRef.current[i + 1]) +
+              Math.abs(imgData[i + 2] - prevPixelsRef.current[i + 2]);
           }
           const avgDiff = diff / (64 * 64 * 3);
           // Threshold is set to 8 (out of 255), meaning about 3.1% average color difference
@@ -415,41 +449,54 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
         if (hasChanged) {
           prevPixelsRef.current = imgData;
 
-          // 2. Draw high resolution frame for upload (1280x720 Jpeg 75% quality)
+          // 2. Draw high resolution frame for upload (Native video resolution or 1920x1080, Jpeg 92% quality)
+          const width = videoEl.videoWidth || 1920;
+          const height = videoEl.videoHeight || 1080;
+
           const uploadCanvas = document.createElement("canvas");
-          uploadCanvas.width = 1280;
-          uploadCanvas.height = 720;
+          uploadCanvas.width = width;
+          uploadCanvas.height = height;
           const uploadCtx = uploadCanvas.getContext("2d");
           if (uploadCtx) {
-            uploadCtx.drawImage(videoEl, 0, 0, 1280, 720);
-            uploadCanvas.toBlob(async (blob) => {
-              if (blob) {
-                const formData = new FormData();
-                formData.append("image", blob, `capture_${Date.now()}.jpg`);
-                
-                const elapsedSeconds = recordingStartTimeRef.current
-                  ? (Date.now() - recordingStartTimeRef.current) / 1000
-                  : 0;
+            uploadCtx.drawImage(videoEl, 0, 0, width, height);
+            uploadCanvas.toBlob(
+              async (blob) => {
+                if (blob) {
+                  const formData = new FormData();
+                  formData.append("image", blob, `capture_${Date.now()}.jpg`);
 
-                formData.append("timestamp", String(Math.round(elapsedSeconds)));
-                if (meetingId) {
-                  try {
-                    await apiClient.post(
-                      `/meetings/${meetingId}/screen-captures`,
-                      formData,
-                      {
-                        headers: {
-                          "Content-Type": "multipart/form-data",
+                  const elapsedSeconds = recordingStartTimeRef.current
+                    ? (Date.now() - recordingStartTimeRef.current) / 1000
+                    : 0;
+
+                  formData.append(
+                    "timestamp",
+                    String(Math.round(elapsedSeconds)),
+                  );
+                  if (meetingId) {
+                    try {
+                      await apiClient.post(
+                        `/meetings/${meetingId}/screen-captures`,
+                        formData,
+                        {
+                          headers: {
+                            "Content-Type": "multipart/form-data",
+                          },
                         },
-                      }
-                    );
-                    console.log("Uploaded screen capture at timestamp:", elapsedSeconds);
-                  } catch (err) {
-                    console.error("Failed to upload screen capture:", err);
+                      );
+                      console.log(
+                        "Uploaded screen capture at timestamp:",
+                        elapsedSeconds,
+                      );
+                    } catch (err) {
+                      console.error("Failed to upload screen capture:", err);
+                    }
                   }
                 }
-              }
-            }, "image/jpeg", 0.75);
+              },
+              "image/jpeg",
+              0.92,
+            );
           }
         }
       } catch (err) {
@@ -465,21 +512,33 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   const tracks = useTracks([
     { source: Track.Source.Camera, withPlaceholder: true },
     { source: Track.Source.ScreenShare, withPlaceholder: false },
-  ]).sort((a, b) => {
-    // Luôn ưu tiên Screen Share lên đầu
-    if (
-      a.source === Track.Source.ScreenShare &&
-      b.source !== Track.Source.ScreenShare
-    )
-      return -1;
-    if (
-      a.source !== Track.Source.ScreenShare &&
-      b.source === Track.Source.ScreenShare
-    )
-      return 1;
-    // Các trường hợp còn lại sắp xếp cố định theo Identity của người dùng để tránh nhảy màn
-    return a.participant.identity.localeCompare(b.participant.identity);
-  });
+  ])
+    .filter((track) => {
+      // Nếu là track camera và người dùng đó đang chia sẻ màn hình, đồng thời camera của họ tắt:
+      if (track.source === Track.Source.Camera) {
+        const isScreenSharing = track.participant.isScreenShareEnabled;
+        const isCameraOn = track.participant.isCameraEnabled;
+        if (isScreenSharing && !isCameraOn) {
+          return false; // ẩn tile camera/avatar trống để tránh lặp hình
+        }
+      }
+      return true;
+    })
+    .sort((a, b) => {
+      // Luôn ưu tiên Screen Share lên đầu
+      if (
+        a.source === Track.Source.ScreenShare &&
+        b.source !== Track.Source.ScreenShare
+      )
+        return -1;
+      if (
+        a.source !== Track.Source.ScreenShare &&
+        b.source === Track.Source.ScreenShare
+      )
+        return 1;
+      // Các trường hợp còn lại sắp xếp cố định theo Identity của người dùng để tránh nhảy màn
+      return a.participant.identity.localeCompare(b.participant.identity);
+    });
 
   return (
     <div className="flex-1 flex flex-col relative overflow-hidden max-h-full bg-[#020202]">
@@ -591,6 +650,25 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
           )}
         </div>
       </div>
+
+      {/* Screen Share Management Banner */}
+      {isScreenShareEnabled && (
+        <div className="flex items-center justify-between px-6 py-2.5 bg-emerald-500/10 border-b border-emerald-500/20 z-20">
+          <div className="flex items-center gap-2.5">
+            <Monitor className="h-4 w-4 text-emerald-400 animate-pulse" />
+            <span className="text-sm font-bold text-emerald-400">
+              Bạn đang chia sẻ màn hình
+            </span>
+          </div>
+          <button
+            onClick={() => localParticipant.setScreenShareEnabled(false)}
+            className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-rose-500/20 text-emerald-400 hover:text-rose-400 border border-emerald-500/30 hover:border-rose-500/30 text-xs font-bold transition-all"
+          >
+            <MonitorOff className="h-3.5 w-3.5" />
+            <span>Dừng chia sẻ</span>
+          </button>
+        </div>
+      )}
 
       <div className="flex-1 relative overflow-hidden flex items-center justify-center p-6">
         <div className="w-full h-full max-w-[calc(100vw-480px)] mx-auto">

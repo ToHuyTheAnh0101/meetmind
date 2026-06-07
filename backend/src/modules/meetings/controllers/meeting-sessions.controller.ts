@@ -104,6 +104,6 @@ export class MeetingSessionsController {
       );
     }
 
-    return this.sessionsService.removeSessionShare(shareId);
+    return this.sessionsService.removeSessionShare(sessionId, shareId);
   }
 }
