@@ -7,9 +7,7 @@ import {
 import { MeetingPoll, PollType } from '../entities/meeting-poll.entity';
 import { MeetingPermission } from '../../meetings/entities';
 import { PollRepository } from '../repositories/poll.repository';
-import { MeetingSessionRepository } from '../../meetings/repositories/meeting-session.repository';
 import { ParticipantRepository } from '../../meetings/repositories/participant.repository';
-import { MeetingSessionsService } from '../../meetings/services/meeting-sessions.service';
 import { EntityManager } from 'typeorm';
 import {
   MeetingEvent,
@@ -20,9 +18,7 @@ import {
 export class PollService {
   constructor(
     private pollRepository: PollRepository,
-    private sessionRepository: MeetingSessionRepository,
     private participantRepository: ParticipantRepository,
-    private sessionsService: MeetingSessionsService,
     private entityManager: EntityManager,
   ) {}
 
@@ -31,12 +27,8 @@ export class PollService {
     userId: string,
     data: Partial<MeetingPoll>,
   ): Promise<MeetingPoll> {
-    // Auto-ensure session exists (will create if needed)
-    const session =
-      await this.sessionsService.ensureSessionForMeeting(meetingId);
-
     const participant = await this.participantRepository.findByMeetingAndUser(
-      session.meetingId,
+      meetingId,
       userId,
     );
     if (
@@ -51,7 +43,7 @@ export class PollService {
 
     const poll = this.pollRepository.create({
       ...data,
-      sessionId: session.id,
+      meetingId,
       createdByUserId: userId,
       options: (data.options || []).map((opt) => ({
         ...opt,
@@ -64,7 +56,7 @@ export class PollService {
     // Log POLL_STARTED event
     try {
       const newEvent = this.entityManager.create(MeetingEvent, {
-        sessionId: session.id,
+        meetingId,
         type: EventType.POLL_STARTED,
         triggeredByUserId: userId,
         metadata: {
@@ -89,8 +81,8 @@ export class PollService {
     return poll;
   }
 
-  async findBySessionId(sessionId: string): Promise<MeetingPoll[]> {
-    return this.pollRepository.findBySessionId(sessionId);
+  async findByMeetingId(meetingId: string): Promise<MeetingPoll[]> {
+    return this.pollRepository.findByMeetingId(meetingId);
   }
 
   async vote(
@@ -159,17 +151,12 @@ export class PollService {
   async close(id: string, userId: string): Promise<MeetingPoll> {
     const poll = await this.findById(id);
 
-    if (!poll.sessionId) {
-      throw new NotFoundException('Meeting session not found for this poll');
-    }
-
-    const session = await this.sessionRepository.findById(poll.sessionId);
-    if (!session) {
-      throw new NotFoundException('Meeting session not found');
+    if (!poll.meetingId) {
+      throw new NotFoundException('Meeting room not found for this poll');
     }
 
     const participant = await this.participantRepository.findByMeetingAndUser(
-      session.meetingId,
+      poll.meetingId,
       userId,
     );
     if (
@@ -193,7 +180,7 @@ export class PollService {
     // Log POLL_ENDED event
     try {
       const newEvent = this.entityManager.create(MeetingEvent, {
-        sessionId: session.id,
+        meetingId: poll.meetingId,
         type: EventType.POLL_ENDED,
         triggeredByUserId: userId,
         metadata: {

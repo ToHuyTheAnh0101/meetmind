@@ -8,21 +8,21 @@ import {
   JoinColumn,
   Index,
 } from 'typeorm';
-import { MeetingSession } from './meeting-session.entity';
+import { Meeting } from './meeting.entity';
 import { User } from '../../../users/user.entity';
 
 @Entity('meeting_chat_messages')
-@Index(['sessionId'])
+@Index(['meetingId'])
 @Index(['breakoutRoomId'])
 export class MeetingChatMessage {
   @PrimaryGeneratedColumn('uuid')
   id?: string;
 
   @Column('uuid')
-  sessionId?: string;
+  meetingId?: string;
 
-  @ManyToOne(() => MeetingSession, { onDelete: 'CASCADE' })
-  session?: MeetingSession;
+  @ManyToOne(() => Meeting, { onDelete: 'CASCADE' })
+  meeting?: Meeting;
 
   @Column('uuid')
   senderUserId?: string;

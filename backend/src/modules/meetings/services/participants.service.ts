@@ -12,7 +12,6 @@ import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { ParticipantRepository } from '../repositories/participant.repository';
 import { MeetingRepository } from '../repositories/meeting.repository';
-import { MeetingSessionRepository } from '../repositories/meeting-session.repository';
 import {
   LiveKitService,
   LiveKitTokenGrants,
@@ -24,7 +23,6 @@ import {
   MeetingStatus,
   ParticipantStatus,
   MeetingPermission,
-  MeetingSessionStatus,
 } from '../entities';
 import {
   JoinResponseDto,
@@ -47,7 +45,6 @@ export class ParticipantsService {
   constructor(
     private readonly participantsRepository: ParticipantRepository,
     private readonly meetingsRepository: MeetingRepository,
-    private readonly sessionRepository: MeetingSessionRepository,
     private readonly liveKitService: LiveKitService,
     private readonly usersService: UsersService,
     private readonly configService: ConfigService,
@@ -72,14 +69,16 @@ export class ParticipantsService {
       }
 
       if (meeting.status === MeetingStatus.COMPLETED) {
-        meeting.status = MeetingStatus.ONGOING;
-        await this.meetingsRepository.save(meeting);
+        throw new BadRequestException(
+          'Meeting has already completed and cannot be rejoined',
+        );
       }
 
       let participant = await this.participantsRepository.findByMeetingAndUser(
         id,
         userId,
       );
+      const wasInMeeting = participant?.isInMeeting || false;
 
       const isOrganizer =
         participant?.isOrganizer || meeting.organizerId === userId;
@@ -200,27 +199,19 @@ export class ParticipantsService {
 
       if (meeting.status === MeetingStatus.SCHEDULED) {
         meeting.status = MeetingStatus.ONGOING;
-        await this.meetingsRepository.save(meeting);
       }
+      if (!meeting.actualStartTime) {
+        meeting.actualStartTime = meeting.startTime || new Date();
+      }
+      await this.meetingsRepository.save(meeting);
 
-      // Ensure active session exists and is cached
-      const cacheKey = `session:${id}`;
-      let activeSession = await this.sessionRepository.findActiveByMeeting(id);
-      if (!activeSession) {
-        activeSession = this.sessionRepository.create({
-          meetingId: id,
-          actualStartTime: new Date(),
-          status: MeetingSessionStatus.ONGOING,
+      if (!wasInMeeting) {
+        await this.logMeetingEvent(id, EventType.USER_JOINED, userId, {
+          displayName: fullName,
+          email: user.email,
+          avatar: user.picture || undefined,
         });
-        activeSession = await this.sessionRepository.save(activeSession);
       }
-      await this.cacheManager.set(cacheKey, activeSession, 0);
-
-      await this.logMeetingEvent(id, EventType.USER_JOINED, userId, {
-        displayName: fullName,
-        email: user.email,
-        avatar: user.picture || undefined,
-      });
 
       const participantsData = await this.getParticipants(id, 1, 100);
       const participantSummaries: ParticipantSummaryDto[] =
@@ -318,7 +309,7 @@ export class ParticipantsService {
       id,
       userId,
     );
-    if (participant) {
+    if (participant && participant.isInMeeting) {
       participant.isInMeeting = false;
       await this.participantsRepository.save(participant);
 
@@ -346,28 +337,99 @@ export class ParticipantsService {
 
         if (activeBreakout) {
           this.logger.log(
-            `No active participants left in main room of meeting ${id}, but active breakout rooms exist. Keeping the session active.`,
+            `No active participants left in main room of meeting ${id}, but active breakout rooms exist. Keeping the meeting active.`,
           );
           return;
         }
 
         this.logger.log(
-          `No active participants left in meeting ${id}. Auto-closing the active session.`,
+          `No active participants left in meeting ${id}. Scheduling auto-closure check in 15 minutes.`,
         );
-        const activeSession =
-          await this.sessionRepository.findActiveByMeeting(id);
-        if (activeSession) {
-          activeSession.actualEndTime = new Date();
-          activeSession.status = MeetingSessionStatus.COMPLETED;
-          await this.sessionRepository.save(activeSession);
 
-          // Clear session cache
-          const cacheKey = `session:${id}`;
-          await this.cacheManager.del(cacheKey);
-          this.logger.log(
-            `Active session ${activeSession.id} for meeting ${id} has been auto-completed.`,
-          );
-        }
+        setTimeout(
+          () => {
+            void (async () => {
+              try {
+                const currentActiveParticipants =
+                  await this.participantsRepository
+                    .createQueryBuilder('p')
+                    .where('p.meetingId = :meetingId', { meetingId: id })
+                    .andWhere('p.isInMeeting = true')
+                    .getCount();
+
+                if (currentActiveParticipants === 0) {
+                  const currentActiveBreakout =
+                    await this.entityManager.findOne(BreakoutRoom, {
+                      where: {
+                        meetingId: id,
+                        status: BreakoutRoomStatus.ACTIVE,
+                      },
+                    });
+
+                  if (currentActiveBreakout) {
+                    this.logger.log(
+                      `Breakout rooms are still active for meeting ${id} after 15 minutes idle check. Skipping auto-closure.`,
+                    );
+                    return;
+                  }
+
+                  const meeting = await this.meetingsRepository.findById(id);
+                  if (meeting && meeting.status === MeetingStatus.ONGOING) {
+                    // Safety guard: only auto-close if the meeting has been
+                    // ongoing for at least 5 minutes. This prevents pre-meeting
+                    // test joins (join/leave before the actual meeting) from
+                    // permanently locking the room via the idle-close timer.
+                    const MIN_MEETING_DURATION_MS = 5 * 60 * 1000; // 5 minutes
+                    const startedAt = meeting.actualStartTime
+                      ? new Date(meeting.actualStartTime).getTime()
+                      : 0;
+                    const ongoingDuration = Date.now() - startedAt;
+
+                    if (ongoingDuration < MIN_MEETING_DURATION_MS) {
+                      this.logger.log(
+                        `Meeting ${id} has been ongoing for only ${Math.round(ongoingDuration / 1000)}s. ` +
+                          `Skipping auto-closure (minimum ${MIN_MEETING_DURATION_MS / 60000} min required).`,
+                      );
+                      // Reset to SCHEDULED so late-comers can still join
+                      meeting.status = MeetingStatus.SCHEDULED;
+                      meeting.actualStartTime = undefined;
+                      await this.meetingsRepository.save(meeting);
+                      return;
+                    }
+
+                    this.logger.log(
+                      `Meeting ${id} remains empty for 15 minutes. Auto-closing meeting.`,
+                    );
+                    meeting.status = MeetingStatus.COMPLETED;
+                    meeting.actualEndTime = new Date();
+                    await this.meetingsRepository.save(meeting);
+
+                    try {
+                      await this.liveKitService.deleteRoom(
+                        meeting.livekitRoomName || meeting.id || '',
+                      );
+                    } catch (err) {
+                      this.logger.warn(
+                        `Could not delete LiveKit room ${meeting.livekitRoomName} in auto-closure check`,
+                        err,
+                      );
+                    }
+                  }
+                } else {
+                  this.logger.log(
+                    `Meeting ${id} has ${currentActiveParticipants} active participants now. Skipping auto-closure check.`,
+                  );
+                }
+              } catch (err) {
+                this.logger.error(
+                  `Error in auto-closing idle check for meeting ${id}:`,
+                  err,
+                );
+              }
+            })();
+          },
+          15 * 60 * 1000,
+        ); // 15 minutes idle check
       }
     }
   }
@@ -519,17 +581,13 @@ export class ParticipantsService {
     metadata?: Record<string, any>,
   ): Promise<void> {
     try {
-      const session =
-        await this.sessionRepository.findLatestByMeeting(meetingId);
-      if (session) {
-        const newEvent = this.entityManager.create(MeetingEvent, {
-          sessionId: session.id,
-          type,
-          triggeredByUserId,
-          metadata: metadata || undefined,
-        });
-        await this.entityManager.save(MeetingEvent, newEvent);
-      }
+      const newEvent = this.entityManager.create(MeetingEvent, {
+        meetingId,
+        type,
+        triggeredByUserId,
+        metadata: metadata || undefined,
+      });
+      await this.entityManager.save(MeetingEvent, newEvent);
     } catch (err) {
       this.logger.error(`Failed to log meeting event ${type}:`, err);
     }

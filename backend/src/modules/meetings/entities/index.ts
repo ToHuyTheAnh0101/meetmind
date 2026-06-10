@@ -11,19 +11,13 @@ export {
 } from './core/participant.entity';
 
 // Scheduling
-export { Notification } from './scheduling/notification.entity';
 export {
   AccessRequest,
   AccessRequestStatus,
 } from './scheduling/access-request.entity';
 
-// Real-time Collaboration
 // Content & Analytics
 export { TranscriptChunk } from './content/transcript-chunk.entity';
-export {
-  MeetingSession,
-  MeetingSessionStatus,
-} from './core/meeting-session.entity';
 
 // AI Features
 export { ChatHistory, ChatMessageType } from './ai/chat-history.entity';

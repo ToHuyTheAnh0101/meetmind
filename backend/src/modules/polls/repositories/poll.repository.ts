@@ -17,9 +17,9 @@ export class PollRepository {
     });
   }
 
-  async findBySessionId(sessionId: string): Promise<MeetingPoll[]> {
+  async findByMeetingId(meetingId: string): Promise<MeetingPoll[]> {
     return this.repo.find({
-      where: { sessionId },
+      where: { meetingId },
       relations: ['createdByUser'],
       order: { createdAt: 'DESC' },
     });

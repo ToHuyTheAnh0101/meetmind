@@ -8,7 +8,6 @@ import {
 } from 'typeorm';
 import { Meeting } from '../core/meeting.entity';
 import { User } from '../../../users/user.entity';
-import { MeetingSession } from '../core/meeting-session.entity';
 
 export enum ChatMessageType {
   USER = 'user',
@@ -17,8 +16,8 @@ export enum ChatMessageType {
 }
 
 @Entity('chat_histories')
-@Index(['sessionId', 'userId'])
-@Index(['sessionId', 'createdAt'])
+@Index(['meetingId', 'userId'])
+@Index(['meetingId', 'createdAt'])
 export class ChatHistory {
   @PrimaryGeneratedColumn('uuid')
   id?: string;
@@ -28,12 +27,6 @@ export class ChatHistory {
 
   @Column('uuid')
   meetingId?: string;
-
-  @Column('uuid', { nullable: true })
-  sessionId?: string;
-
-  @ManyToOne(() => MeetingSession, { onDelete: 'CASCADE', nullable: true })
-  session?: MeetingSession;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   user?: User;

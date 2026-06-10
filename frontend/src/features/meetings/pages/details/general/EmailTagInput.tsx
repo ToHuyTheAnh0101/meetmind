@@ -1,0 +1,118 @@
+import React, { useState } from 'react';
+import { useTranslation } from 'react-i18next';
+import { X, Mail, AlertCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+
+interface EmailTagInputProps {
+  emails: string[];
+  onChange: (emails: string[]) => void;
+  disabled?: boolean;
+}
+
+const EmailTagInput: React.FC<EmailTagInputProps> = ({ emails, onChange, disabled = false }) => {
+  const { t } = useTranslation();
+  const [inputValue, setInputValue] = useState('');
+  const [error, setError] = useState<string | null>(null);
+
+  const validateEmail = (email: string) => {
+    return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+  };
+
+  const addEmail = () => {
+    if (disabled) return;
+    const trimmed = inputValue.trim();
+    if (!trimmed) return;
+
+    if (!validateEmail(trimmed)) {
+      setError(t('meeting.invalid_email'));
+      return;
+    }
+
+    if (emails.includes(trimmed)) {
+      setError(t('meeting.email_exists'));
+      return;
+    }
+
+    onChange([...emails, trimmed]);
+    setInputValue('');
+    setError(null);
+  };
+
+  const removeEmail = (email: string) => {
+    if (disabled) return;
+    onChange(emails.filter(e => e !== email));
+  };
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (disabled) return;
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      addEmail();
+    }
+  };
+
+  return (
+    <div className="space-y-3">
+      <div className="relative group">
+        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-cyan-600 transition-colors">
+          <Mail className="h-4 w-4" />
+        </div>
+        <input
+          type="text"
+          disabled={disabled}
+          value={inputValue}
+          onChange={(e) => {
+            setInputValue(e.target.value);
+            if (error) setError(null);
+          }}
+          onKeyDown={handleKeyDown}
+          onBlur={addEmail}
+          placeholder={disabled ? "" : t('meeting.add_participants_placeholder')}
+          className={`w-full h-12 pl-11 pr-4 rounded-2xl bg-white/40 border border-slate-200 focus:bg-white/60 focus:border-cyan-200 focus:outline-none transition-all text-sm font-bold text-slate-900 placeholder:text-slate-400 ${disabled ? 'opacity-60 cursor-not-allowed' : ''}`}
+        />
+      </div>
+
+      <AnimatePresence mode="popLayout">
+        {error && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-rose-50 border border-rose-100 text-rose-600 text-[11px] font-bold"
+          >
+            <AlertCircle className="h-3 w-3" />
+            {error}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="flex flex-wrap gap-2 max-h-[120px] overflow-y-auto pr-2 custom-scrollbar">
+        <AnimatePresence>
+          {emails.map((email) => (
+            <motion.span
+              key={email}
+              layout
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.8 }}
+              className="flex items-center gap-2 pl-3 pr-2 py-1.5 rounded-full bg-white border border-slate-300 shadow-sm transition-all hover:border-cyan-300 group"
+            >
+              <span className="text-[12px] font-bold text-slate-700">{email}</span>
+              {!disabled && (
+                <button
+                  type="button"
+                  onClick={() => removeEmail(email)}
+                  className="p-1 rounded-full hover:bg-rose-50 hover:text-rose-600 text-slate-400 transition-colors"
+                >
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </motion.span>
+          ))}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
+
+export default EmailTagInput;

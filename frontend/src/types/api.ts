@@ -40,6 +40,8 @@ export interface Meeting {
   status: MeetingStatus
   startTime: string
   endTime?: string | null
+  actualStartTime?: string | null
+  actualEndTime?: string | null
   createdAt?: string
   updatedAt?: string
   organizer?: User
@@ -57,6 +59,7 @@ export interface Meeting {
   organizerId?: string
   templateId?: string | null
   template?: SummaryTemplate | null
+  aiActivated?: boolean
 }
 
 export interface Participant {

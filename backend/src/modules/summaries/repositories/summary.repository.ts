@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, IsNull } from 'typeorm';
+import { Repository } from 'typeorm';
 import { Summary } from '../entities/summary.entity';
 
 @Injectable()
@@ -23,15 +23,9 @@ export class SummaryRepository {
     });
   }
 
-  async findBySessionId(sessionId: string): Promise<Summary | null> {
-    return this.repo.findOne({
-      where: { sessionId },
-    });
-  }
-
   async findOverallByMeetingId(meetingId: string): Promise<Summary | null> {
     return this.repo.findOne({
-      where: { meetingId, sessionId: IsNull() },
+      where: { meetingId },
     });
   }
 

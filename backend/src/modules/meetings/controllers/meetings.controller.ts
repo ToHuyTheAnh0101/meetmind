@@ -18,13 +18,11 @@ import {
   BadRequestException,
   Logger,
   Res,
-  ForbiddenException,
   NotFoundException,
 } from '@nestjs/common';
 import * as path from 'path';
 import * as fs from 'fs';
 import * as express from 'express';
-import { MeetingSessionsService } from '../services/meeting-sessions.service';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MeetingsService } from '../services/meetings.service';
 import { MeetingsWebhookService } from '../services/meetings-webhook.service';
@@ -53,7 +51,6 @@ export class MeetingsController {
   constructor(
     private readonly meetingsService: MeetingsService,
     private readonly liveKitService: LiveKitService,
-    private readonly sessionsService: MeetingSessionsService,
     private readonly webhookService: MeetingsWebhookService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}
@@ -170,15 +167,9 @@ export class MeetingsController {
   async chatWithAI(
     @Param('id') id: string,
     @Body('question') question: string,
-    @Body('sessionId') sessionId: string,
     @Request() req: { user: { id: string } },
   ): Promise<{ answer: string }> {
-    return this.meetingsService.chatWithAI(
-      id,
-      question,
-      req.user.id,
-      sessionId,
-    );
+    return this.meetingsService.chatWithAI(id, question, req.user.id);
   }
 
   @Post(':id/chat/stream')
@@ -186,20 +177,14 @@ export class MeetingsController {
   async chatWithAIStream(
     @Param('id') id: string,
     @Body('question') question: string,
-    @Body('sessionId') sessionId: string,
     @Request() req: RequestWithUser,
     @Res() res: express.Response,
   ): Promise<void> {
-    if (sessionId) {
-      const hasAccess = await this.sessionsService.checkSessionAccess(
-        sessionId,
-        req.user.id,
-        req.user.email,
-      );
-      if (!hasAccess) {
-        throw new ForbiddenException('You do not have access to this session');
-      }
-    }
+    await this.meetingsService.findOneWithAccess(
+      id,
+      req.user.id,
+      req.user.email,
+    );
 
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
@@ -209,7 +194,6 @@ export class MeetingsController {
       id,
       question,
       req.user.id,
-      sessionId,
     );
 
     const subscription = stream.subscribe({
@@ -236,20 +220,14 @@ export class MeetingsController {
   @UseGuards(JwtAuthGuard)
   async getAIChatHistory(
     @Param('id') id: string,
-    @Query('sessionId') sessionId: string,
     @Request() req: RequestWithUser,
   ): Promise<any[]> {
-    if (sessionId) {
-      const hasAccess = await this.sessionsService.checkSessionAccess(
-        sessionId,
-        req.user.id,
-        req.user.email,
-      );
-      if (!hasAccess) {
-        throw new ForbiddenException('You do not have access to this session');
-      }
-    }
-    return this.meetingsService.getAIChatHistory(id, req.user.id, sessionId);
+    await this.meetingsService.findOneWithAccess(
+      id,
+      req.user.id,
+      req.user.email,
+    );
+    return this.meetingsService.getAIChatHistory(id, req.user.id);
   }
 
   @Post('webhooks/livekit')
@@ -289,7 +267,6 @@ export class MeetingsController {
     @Param('id') id: string,
     @UploadedFile() file: any,
     @Body('timestamp') timestampStr: string,
-    @Body('sessionId') sessionId?: string,
   ) {
     if (!file) {
       throw new BadRequestException('No image file provided');
@@ -300,12 +277,7 @@ export class MeetingsController {
       throw new BadRequestException('Invalid timestamp format');
     }
 
-    return await this.meetingsService.saveScreenCapture(
-      id,
-      file,
-      timestamp,
-      sessionId,
-    );
+    return await this.meetingsService.saveScreenCapture(id, file, timestamp);
   }
 
   @Get(':id/screen-captures/:filename')
@@ -325,5 +297,31 @@ export class MeetingsController {
       throw new NotFoundException('Screen capture not found');
     }
     res.sendFile(filePath);
+  }
+
+  @Get(':id/shares')
+  @UseGuards(JwtAuthGuard)
+  async getShares(@Param('id') id: string): Promise<any> {
+    return this.meetingsService.getShares(id);
+  }
+
+  @Post(':id/shares')
+  @UseGuards(JwtAuthGuard)
+  async addShare(
+    @Param('id') id: string,
+    @Body('email') email: string,
+    @Request() req: { user: { id: string } },
+  ): Promise<any> {
+    return this.meetingsService.addShare(id, email, req.user.id);
+  }
+
+  @Delete(':id/shares/:email')
+  @UseGuards(JwtAuthGuard)
+  async removeShare(
+    @Param('id') id: string,
+    @Param('email') email: string,
+    @Request() req: { user: { id: string } },
+  ): Promise<void> {
+    await this.meetingsService.removeShare(id, email, req.user.id);
   }
 }

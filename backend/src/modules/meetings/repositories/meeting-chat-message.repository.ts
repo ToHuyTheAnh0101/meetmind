@@ -29,14 +29,14 @@ export class MeetingChatMessageRepository {
     return reloaded;
   }
 
-  async findBySession(
-    sessionId: string,
+  async findByMeeting(
+    meetingId: string,
     breakoutRoomId?: string,
   ): Promise<MeetingChatMessage[]> {
     const queryBuilder = this.repo
       .createQueryBuilder('chat')
       .leftJoinAndSelect('chat.sender', 'sender')
-      .where('chat.sessionId = :sessionId', { sessionId });
+      .where('chat.meetingId = :meetingId', { meetingId });
 
     if (breakoutRoomId) {
       queryBuilder.andWhere('chat.breakoutRoomId = :breakoutRoomId', {

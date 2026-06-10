@@ -9,12 +9,12 @@ import ProtectedRoute from './features/auth/ProtectedRoute'
 // Placeholder components
 import LoginPage from './features/auth/LoginPage.tsx'
 import AuthCallbackPage from './features/auth/AuthCallbackPage.tsx'
-import DashboardPage from './features/dashboard/DashboardPage.tsx'
-import MeetingsPage from './features/meetings/MeetingsPage.tsx'
-import MeetingDetailsPage from './features/meetings/MeetingDetailsPage.tsx'
-import MeetingRoomPage from './features/meetings/MeetingRoomPage.tsx'
-import TemplatesPage from './features/templates/TemplatesPage.tsx'
-import ProfilePage from './features/profile/ProfilePage.tsx'
+import DashboardPage from './features/dashboard/pages/DashboardPage.tsx'
+import MeetingsPage from './features/meetings/pages/list/MeetingsPage.tsx'
+import MeetingDetailsPage from './features/meetings/pages/details/MeetingDetailsPage.tsx'
+import MeetingRoomPage from './features/meetings/pages/room/MeetingRoomPage.tsx'
+import TemplatesPage from './features/templates/pages/TemplatesPage.tsx'
+import ProfilePage from './features/profile/pages/ProfilePage.tsx'
 import AppShell from './layouts/AppShell.tsx'
 
 // Create query client

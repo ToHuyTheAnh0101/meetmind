@@ -4,13 +4,11 @@ import {
   Get,
   Param,
   Body,
-  Query,
   UseGuards,
   Request,
   BadRequestException,
 } from '@nestjs/common';
 import { EventService } from '../services/event.service';
-import { MeetingSessionsService } from '../../meetings/services/meeting-sessions.service';
 import { MeetingEvent } from '../entities/meeting-event.entity';
 import { CreateEventDto } from '../dto/create-event.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -24,23 +22,14 @@ interface RequestWithUser {
 
 @Controller('meetings/:meetingId/events')
 export class EventController {
-  constructor(
-    private eventService: EventService,
-    private sessionsService: MeetingSessionsService,
-  ) {}
+  constructor(private eventService: EventService) {}
 
   @Get()
   @UseGuards(JwtAuthGuard)
   async findAll(
     @Param('meetingId') meetingId: string,
-    @Query('sessionId') sessionId?: string,
   ): Promise<MeetingEvent[]> {
-    if (sessionId) {
-      return this.eventService.findBySessionId(sessionId);
-    }
-    const session =
-      await this.sessionsService.ensureSessionForMeeting(meetingId);
-    return this.eventService.findBySessionId(session.id);
+    return this.eventService.findByMeetingId(meetingId);
   }
 
   @Get(':id')
@@ -59,8 +48,6 @@ export class EventController {
     if (!dto.type) {
       throw new BadRequestException('Event type is required');
     }
-    const session =
-      await this.sessionsService.ensureSessionForMeeting(meetingId);
-    return this.eventService.logEvent(session.id, dto.type, req.user.id);
+    return this.eventService.logEvent(meetingId, dto.type, req.user.id);
   }
 }

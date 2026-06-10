@@ -1,6 +1,5 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
 import { MeetingChatMessageRepository } from '../repositories/meeting-chat-message.repository';
-import { MeetingSessionsService } from './meeting-sessions.service';
 import { MeetingChatMessage } from '../entities';
 
 export interface ChatMessageDto {
@@ -16,7 +15,6 @@ export interface ChatMessageDto {
 export class ChatService {
   constructor(
     private readonly chatMessageRepository: MeetingChatMessageRepository,
-    private readonly sessionsService: MeetingSessionsService,
   ) {}
 
   async saveChatMessage(
@@ -29,11 +27,8 @@ export class ChatService {
       throw new BadRequestException('Message cannot be empty');
     }
 
-    const session =
-      await this.sessionsService.ensureSessionForMeeting(meetingId);
-
     const chatMsg = this.chatMessageRepository.create({
-      sessionId: session.id,
+      meetingId,
       senderUserId: userId,
       message: message.trim(),
       breakoutRoomId: breakoutRoomId || undefined,
@@ -46,10 +41,8 @@ export class ChatService {
     meetingId: string,
     breakoutRoomId?: string,
   ): Promise<ChatMessageDto[]> {
-    const session =
-      await this.sessionsService.ensureSessionForMeeting(meetingId);
-    const messages = await this.chatMessageRepository.findBySession(
-      session.id,
+    const messages = await this.chatMessageRepository.findByMeeting(
+      meetingId,
       breakoutRoomId,
     );
 

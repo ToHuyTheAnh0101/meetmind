@@ -5,7 +5,7 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { Observable } from 'rxjs';
+import { Observable, Subscription } from 'rxjs';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ConfigService } from '@nestjs/config';
@@ -18,7 +18,6 @@ import {
   MeetingAccessType,
   ParticipantStatus,
   MeetingPermission,
-  MeetingSessionStatus,
   ChatMessageType,
   ScreenCapture,
 } from '../entities';
@@ -32,7 +31,6 @@ import { PaginationHelper } from '../../../common/utils/pagination.helper';
 import { MeetingRepository } from '../repositories/meeting.repository';
 import { ParticipantRepository } from '../repositories/participant.repository';
 import { TranscriptRepository } from '../repositories/transcript.repository';
-import { MeetingSessionRepository } from '../repositories/meeting-session.repository';
 import { MailService } from '../../../providers/mail/mail.service';
 import { AiService } from '../../../providers/ai/ai.service.js';
 import { ChatHistoryRepository } from '../repositories/chat-history.repository';
@@ -57,7 +55,6 @@ export class MeetingsService {
     private meetingsRepository: MeetingRepository,
     private participantsRepository: ParticipantRepository,
     private transcriptRepository: TranscriptRepository,
-    private sessionRepository: MeetingSessionRepository,
     private liveKitService: LiveKitService,
     private usersService: UsersService,
     private configService: ConfigService,
@@ -186,21 +183,8 @@ export class MeetingsService {
 
     const now = new Date();
 
-    // Reset meeting status to SCHEDULED so that the meeting link can be reused for future sessions
-    meeting.status = MeetingStatus.SCHEDULED;
-    meeting.endTime = null as unknown as Date;
-
-    // End the active session if one exists
-    const activeSession = await this.sessionRepository.findActiveByMeeting(id);
-    if (activeSession) {
-      activeSession.actualEndTime = now;
-      activeSession.status = MeetingSessionStatus.COMPLETED;
-      await this.sessionRepository.save(activeSession);
-
-      // Clear session cache so a new session is auto-created next time
-      const cacheKey = `session:${id}`;
-      await this.cacheManager.del(cacheKey);
-    }
+    meeting.status = MeetingStatus.COMPLETED;
+    meeting.actualEndTime = now;
 
     // Delete the room so all users are booted
     try {
@@ -226,19 +210,8 @@ export class MeetingsService {
   async autoComplete(id: string): Promise<Meeting> {
     const meeting = await this.findOne(id);
 
-    meeting.status = MeetingStatus.SCHEDULED;
-    meeting.endTime = null as unknown as Date;
-
-    const activeSession = await this.sessionRepository.findActiveByMeeting(id);
-    if (activeSession) {
-      activeSession.actualEndTime = new Date();
-      activeSession.status = MeetingSessionStatus.COMPLETED;
-      await this.sessionRepository.save(activeSession);
-
-      // Clear session cache
-      const cacheKey = `session:${id}`;
-      await this.cacheManager.del(cacheKey);
-    }
+    meeting.status = MeetingStatus.COMPLETED;
+    meeting.actualEndTime = new Date();
 
     try {
       await this.liveKitService.deleteRoom(
@@ -501,11 +474,8 @@ export class MeetingsService {
     meetingId: string,
     question: string,
     _userId: string,
-    sessionId?: string,
   ): Promise<{ answer: string }> {
-    this.logger.log(
-      `User ${_userId} chatting with AI in meeting ${meetingId}${sessionId ? `, session ${sessionId}` : ''}`,
-    );
+    this.logger.log(`User ${_userId} chatting with AI in meeting ${meetingId}`);
     const meeting = await this.meetingsRepository.findById(meetingId);
     if (!meeting) {
       throw new NotFoundException('Meeting not found');
@@ -527,7 +497,6 @@ export class MeetingsService {
         meetingId,
         questionEmbedding,
         8,
-        sessionId,
       );
 
     // 3. Xử lý ngữ cảnh (context)
@@ -547,10 +516,8 @@ export class MeetingsService {
       this.logger.warn(
         `No relevant chunks found above threshold for meeting ${meetingId}. Using recent chunks fallback.`,
       );
-      const recentChunks = await this.transcriptRepository.findRecentChunks(
-        meetingId,
-        sessionId,
-      );
+      const recentChunks =
+        await this.transcriptRepository.findRecentChunks(meetingId);
       contextText = recentChunks
         .map((c) =>
           c.speakerName ? `${c.speakerName}: ${c.content}` : c.content,
@@ -558,13 +525,7 @@ export class MeetingsService {
         .join('\n');
     }
 
-    if (!contextText || !contextText.trim()) {
-      return {
-        answer: `Không có bản dịch thoại trực tiếp. Đây là cuộc họp "${meeting.title}" với mô tả: ${meeting.description || 'Không có mô tả'}.`,
-      };
-    }
-
-    // 4. Sinh phản hồi với LLM Ollama cục bộ dựa trên ngữ cảnh được lọc tối ưu
+    // 4. Gọi Gemini API để trả lời câu hỏi dựa trên ngữ cảnh và lịch sử chat
     const answer = await this.aiService.answerQuestion(question, contextText);
 
     // 4.5. Tìm các screen capture liên quan trong khoảng thời gian của các relevantChunks
@@ -582,10 +543,6 @@ export class MeetingsService {
           const query = this.screenCaptureRepository
             .createQueryBuilder('capture')
             .where('capture.meetingId = :meetingId', { meetingId });
-
-          if (sessionId) {
-            query.andWhere('capture.sessionId = :sessionId', { sessionId });
-          }
 
           const rangeConditions = timeRanges.map((range, index) => {
             return `(capture.timestamp BETWEEN :start${index} AND :end${index})`;
@@ -610,10 +567,10 @@ export class MeetingsService {
               });
             }
           }
-        } catch (err) {
+        } catch (captureErr) {
           this.logger.error(
-            'Failed to query screen captures in chatWithAI:',
-            err,
+            'Failed to search related screen captures for RAG:',
+            captureErr,
           );
         }
       }
@@ -634,7 +591,6 @@ export class MeetingsService {
     try {
       await this.chatHistoryRepository.save({
         meetingId,
-        sessionId,
         userId: _userId,
         messageType: ChatMessageType.USER,
         content: question,
@@ -642,7 +598,6 @@ export class MeetingsService {
 
       await this.chatHistoryRepository.save({
         meetingId,
-        sessionId,
         userId: _userId,
         messageType: ChatMessageType.AI,
         content: finalAnswer,
@@ -660,10 +615,9 @@ export class MeetingsService {
     meetingId: string,
     question: string,
     _userId: string,
-    sessionId?: string,
   ): Promise<Observable<string>> {
     this.logger.log(
-      `User ${_userId} chatting with AI (Stream) in meeting ${meetingId}${sessionId ? `, session ${sessionId}` : ''}`,
+      `User ${_userId} chatting with AI (Stream) in meeting ${meetingId}`,
     );
     const meeting = await this.meetingsRepository.findById(meetingId);
     if (!meeting) {
@@ -686,7 +640,6 @@ export class MeetingsService {
         meetingId,
         questionEmbedding,
         8,
-        sessionId,
       );
 
     // 3. Xử lý ngữ cảnh (context)
@@ -706,10 +659,8 @@ export class MeetingsService {
       this.logger.warn(
         `No relevant chunks found above threshold for meeting ${meetingId} (stream). Using recent chunks fallback.`,
       );
-      const recentChunks = await this.transcriptRepository.findRecentChunks(
-        meetingId,
-        sessionId,
-      );
+      const recentChunks =
+        await this.transcriptRepository.findRecentChunks(meetingId);
       contextText = recentChunks
         .map((c) =>
           c.speakerName ? `${c.speakerName}: ${c.content}` : c.content,
@@ -718,156 +669,145 @@ export class MeetingsService {
     }
 
     if (!contextText || !contextText.trim()) {
-      return new Observable<string>((sub) => {
-        const text = `Không có bản dịch thoại trực tiếp. Đây là cuộc họp "${meeting.title}" với mô tả: ${meeting.description || 'Không có mô tả'}.`;
-        sub.next(text);
-        sub.complete();
-      });
+      this.logger.warn('Empty context for Gemini chat stream fallback');
+      contextText = 'No transcript context found.';
     }
 
-    // 4. Lấy stream trả lời câu hỏi từ Ollama
-    const aiStream = await this.aiService.answerQuestionStream(
-      question,
-      contextText,
-    );
-
-    let fullAnswer = '';
-
     return new Observable<string>((sub) => {
-      const subscription = aiStream.subscribe({
-        next: (chunk) => {
-          fullAnswer += chunk;
-          sub.next(chunk);
-        },
-        error: (err) => {
-          sub.error(err);
-        },
-        complete: () => {
-          (async () => {
-            // Fetch matching screen captures
-            let markdownAppendix = '';
-            const imageInfoList: Array<{ url: string; timestamp: number }> = [];
-            if (relevantChunks.length > 0) {
-              const timeRanges = relevantChunks
-                .filter(
-                  (c) => c.startTime !== undefined && c.startTime !== null,
-                )
-                .map((c) => ({
-                  start: Math.max(0, c.startTime! - 5),
-                  end: (c.endTime || c.startTime!) + 15,
-                }));
+      let subscription: Subscription | undefined;
 
-              if (timeRanges.length > 0) {
-                const query = this.screenCaptureRepository
-                  .createQueryBuilder('capture')
-                  .where('capture.meetingId = :meetingId', { meetingId });
+      this.aiService
+        .answerQuestionStream(question, contextText)
+        .then((geminiObs) => {
+          let fullAnswer = '';
 
-                if (sessionId) {
-                  query.andWhere('capture.sessionId = :sessionId', {
-                    sessionId,
-                  });
-                }
+          subscription = geminiObs.subscribe({
+            next: (chunk) => {
+              fullAnswer += chunk;
+              sub.next(chunk);
+            },
+            error: (err) => {
+              sub.error(err);
+            },
+            complete: () => {
+              void (async () => {
+                // Fetch matching screen captures
+                let markdownAppendix = '';
+                const imageInfoList: Array<{ url: string; timestamp: number }> =
+                  [];
+                if (relevantChunks.length > 0) {
+                  const timeRanges = relevantChunks
+                    .filter(
+                      (c) => c.startTime !== undefined && c.startTime !== null,
+                    )
+                    .map((c) => ({
+                      start: Math.max(0, c.startTime! - 5),
+                      end: (c.endTime || c.startTime!) + 15,
+                    }));
 
-                const rangeConditions = timeRanges.map((range, index) => {
-                  return `(capture.timestamp BETWEEN :start${index} AND :end${index})`;
-                });
-                query.andWhere(`(${rangeConditions.join(' OR ')})`);
+                  if (timeRanges.length > 0) {
+                    const query = this.screenCaptureRepository
+                      .createQueryBuilder('capture')
+                      .where('capture.meetingId = :meetingId', { meetingId });
 
-                timeRanges.forEach((range, index) => {
-                  query.setParameter(`start${index}`, range.start);
-                  query.setParameter(`end${index}`, range.end);
-                });
+                    const rangeConditions = timeRanges.map((range, index) => {
+                      return `(capture.timestamp BETWEEN :start${index} AND :end${index})`;
+                    });
+                    query.andWhere(`(${rangeConditions.join(' OR ')})`);
 
-                try {
-                  const captures = await query
-                    .orderBy('capture.timestamp', 'ASC')
-                    .getMany();
-                  const uniqueUrls = new Set<string>();
-                  for (const cap of captures) {
-                    if (!uniqueUrls.has(cap.imageUrl)) {
-                      uniqueUrls.add(cap.imageUrl);
-                      imageInfoList.push({
-                        url: cap.imageUrl,
-                        timestamp: cap.timestamp,
-                      });
+                    timeRanges.forEach((range, index) => {
+                      query.setParameter(`start${index}`, range.start);
+                      query.setParameter(`end${index}`, range.end);
+                    });
+
+                    try {
+                      const captures = await query
+                        .orderBy('capture.timestamp', 'ASC')
+                        .getMany();
+                      const uniqueUrls = new Set<string>();
+                      for (const cap of captures) {
+                        if (!uniqueUrls.has(cap.imageUrl)) {
+                          uniqueUrls.add(cap.imageUrl);
+                          imageInfoList.push({
+                            url: cap.imageUrl,
+                            timestamp: cap.timestamp,
+                          });
+                        }
+                      }
+                    } catch (captureErr) {
+                      this.logger.error(
+                        'Failed to search related screen captures for RAG (stream completion):',
+                        captureErr,
+                      );
                     }
                   }
+                }
 
-                  if (imageInfoList.length > 0) {
-                    markdownAppendix =
-                      '\n\n**Hình ảnh slide được nhắc đến:**\n' +
-                      imageInfoList
-                        .map(
-                          (img) =>
-                            `![Slide tại ${Math.round(img.timestamp)}s](${img.url})`,
-                        )
-                        .join('\n');
-                  }
-                } catch (err) {
+                if (imageInfoList.length > 0) {
+                  markdownAppendix =
+                    '\n\n**Hình ảnh slide được nhắc đến:**\n' +
+                    imageInfoList
+                      .map(
+                        (img) =>
+                          `![Slide tại ${Math.round(img.timestamp)}s](${img.url})`,
+                      )
+                      .join('\n');
+                }
+
+                if (markdownAppendix) {
+                  sub.next(markdownAppendix);
+                  fullAnswer += markdownAppendix;
+                }
+
+                sub.complete();
+
+                // 5. Lưu lịch sử chat AI (cả câu hỏi của user và phản hồi của AI) khi stream kết thúc
+                try {
+                  await this.chatHistoryRepository.save({
+                    meetingId,
+                    userId: _userId,
+                    messageType: ChatMessageType.USER,
+                    content: question,
+                  });
+
+                  await this.chatHistoryRepository.save({
+                    meetingId,
+                    userId: _userId,
+                    messageType: ChatMessageType.AI,
+                    content: fullAnswer,
+                    metadata:
+                      imageInfoList.length > 0
+                        ? { images: imageInfoList }
+                        : undefined,
+                  });
+                } catch (dbError) {
                   this.logger.error(
-                    'Failed to query screen captures in stream:',
-                    err,
+                    'Failed to save AI chat history in stream completion:',
+                    dbError,
                   );
                 }
-              }
-            }
-
-            if (markdownAppendix) {
-              sub.next(markdownAppendix);
-              fullAnswer += markdownAppendix;
-            }
-
-            sub.complete();
-
-            // 5. Lưu lịch sử chat AI (cả câu hỏi của user và phản hồi của AI) khi stream kết thúc
-            try {
-              await this.chatHistoryRepository.save({
-                meetingId,
-                sessionId,
-                userId: _userId,
-                messageType: ChatMessageType.USER,
-                content: question,
-              });
-
-              await this.chatHistoryRepository.save({
-                meetingId,
-                sessionId,
-                userId: _userId,
-                messageType: ChatMessageType.AI,
-                content: fullAnswer,
-                metadata:
-                  imageInfoList.length > 0
-                    ? { images: imageInfoList }
-                    : undefined,
-              });
-            } catch (dbError) {
-              this.logger.error(
-                'Failed to save AI chat history in stream completion:',
-                dbError,
-              );
-            }
-          })().catch((err) => {
-            this.logger.error('Stream completion unhandled error:', err);
+              })();
+            },
           });
-        },
-      });
+        })
+        .catch((err) => {
+          sub.error(err);
+        });
 
       return () => {
-        subscription.unsubscribe();
+        if (subscription) {
+          subscription.unsubscribe();
+        }
       };
     });
   }
 
-  async getAIChatHistory(
-    meetingId: string,
-    userId: string,
-    sessionId?: string,
-  ): Promise<any[]> {
+  async getAIChatHistory(meetingId: string, userId: string): Promise<any[]> {
     const meeting = await this.meetingsRepository.findById(meetingId);
     if (!meeting) {
       throw new NotFoundException('Meeting not found');
     }
-    return this.chatHistoryRepository.findHistory(meetingId, userId, sessionId);
+    return this.chatHistoryRepository.findHistory(meetingId, userId);
   }
 
   /**
@@ -887,23 +827,18 @@ export class MeetingsService {
     const meeting = await this.findOne(meetingId);
     if (!meeting) throw new NotFoundException('Meeting not found');
 
-    // 1. Tìm session để gắn chunk vào.
-    //    Ưu tiên session ONGOING; nếu session vừa kết thúc (COMPLETED) thì
-    //    fallback sang session mới nhất — chunk này chắc chắn thuộc về nó.
-    let session = await this.sessionRepository.findActiveByMeeting(meetingId);
-    if (!session) {
-      session = await this.sessionRepository.findLatestByMeeting(meetingId);
-    }
-    if (!session) {
+    if (!meeting.aiActivated) {
       this.logger.warn(
-        `[STT Rejected] Chunk received for meeting ${meetingId} but no session exists at all. Discarding chunk.`,
+        `[STT Rejected] Chunk received for meeting ${meetingId} but AI is not activated. Discarding chunk.`,
       );
-      throw new BadRequestException('No session found for this meeting');
+      throw new BadRequestException(
+        'AI Assistant is not activated for this meeting',
+      );
     }
 
-    if (session.status !== MeetingSessionStatus.ONGOING) {
+    if (meeting.status !== MeetingStatus.ONGOING) {
       this.logger.log(
-        `[STT] Session ${session.id} is ${session.status} — attaching late chunk to it anyway.`,
+        `[STT] Meeting ${meetingId} is ${meeting.status} — attaching late chunk to it anyway.`,
       );
     }
 
@@ -972,7 +907,6 @@ export class MeetingsService {
 
         const chunk = this.transcriptRepository.create({
           meetingId,
-          sessionId: session.id,
           content: cleanedTranscript,
           // Lưu null nếu mảng rỗng hoặc sai số chiều (không bằng 1024) để tránh lỗi pgvector DB crash
           embedding:
@@ -989,13 +923,13 @@ export class MeetingsService {
         await this.transcriptRepository.save(chunk);
 
         this.logger.log(
-          `[Background STT] Saved transcript chunk for meeting ${meetingId} (User: ${speakerName || 'Unknown'}): ${transcriptText.slice(0, 50)}...`,
+          `[Background STT] Saved chunk ${chunkIndexNum} for user ${userIdStr} in meeting ${meetingId}`,
         );
       })
       .catch((err) => {
-        const errorMsg = err instanceof Error ? err.message : String(err);
         this.logger.error(
-          `[Background STT Error] Failed to transcribe for meeting ${meetingId}: ${errorMsg}`,
+          `[Background STT] Transcription failed for user ${userIdStr} in meeting ${meetingId}:`,
+          err,
         );
       })
       .finally(() => {
@@ -1014,25 +948,12 @@ export class MeetingsService {
     meetingId: string,
     file: any,
     timestamp: number,
-    sessionId?: string,
   ): Promise<ScreenCapture> {
     const meeting = await this.meetingsRepository.findById(meetingId);
     if (!meeting) throw new NotFoundException('Meeting not found');
 
-    let session = sessionId
-      ? await this.sessionRepository.findById(sessionId)
-      : await this.sessionRepository.findActiveByMeeting(meetingId);
-
-    if (!session) {
-      session = await this.sessionRepository.findLatestByMeeting(meetingId);
-    }
-
-    if (!session) {
-      throw new BadRequestException('No session found for this meeting');
-    }
-
     // Check if AI Assistant is activated
-    if (!session.aiActivated) {
+    if (!meeting.aiActivated) {
       throw new BadRequestException(
         'AI Assistant is not activated. Screen capturing is disabled.',
       );
@@ -1078,11 +999,123 @@ export class MeetingsService {
 
     const capture = this.screenCaptureRepository.create({
       meetingId,
-      sessionId: session.id,
       imageUrl: relativeUrl,
       timestamp,
     });
 
     return await this.screenCaptureRepository.save(capture);
+  }
+
+  async getShares(meetingId: string): Promise<{
+    defaultEmails: Array<{
+      email: string;
+      firstName: string | null;
+      lastName: string | null;
+      avatarUrl: string | null;
+    }>;
+    sharedShares: Array<{
+      id: string;
+      email: string;
+      firstName: string | null;
+      lastName: string | null;
+      avatarUrl: string | null;
+      createdAt?: string;
+    }>;
+  }> {
+    const meeting = await this.meetingsRepository.findById(meetingId);
+    if (!meeting) {
+      throw new NotFoundException('Meeting not found');
+    }
+
+    const defaultEmails: Array<{
+      email: string;
+      firstName: string | null;
+      lastName: string | null;
+      avatarUrl: string | null;
+    }> = [];
+    for (const email of meeting.inviteeEmails || []) {
+      const user = await this.usersService.findByEmail(email);
+      defaultEmails.push({
+        email,
+        firstName: user?.firstName || null,
+        lastName: user?.lastName || null,
+        avatarUrl: user?.picture || null,
+      });
+    }
+
+    const sharedShares: Array<{
+      id: string;
+      email: string;
+      firstName: string | null;
+      lastName: string | null;
+      avatarUrl: string | null;
+      createdAt?: string;
+    }> = [];
+    for (const email of meeting.sharedEmails || []) {
+      const user = await this.usersService.findByEmail(email);
+      sharedShares.push({
+        id: email,
+        email,
+        firstName: user?.firstName || null,
+        lastName: user?.lastName || null,
+        avatarUrl: user?.picture || null,
+      });
+    }
+
+    return { defaultEmails, sharedShares };
+  }
+
+  async addShare(
+    meetingId: string,
+    email: string,
+    userId: string,
+  ): Promise<any> {
+    const meeting = await this.meetingsRepository.findById(meetingId);
+    if (!meeting) {
+      throw new NotFoundException('Meeting not found');
+    }
+    if (meeting.organizerId !== userId) {
+      throw new ForbiddenException('Only the organizer can share this meeting');
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (!meeting.sharedEmails) {
+      meeting.sharedEmails = [];
+    }
+    if (!meeting.sharedEmails.includes(normalizedEmail)) {
+      meeting.sharedEmails.push(normalizedEmail);
+      await this.meetingsRepository.save(meeting);
+    }
+
+    const user = await this.usersService.findByEmail(normalizedEmail);
+    return {
+      id: normalizedEmail,
+      email: normalizedEmail,
+      firstName: user?.firstName || null,
+      lastName: user?.lastName || null,
+      avatarUrl: user?.picture || null,
+    };
+  }
+
+  async removeShare(
+    meetingId: string,
+    email: string,
+    userId: string,
+  ): Promise<void> {
+    const meeting = await this.meetingsRepository.findById(meetingId);
+    if (!meeting) {
+      throw new NotFoundException('Meeting not found');
+    }
+    if (meeting.organizerId !== userId) {
+      throw new ForbiddenException('Only the organizer can manage shares');
+    }
+
+    const normalizedEmail = email.trim().toLowerCase();
+    if (meeting.sharedEmails) {
+      meeting.sharedEmails = meeting.sharedEmails.filter(
+        (e) => e.trim().toLowerCase() !== normalizedEmail,
+      );
+      await this.meetingsRepository.save(meeting);
+    }
   }
 }

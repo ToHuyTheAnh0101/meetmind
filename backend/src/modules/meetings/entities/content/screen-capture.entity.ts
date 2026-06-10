@@ -7,10 +7,9 @@ import {
   Index,
 } from 'typeorm';
 import { Meeting } from '../core/meeting.entity';
-import { MeetingSession } from '../core/meeting-session.entity';
 
 @Entity('screen_captures')
-@Index(['sessionId'])
+@Index(['meetingId'])
 export class ScreenCapture {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -20,12 +19,6 @@ export class ScreenCapture {
 
   @ManyToOne(() => Meeting, { onDelete: 'CASCADE' })
   meeting!: Meeting;
-
-  @Column('uuid', { nullable: true })
-  sessionId?: string;
-
-  @ManyToOne(() => MeetingSession, { onDelete: 'CASCADE', nullable: true })
-  session?: MeetingSession;
 
   @Column()
   imageUrl!: string;

@@ -17,9 +17,9 @@ export class EventRepository {
     });
   }
 
-  async findBySessionId(sessionId: string): Promise<MeetingEvent[]> {
+  async findByMeetingId(meetingId: string): Promise<MeetingEvent[]> {
     return this.repo.find({
-      where: { sessionId },
+      where: { meetingId },
       relations: ['triggeredByUser'],
       order: { createdAt: 'DESC' },
     });

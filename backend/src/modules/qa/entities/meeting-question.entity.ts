@@ -9,7 +9,7 @@ import {
   Index,
   OneToMany,
 } from 'typeorm';
-import { Participant, MeetingSession } from '../../meetings/entities';
+import { Participant } from '../../meetings/entities';
 import { User } from '../../users/user.entity';
 import { MeetingAnswer } from './meeting-answer.entity';
 
@@ -25,16 +25,10 @@ export enum QuestionStatus {
 }
 
 @Entity('meeting-questions')
-@Index(['sessionId'])
+@Index(['meetingId'])
 export class MeetingQuestion {
   @PrimaryGeneratedColumn('uuid')
   id?: string;
-
-  @Column('uuid', { nullable: true })
-  sessionId?: string;
-
-  @ManyToOne(() => MeetingSession, { onDelete: 'CASCADE', nullable: true })
-  session?: MeetingSession;
 
   @Column({ type: 'uuid', nullable: true })
   meetingId?: string;

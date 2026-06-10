@@ -4,15 +4,13 @@ import {
   Column,
   CreateDateColumn,
   UpdateDateColumn,
-  JoinColumn,
-  OneToOne,
   ManyToOne,
   Index,
 } from 'typeorm';
-import { Meeting, MeetingSession } from '../../meetings/entities';
+import { Meeting } from '../../meetings/entities';
 
 @Entity('summaries')
-@Index(['sessionId'])
+@Index(['meetingId'])
 export class Summary {
   @PrimaryGeneratedColumn('uuid')
   id?: string;
@@ -25,13 +23,6 @@ export class Summary {
 
   @Column('uuid', { nullable: true })
   meetingId?: string;
-
-  @Column('uuid', { nullable: true })
-  sessionId?: string;
-
-  @OneToOne(() => MeetingSession, { onDelete: 'CASCADE', nullable: true })
-  @JoinColumn()
-  session?: MeetingSession;
 
   @Column({ type: 'text', nullable: true })
   summaryText?: string;

@@ -15,13 +15,6 @@ export class ScreenCaptureRepository extends Repository<ScreenCapture> {
     });
   }
 
-  async findBySessionId(sessionId: string): Promise<ScreenCapture[]> {
-    return this.find({
-      where: { sessionId },
-      order: { timestamp: 'ASC' },
-    });
-  }
-
   async findById(id: string): Promise<ScreenCapture | null> {
     return this.findOne({ where: { id } });
   }

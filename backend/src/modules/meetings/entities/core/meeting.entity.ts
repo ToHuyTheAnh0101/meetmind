@@ -10,13 +10,11 @@ import {
 import { User } from '../../../users/user.entity';
 import { Participant } from './participant.entity';
 import { Attachment } from '../../../attachments/entities/attachment.entity';
-import { Notification } from '../scheduling/notification.entity';
 import { BreakoutRoom } from '../../../breakout-rooms/entities/breakout-room.entity';
 import { AccessRequest } from '../scheduling/access-request.entity';
 import { ChatHistory } from '../ai/chat-history.entity';
 import { SummaryTemplate } from '../../../summaries/entities/summary-template.entity';
 import { TranscriptChunk } from '../content/transcript-chunk.entity';
-import { MeetingSession } from './meeting-session.entity';
 
 export enum MeetingStatus {
   SCHEDULED = 'scheduled',
@@ -77,11 +75,26 @@ export class Meeting {
   @Column({ default: 10 })
   reminderMinutes?: number;
 
-  @Column()
+  @Column({ type: 'timestamptz', nullable: true })
   startTime?: Date;
 
-  @Column({ nullable: true })
+  @Column({ type: 'timestamptz', nullable: true })
   endTime?: Date;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  actualStartTime?: Date;
+
+  @Column({ type: 'timestamptz', nullable: true })
+  actualEndTime?: Date;
+
+  @Column({ nullable: true })
+  recordingUrl?: string;
+
+  @Column({ type: 'boolean', default: false })
+  aiActivated?: boolean;
+
+  @Column('jsonb', { default: [] })
+  sharedEmails?: string[];
 
   @ManyToOne(() => User, (user) => user.organizedMeetings)
   organizer?: User;
@@ -105,20 +118,10 @@ export class Meeting {
   @Column('uuid', { nullable: true })
   templateId?: string;
 
-  @OneToMany(() => MeetingSession, (session) => session.meeting, {
-    cascade: true,
-  })
-  sessions?: MeetingSession[];
-
   @OneToMany(() => Attachment, (attachment) => attachment.meeting, {
     cascade: true,
   })
   attachments?: Attachment[];
-
-  @OneToMany(() => Notification, (notification) => notification.meeting, {
-    cascade: true,
-  })
-  notifications?: Notification[];
 
   @OneToMany(() => BreakoutRoom, (room) => room.meeting, {
     cascade: true,

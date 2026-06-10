@@ -5,10 +5,8 @@ import {
   Meeting,
   Participant,
   TranscriptChunk,
-  Notification,
   AccessRequest,
   ChatHistory,
-  MeetingSession,
   MeetingChatMessage,
   ScreenCapture,
 } from './entities';
@@ -16,14 +14,12 @@ import {
 // Controllers
 import { MeetingsController } from './controllers/meetings.controller';
 import { ParticipantsController } from './controllers/participants.controller';
-import { MeetingSessionsController } from './controllers/meeting-sessions.controller';
 import { ChatController } from './controllers/chat.controller';
 
 // Repositories
 import { MeetingRepository } from './repositories/meeting.repository';
 import { ParticipantRepository } from './repositories/participant.repository';
 import { TranscriptRepository } from './repositories/transcript.repository';
-import { MeetingSessionRepository } from './repositories/meeting-session.repository';
 import { MeetingChatMessageRepository } from './repositories/meeting-chat-message.repository';
 import { ChatHistoryRepository } from './repositories/chat-history.repository';
 import { ScreenCaptureRepository } from './repositories/screen-capture.repository';
@@ -31,7 +27,6 @@ import { ScreenCaptureRepository } from './repositories/screen-capture.repositor
 // Services
 import { MeetingsService } from './services/meetings.service';
 import { ParticipantsService } from './services/participants.service';
-import { MeetingSessionsService } from './services/meeting-sessions.service';
 import { ChatService } from './services/chat.service';
 import { MeetingsWebhookService } from './services/meetings-webhook.service';
 
@@ -49,10 +44,8 @@ import { AiModule } from '../../providers/ai/ai.module';
       Meeting,
       Participant,
       TranscriptChunk,
-      Notification,
       AccessRequest,
       ChatHistory,
-      MeetingSession,
       MeetingChatMessage,
       ScreenCapture,
     ]),
@@ -65,33 +58,24 @@ import { AiModule } from '../../providers/ai/ai.module';
     MeetingRepository,
     ParticipantRepository,
     TranscriptRepository,
-    MeetingSessionRepository,
     MeetingChatMessageRepository,
     ChatHistoryRepository,
     ScreenCaptureRepository,
     // Services
     MeetingsService,
     ParticipantsService,
-    MeetingSessionsService,
     ChatService,
     MeetingsWebhookService,
   ],
-  controllers: [
-    MeetingsController,
-    ParticipantsController,
-    MeetingSessionsController,
-    ChatController,
-  ],
+  controllers: [MeetingsController, ParticipantsController, ChatController],
   exports: [
     MeetingsWebhookService,
     MeetingsService,
     ParticipantsService,
-    MeetingSessionsService,
     ChatService,
     MeetingRepository,
     ParticipantRepository,
     TranscriptRepository,
-    MeetingSessionRepository,
     MeetingChatMessageRepository,
     ChatHistoryRepository,
     ScreenCaptureRepository,

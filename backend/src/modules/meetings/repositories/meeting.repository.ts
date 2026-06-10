@@ -59,9 +59,9 @@ export class MeetingRepository {
     const result = await this.repo.manager
       .createQueryBuilder()
       .select('1')
-      .from('meeting_sessions', 'session')
-      .where('session.meetingId = :meetingId', { meetingId })
-      .andWhere('session.sharedEmails @> :emailJson', {
+      .from('meetings', 'meeting')
+      .where('meeting.id = :meetingId', { meetingId })
+      .andWhere('meeting.sharedEmails @> :emailJson', {
         emailJson: JSON.stringify([normalizedEmail]),
       })
       .getRawOne<object>();

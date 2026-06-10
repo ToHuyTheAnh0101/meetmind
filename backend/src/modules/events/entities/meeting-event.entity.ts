@@ -6,7 +6,7 @@ import {
   ManyToOne,
   Index,
 } from 'typeorm';
-import { MeetingSession } from '../../meetings/entities';
+import { Meeting } from '../../meetings/entities';
 import { User } from '../../users/user.entity';
 
 export enum EventType {
@@ -30,18 +30,18 @@ export enum EventType {
 }
 
 @Entity('meeting-events')
-@Index(['sessionId'])
+@Index(['meetingId'])
 export class MeetingEvent {
   @PrimaryGeneratedColumn('uuid')
   id?: string;
 
-  @ManyToOne(() => MeetingSession, {
+  @ManyToOne(() => Meeting, {
     onDelete: 'CASCADE',
   })
-  session?: MeetingSession;
+  meeting?: Meeting;
 
   @Column('uuid')
-  sessionId?: string;
+  meetingId?: string;
 
   @ManyToOne(() => User, { onDelete: 'CASCADE' })
   triggeredByUser?: User;

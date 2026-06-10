@@ -26,16 +26,6 @@ export class TranscriptRepository extends Repository<TranscriptChunk> {
   }
 
   /**
-   * Lấy toàn bộ bản dịch của một phiên họp thực tế sắp xếp theo thời gian
-   */
-  async findBySessionId(sessionId: string): Promise<TranscriptChunk[]> {
-    return this.find({
-      where: { sessionId },
-      order: { startTime: 'ASC' },
-    });
-  }
-
-  /**
    * Tìm các đoạn transcript liên quan nhất theo embedding.
    * Chỉ trả về các chunk có cosine distance < SIMILARITY_DISTANCE_THRESHOLD
    * để loại bỏ các chunk không liên quan dù vẫn nằm trong top-k.
@@ -44,7 +34,6 @@ export class TranscriptRepository extends Repository<TranscriptChunk> {
     meetingId: string,
     embedding: number[],
     limit = DEFAULT_RAG_CHUNK_LIMIT,
-    sessionId?: string,
   ): Promise<TranscriptChunk[]> {
     if (!embedding.length) {
       return [];
@@ -61,10 +50,6 @@ export class TranscriptRepository extends Repository<TranscriptChunk> {
         { threshold: SIMILARITY_DISTANCE_THRESHOLD },
       );
 
-    if (sessionId) {
-      qb.andWhere('chunk.sessionId = :sessionId', { sessionId });
-    }
-
     return qb
       .orderBy('chunk.embedding <=> CAST(:embedding AS vector)', 'ASC')
       .addOrderBy('chunk.startTime', 'ASC')
@@ -74,19 +59,15 @@ export class TranscriptRepository extends Repository<TranscriptChunk> {
   }
 
   /**
-   * Fallback: Lấy N chunks gần đây nhất (theo thời gian) của cuộc họp/phiên.
+   * Fallback: Lấy N chunks gần đây nhất (theo thời gian) của cuộc họp.
    * Dùng khi vector search không trả về kết quả nào vượt threshold.
    */
   async findRecentChunks(
     meetingId: string,
-    sessionId?: string,
     limit = FALLBACK_RECENT_CHUNKS,
   ): Promise<TranscriptChunk[]> {
-    const where: Record<string, string> = { meetingId };
-    if (sessionId) where['sessionId'] = sessionId;
-
     const chunks = await this.find({
-      where,
+      where: { meetingId },
       order: { startTime: 'DESC' },
       take: limit,
     });

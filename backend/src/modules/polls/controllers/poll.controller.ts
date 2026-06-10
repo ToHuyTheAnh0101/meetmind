@@ -8,24 +8,18 @@ import {
   Request,
 } from '@nestjs/common';
 import { PollService } from '../services/poll.service';
-import { MeetingSessionsService } from '../../meetings/services/meeting-sessions.service';
 import { MeetingPoll } from '../entities/meeting-poll.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CreatePollDto } from '../dto/create-poll.dto';
 
 @Controller('meetings/:meetingId/polls')
 export class PollController {
-  constructor(
-    private pollService: PollService,
-    private sessionsService: MeetingSessionsService,
-  ) {}
+  constructor(private pollService: PollService) {}
 
   @Get()
   @UseGuards(JwtAuthGuard)
   async findAll(@Param('meetingId') meetingId: string): Promise<MeetingPoll[]> {
-    const session =
-      await this.sessionsService.ensureSessionForMeeting(meetingId);
-    return this.pollService.findBySessionId(session.id);
+    return this.pollService.findByMeetingId(meetingId);
   }
 
   @Get(':id')

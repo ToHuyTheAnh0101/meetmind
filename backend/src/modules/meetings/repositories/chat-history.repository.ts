@@ -18,17 +18,7 @@ export class ChatHistoryRepository {
     return this.repo.save(chatHistory);
   }
 
-  async findHistory(
-    meetingId: string,
-    userId: string,
-    sessionId?: string,
-  ): Promise<ChatHistory[]> {
-    if (sessionId) {
-      return this.repo.find({
-        where: { meetingId, userId, sessionId },
-        order: { createdAt: 'ASC' },
-      });
-    }
+  async findHistory(meetingId: string, userId: string): Promise<ChatHistory[]> {
     return this.repo.find({
       where: { meetingId, userId },
       order: { createdAt: 'ASC' },

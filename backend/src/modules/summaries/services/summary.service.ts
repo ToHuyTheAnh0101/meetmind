@@ -6,7 +6,6 @@ import { MeetingRepository } from '../../meetings/repositories/meeting.repositor
 import { TranscriptRepository } from '../../meetings/repositories/transcript.repository';
 import { AiService } from '../../../providers/ai/ai.service';
 import { MeetingsService } from '../../meetings/services/meetings.service';
-import { MeetingSessionRepository } from '../../meetings/repositories/meeting-session.repository';
 
 @Injectable()
 export class SummaryService {
@@ -17,7 +16,6 @@ export class SummaryService {
     private summaryTemplateRepository: SummaryTemplateRepository,
     private aiService: AiService,
     private meetingsService: MeetingsService,
-    private sessionRepository: MeetingSessionRepository,
   ) {}
 
   async create(meetingId: string, data: Partial<Summary>): Promise<Summary> {
@@ -63,7 +61,6 @@ export class SummaryService {
 
   async generateAiSummary(
     meetingId: string,
-    sessionId?: string,
     templateId?: string,
   ): Promise<Summary> {
     const meeting = await this.meetingRepository.findById(meetingId);
@@ -73,26 +70,9 @@ export class SummaryService {
 
     const resolvedTemplateId = templateId || meeting.templateId;
 
-    // Resolve undefined sessionId to the active or latest session of the meeting
-    let resolvedSessionId = sessionId;
-    if (!resolvedSessionId) {
-      const activeSession =
-        await this.sessionRepository.findActiveByMeeting(meetingId);
-      if (activeSession) {
-        resolvedSessionId = activeSession.id;
-      } else {
-        const latestSession =
-          await this.sessionRepository.findLatestByMeeting(meetingId);
-        if (latestSession) {
-          resolvedSessionId = latestSession.id;
-        }
-      }
-    }
-
     // 1. Immediately find or create a summary record and set status to '[GENERATING]'
-    let summary = resolvedSessionId
-      ? await this.summaryRepository.findBySessionId(resolvedSessionId)
-      : await this.summaryRepository.findOverallByMeetingId(meetingId);
+    let summary =
+      await this.summaryRepository.findOverallByMeetingId(meetingId);
 
     if (summary) {
       summary.summaryText = '[GENERATING]';
@@ -100,7 +80,6 @@ export class SummaryService {
     } else {
       summary = this.summaryRepository.create({
         meetingId,
-        sessionId: resolvedSessionId,
         summaryText: '[GENERATING]',
         templateId: resolvedTemplateId,
       });
@@ -110,9 +89,7 @@ export class SummaryService {
     // 2. Launch AI summarization as an asynchronous non-blocking background job
     this.waitForPendingTranscripts(meetingId)
       .then(async () => {
-        return resolvedSessionId
-          ? await this.transcriptRepository.findBySessionId(resolvedSessionId)
-          : await this.transcriptRepository.findByMeetingId(meetingId);
+        return await this.transcriptRepository.findByMeetingId(meetingId);
       })
       .then(async (chunks) => {
         const transcriptText =
@@ -127,9 +104,8 @@ export class SummaryService {
       })
       .then(async (summaryText) => {
         // Update the DB record with the actual text
-        const current = resolvedSessionId
-          ? await this.summaryRepository.findBySessionId(resolvedSessionId)
-          : await this.summaryRepository.findOverallByMeetingId(meetingId);
+        const current =
+          await this.summaryRepository.findOverallByMeetingId(meetingId);
 
         if (current) {
           current.summaryText = summaryText;
@@ -139,7 +115,7 @@ export class SummaryService {
       .catch((err) => {
         console.error('[Background Summary] Failed to generate:', err);
         // On error, clear the placeholder so user can regenerate
-        void this.resetGeneratingSummaryOnError(meetingId, resolvedSessionId);
+        void this.resetGeneratingSummaryOnError(meetingId);
       });
 
     return savedSummary;
@@ -200,14 +176,10 @@ export class SummaryService {
     return await this.aiService.generateSummary(title, transcriptText);
   }
 
-  private async resetGeneratingSummaryOnError(
-    meetingId: string,
-    sessionId?: string,
-  ) {
+  private async resetGeneratingSummaryOnError(meetingId: string) {
     try {
-      const current = sessionId
-        ? await this.summaryRepository.findBySessionId(sessionId)
-        : await this.summaryRepository.findOverallByMeetingId(meetingId);
+      const current =
+        await this.summaryRepository.findOverallByMeetingId(meetingId);
 
       if (current && current.summaryText === '[GENERATING]') {
         await this.summaryRepository.remove(current);

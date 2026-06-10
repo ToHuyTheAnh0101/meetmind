@@ -7,10 +7,9 @@ import {
   Index,
 } from 'typeorm';
 import { Meeting } from '../core/meeting.entity';
-import { MeetingSession } from '../core/meeting-session.entity';
 
 @Entity('transcript_chunks')
-@Index(['sessionId'])
+@Index(['meetingId'])
 export class TranscriptChunk {
   @PrimaryGeneratedColumn('uuid')
   id!: string;
@@ -22,12 +21,6 @@ export class TranscriptChunk {
     onDelete: 'CASCADE',
   })
   meeting!: Meeting;
-
-  @Column('uuid', { nullable: true })
-  sessionId?: string;
-
-  @ManyToOne(() => MeetingSession, { onDelete: 'CASCADE', nullable: true })
-  session?: MeetingSession;
 
   @Column({ nullable: true })
   userId?: string;

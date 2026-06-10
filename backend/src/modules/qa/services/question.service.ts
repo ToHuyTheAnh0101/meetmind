@@ -6,8 +6,6 @@ import {
 } from '../entities/meeting-question.entity';
 import { MeetingAnswer } from '../entities/meeting-answer.entity';
 import { QuestionRepository } from '../repositories/question.repository';
-import { MeetingSessionRepository } from '../../meetings/repositories/meeting-session.repository';
-import { MeetingSessionsService } from '../../meetings/services/meeting-sessions.service';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
 import {
@@ -19,8 +17,6 @@ import {
 export class QuestionService {
   constructor(
     private questionRepository: QuestionRepository,
-    private sessionRepository: MeetingSessionRepository,
-    private sessionsService: MeetingSessionsService,
     @InjectRepository(MeetingAnswer)
     private answerRepository: Repository<MeetingAnswer>,
     private entityManager: EntityManager,
@@ -30,14 +26,9 @@ export class QuestionService {
     meetingId: string,
     data: Partial<MeetingQuestion>,
   ): Promise<MeetingQuestion> {
-    // Auto-ensure session exists (will create if needed)
-    const session =
-      await this.sessionsService.ensureSessionForMeeting(meetingId);
-
     const question = this.questionRepository.create({
       ...data,
-      sessionId: session.id,
-      meetingId: session.meetingId,
+      meetingId,
       type: data.type || QuestionType.HOST_QA,
       isAnonymous: false, // Discussion questions are never anonymous
     });
@@ -47,7 +38,7 @@ export class QuestionService {
     // Log QA_OPENED event
     try {
       const newEvent = this.entityManager.create(MeetingEvent, {
-        sessionId: session.id,
+        meetingId,
         type: EventType.QA_OPENED,
         triggeredByUserId: savedQuestion.askedByUserId,
         metadata: {
@@ -69,14 +60,6 @@ export class QuestionService {
       throw new NotFoundException('Question not found');
     }
     return question;
-  }
-
-  async findBySessionId(sessionId: string): Promise<MeetingQuestion[]> {
-    const questions = await this.questionRepository.findBySessionId(sessionId);
-
-    // Everyone can see all discussion (host_qa) questions
-    // In this new flow, we primarily care about host_qa
-    return questions.filter((q) => q.type === QuestionType.HOST_QA);
   }
 
   async findByMeetingId(meetingId: string): Promise<MeetingQuestion[]> {
