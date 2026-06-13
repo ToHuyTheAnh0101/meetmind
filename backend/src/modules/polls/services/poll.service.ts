@@ -4,15 +4,18 @@ import {
   BadRequestException,
   ForbiddenException,
 } from '@nestjs/common';
-import { MeetingPoll, PollType } from '../entities/meeting-poll.entity';
+import {
+  MeetingPoll,
+  PollType,
+  PollResponseDto,
+} from '../entities/meeting-poll.entity';
+import { PollOption } from '../entities/poll-option.entity';
+import { PollVote } from '../entities/poll-vote.entity';
 import { MeetingPermission } from '../../meetings/entities';
 import { PollRepository } from '../repositories/poll.repository';
 import { ParticipantRepository } from '../../meetings/repositories/participant.repository';
-import { EntityManager } from 'typeorm';
-import {
-  MeetingEvent,
-  EventType,
-} from '../../events/entities/meeting-event.entity';
+import { EntityManager, In } from 'typeorm';
+import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
 
 @Injectable()
 export class PollService {
@@ -22,11 +25,82 @@ export class PollService {
     private entityManager: EntityManager,
   ) {}
 
+  private async mapPolls(
+    meetingId: string,
+    polls: MeetingPoll[],
+  ): Promise<PollResponseDto[]>;
+  private async mapPolls(
+    meetingId: string,
+    polls: MeetingPoll,
+  ): Promise<PollResponseDto>;
+  private async mapPolls(
+    meetingId: string,
+    polls: MeetingPoll | MeetingPoll[],
+  ): Promise<PollResponseDto | PollResponseDto[]> {
+    const isArray = Array.isArray(polls);
+    const pollList: MeetingPoll[] = isArray ? polls : [polls];
+
+    const participants =
+      await this.participantRepository.findByMeetingId(meetingId);
+    const participantMap = new Map<
+      string,
+      { id: string; name: string; avatarUrl?: string }
+    >();
+
+    for (const p of participants) {
+      if (p.userId) {
+        const name =
+          p.displayName ||
+          `${p.user?.firstName ?? ''} ${p.user?.lastName ?? ''}`.trim() ||
+          'Unknown';
+        participantMap.set(p.userId, {
+          id: p.userId,
+          name,
+          avatarUrl: p.user?.picture ?? undefined,
+        });
+      }
+    }
+
+    const result: PollResponseDto[] = pollList.map((poll) => {
+      const rawOptions: PollOption[] = (poll.options as PollOption[]) || [];
+      const options = rawOptions.map((opt) => {
+        const votes: PollVote[] = (opt.votes as PollVote[]) || [];
+        const voterIds: string[] = votes.map((v: PollVote) => v.userId);
+        const voters = votes
+          .map((v: PollVote) => participantMap.get(v.userId))
+          .filter(
+            (v): v is { id: string; name: string; avatarUrl?: string } => !!v,
+          );
+
+        return {
+          id: opt.id,
+          text: opt.text,
+          voterIds,
+          voters,
+        };
+      });
+
+      return {
+        id: poll.id ?? '',
+        meetingId: poll.meetingId ?? '',
+        createdByUserId: poll.createdByUserId ?? '',
+        question: poll.question ?? '',
+        type: poll.type ?? PollType.SINGLE,
+        closedAt: poll.closedAt ?? null,
+        createdAt: poll.createdAt ?? new Date(),
+        updatedAt: poll.updatedAt ?? new Date(),
+        options,
+      };
+    });
+
+    return isArray ? result : result[0];
+  }
+
   async create(
     meetingId: string,
     userId: string,
     data: Partial<MeetingPoll>,
-  ): Promise<MeetingPoll> {
+  ): Promise<PollResponseDto> {
     const participant = await this.participantRepository.findByMeetingAndUser(
       meetingId,
       userId,
@@ -41,23 +115,26 @@ export class PollService {
       );
     }
 
+    const options = (data.options || []).map((opt) => {
+      return this.entityManager.create(PollOption, {
+        text: opt.text,
+      });
+    });
+
     const poll = this.pollRepository.create({
-      ...data,
+      question: data.question,
+      type: data.type,
       meetingId,
       createdByUserId: userId,
-      options: (data.options || []).map((opt) => ({
-        ...opt,
-        voterIds: [],
-      })),
+      options,
     });
 
     const savedPoll = await this.pollRepository.save(poll);
 
-    // Log POLL_STARTED event
     try {
-      const newEvent = this.entityManager.create(MeetingEvent, {
+      const newEvent = this.entityManager.create(MeetLog, {
         meetingId,
-        type: EventType.POLL_STARTED,
+        type: LogType.POLL_STARTED,
         triggeredByUserId: userId,
         metadata: {
           pollId: savedPoll.id,
@@ -65,91 +142,109 @@ export class PollService {
           options: savedPoll.options?.map((o) => o.text) || [],
         },
       });
-      await this.entityManager.save(MeetingEvent, newEvent);
+      await this.entityManager.save(MeetLog, newEvent);
     } catch (err) {
       console.error('Failed to log POLL_STARTED event:', err);
     }
 
-    return savedPoll;
+    return this.findById(savedPoll.id!);
   }
 
-  async findById(id: string): Promise<MeetingPoll> {
+  async findById(id: string): Promise<PollResponseDto> {
     const poll = await this.pollRepository.findById(id);
     if (!poll) {
       throw new NotFoundException('Poll not found');
     }
-    return poll;
+    return this.mapPolls(poll.meetingId ?? '', poll);
   }
 
-  async findByMeetingId(meetingId: string): Promise<MeetingPoll[]> {
-    return this.pollRepository.findByMeetingId(meetingId);
+  async findByMeetingId(meetingId: string): Promise<PollResponseDto[]> {
+    const polls = await this.pollRepository.findByMeetingId(meetingId);
+    return this.mapPolls(meetingId, polls);
   }
 
   async vote(
     id: string,
     userId: string,
     optionId: string,
-  ): Promise<MeetingPoll> {
-    const poll = await this.findById(id);
+  ): Promise<PollResponseDto> {
+    const poll = await this.pollRepository.findById(id);
+    if (!poll) {
+      throw new NotFoundException('Poll not found');
+    }
 
     if (poll.closedAt) {
       throw new BadRequestException('Poll is closed');
     }
 
-    if (!poll.options) {
-      throw new BadRequestException('Poll options are not defined');
-    }
-
-    const targetOption = poll.options.find((o) => o.id === optionId);
+    const options = poll.options || [];
+    const targetOption = options.find((o) => o.id === optionId);
     if (!targetOption) {
       throw new BadRequestException('Option not found');
     }
 
-    if (poll.type === PollType.SINGLE || !poll.type) {
-      // Single choice logic
-      const currentVoteIdx = poll.options.findIndex((opt) =>
-        opt.voterIds.includes(userId),
-      );
+    const PollVoteEntity = PollVote;
 
-      if (currentVoteIdx !== -1) {
-        const currentOptionId = poll.options[currentVoteIdx].id;
-        // If clicking the same option, remove the vote (un-vote)
-        if (currentOptionId === optionId) {
-          poll.options[currentVoteIdx].voterIds = poll.options[
-            currentVoteIdx
-          ].voterIds.filter((id) => id !== userId);
+    if (poll.type === PollType.SINGLE || !poll.type) {
+      // Single choice logic: Find if user already voted for any option in this poll
+      const allOptionIds = options.map((o) => o.id);
+
+      const existingVote = await this.entityManager.findOne(PollVoteEntity, {
+        where: {
+          userId,
+          optionId: In(allOptionIds),
+        },
+      });
+
+      if (existingVote) {
+        if (existingVote.optionId === optionId) {
+          // Un-vote
+          await this.entityManager.remove(PollVoteEntity, existingVote);
         } else {
-          // Switch vote: remove from old, add to new
-          poll.options[currentVoteIdx].voterIds = poll.options[
-            currentVoteIdx
-          ].voterIds.filter((id) => id !== userId);
-          targetOption.voterIds.push(userId);
+          // Switch vote
+          await this.entityManager.remove(PollVoteEntity, existingVote);
+          const newVote = this.entityManager.create(PollVoteEntity, {
+            optionId,
+            userId,
+          });
+          await this.entityManager.save(PollVoteEntity, newVote);
         }
       } else {
-        // First time voting
-        targetOption.voterIds.push(userId);
+        // Vote
+        const newVote = this.entityManager.create(PollVoteEntity, {
+          optionId,
+          userId,
+        });
+        await this.entityManager.save(PollVoteEntity, newVote);
       }
     } else {
       // Multiple choice logic (Toggle)
-      if (targetOption.voterIds.includes(userId)) {
-        // Already voted for this option -> Remove it
-        targetOption.voterIds = targetOption.voterIds.filter(
-          (id) => id !== userId,
-        );
+      const existingVote = await this.entityManager.findOne(PollVoteEntity, {
+        where: {
+          userId,
+          optionId,
+        },
+      });
+
+      if (existingVote) {
+        await this.entityManager.remove(PollVoteEntity, existingVote);
       } else {
-        // Not voted yet -> Add it
-        targetOption.voterIds.push(userId);
+        const newVote = this.entityManager.create(PollVoteEntity, {
+          optionId,
+          userId,
+        });
+        await this.entityManager.save(PollVoteEntity, newVote);
       }
     }
 
-    // Force TypeORM to see the change in JSONB column by re-assigning the array
-    poll.options = [...poll.options];
-
-    return this.pollRepository.save(poll);
+    return this.findById(id);
   }
 
-  async close(id: string, userId: string): Promise<MeetingPoll> {
-    const poll = await this.findById(id);
+  async close(id: string, userId: string): Promise<PollResponseDto> {
+    const poll = await this.pollRepository.findById(id);
+    if (!poll) {
+      throw new NotFoundException('Poll not found');
+    }
 
     if (!poll.meetingId) {
       throw new NotFoundException('Meeting room not found for this poll');
@@ -170,29 +265,28 @@ export class PollService {
     }
 
     if (poll.closedAt) {
-      return poll;
+      return this.findById(id);
     }
 
     poll.closedAt = new Date();
-
     const savedPoll = await this.pollRepository.save(poll);
 
     // Log POLL_ENDED event
     try {
-      const newEvent = this.entityManager.create(MeetingEvent, {
+      const newEvent = this.entityManager.create(MeetLog, {
         meetingId: poll.meetingId,
-        type: EventType.POLL_ENDED,
+        type: LogType.POLL_ENDED,
         triggeredByUserId: userId,
         metadata: {
           pollId: savedPoll.id,
           question: savedPoll.question,
         },
       });
-      await this.entityManager.save(MeetingEvent, newEvent);
+      await this.entityManager.save(MeetLog, newEvent);
     } catch (err) {
       console.error('Failed to log POLL_ENDED event:', err);
     }
 
-    return savedPoll;
+    return this.findById(id);
   }
 }

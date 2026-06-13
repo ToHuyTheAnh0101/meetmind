@@ -18,10 +18,7 @@ import { UpdateSummaryDto } from '../dto/update-summary.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { MeetingsService } from '../../meetings/services/meetings.service';
 import { EntityManager } from 'typeorm';
-import {
-  MeetingEvent,
-  EventType,
-} from '../../events/entities/meeting-event.entity';
+import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
 
 interface RequestWithUser {
   user: {
@@ -101,16 +98,16 @@ export class SummaryController {
     );
 
     try {
-      const newEvent = this.entityManager.create(MeetingEvent, {
+      const newEvent = this.entityManager.create(MeetLog, {
         meetingId,
-        type: EventType.AI_SUMMARY_GENERATED,
+        type: LogType.AI_SUMMARY_GENERATED,
         triggeredByUserId: req.user.id,
         metadata: {
           templateId: body?.templateId || 'default',
           timestamp: new Date().toISOString(),
         },
       });
-      await this.entityManager.save(MeetingEvent, newEvent);
+      await this.entityManager.save(MeetLog, newEvent);
     } catch (err) {
       console.error('Failed to log AI_SUMMARY_GENERATED event:', err);
     }

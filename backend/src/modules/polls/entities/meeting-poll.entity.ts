@@ -5,14 +5,41 @@ import {
   CreateDateColumn,
   UpdateDateColumn,
   ManyToOne,
+  OneToMany,
   Index,
 } from 'typeorm';
 import { Meeting } from '../../meetings/entities';
 import { User } from '../../users/user.entity';
+import { PollOption } from './poll-option.entity';
 
 export enum PollType {
   SINGLE = 'single',
   MULTIPLE = 'multiple',
+}
+
+export interface PollVoterDto {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+}
+
+export interface PollOptionResponseDto {
+  id: string;
+  text: string;
+  voterIds: string[];
+  voters: PollVoterDto[];
+}
+
+export interface PollResponseDto {
+  id: string;
+  meetingId: string;
+  createdByUserId: string;
+  question: string;
+  type: PollType;
+  closedAt: Date | null;
+  createdAt: Date;
+  updatedAt: Date;
+  options: PollOptionResponseDto[];
 }
 
 @Entity('meeting-polls')
@@ -41,11 +68,10 @@ export class MeetingPoll {
   @Column({ type: 'enum', enum: PollType, default: PollType.SINGLE })
   type?: PollType;
 
-  @Column({ type: 'jsonb' })
-  options?: Array<{ id: string; text: string; voterIds: string[] }>;
-
-  @Column({ nullable: true })
-  offsetSeconds?: number;
+  @OneToMany(() => PollOption, (option) => option.poll, {
+    cascade: true,
+  })
+  options?: PollOption[];
 
   @Column({ nullable: true })
   closedAt?: Date;

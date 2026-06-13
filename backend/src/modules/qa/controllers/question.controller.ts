@@ -2,7 +2,6 @@ import {
   Controller,
   Post,
   Get,
-  Patch,
   Param,
   Body,
   UseGuards,
@@ -10,10 +9,7 @@ import {
   BadRequestException,
 } from '@nestjs/common';
 import { QuestionService } from '../services/question.service';
-import {
-  MeetingQuestion,
-  QuestionStatus,
-} from '../entities/meeting-question.entity';
+import { MeetingQuestion } from '../entities/meeting-question.entity';
 import { MeetingAnswer } from '../entities/meeting-answer.entity';
 import { CreateQuestionDto, CreateAnswerDto } from '../dto/create-question.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
@@ -41,17 +37,6 @@ export class QuestionController {
       ...dto,
       askedByUserId: req.user.id,
     });
-  }
-
-  @Patch(':id/status')
-  @UseGuards(JwtAuthGuard)
-  async updateStatus(
-    @Param('meetingId') meetingId: string,
-    @Param('id') id: string,
-    @Body('status') status: QuestionStatus,
-  ): Promise<MeetingQuestion> {
-    // Optionally validate user permission if needed
-    return this.questionService.updateStatus(id, status);
   }
 
   @Post(':id/answers')

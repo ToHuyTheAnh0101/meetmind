@@ -64,7 +64,6 @@ Lưu trữ thông tin chi tiết về các câu hỏi trong cuộc họp.
 | `type` | `enum` | Loại câu hỏi: `host_qa` (Host hỏi khán giả) hoặc `audience_qa` (Khán giả hỏi Host) |
 | `isAnonymous` | `boolean` | Chế độ ẩn danh (mặc định `false` cho câu hỏi thảo luận) |
 | `status` | `enum` | Trạng thái câu hỏi: `pending`, `answered`, `dismissed` |
-| `offsetSeconds` | `integer` | Khoảng thời gian tính bằng giây từ lúc cuộc họp bắt đầu (cho timeline/recording) |
 | `createdAt` | `timestamp` | Thời gian tạo câu hỏi |
 | `updatedAt` | `timestamp` | Thời gian cập nhật trạng thái |
 

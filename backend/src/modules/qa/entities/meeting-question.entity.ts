@@ -13,17 +13,6 @@ import { Participant } from '../../meetings/entities';
 import { User } from '../../users/user.entity';
 import { MeetingAnswer } from './meeting-answer.entity';
 
-export enum QuestionType {
-  HOST_QA = 'host_qa', // Người điều hành hỏi khán giả
-  AUDIENCE_QA = 'audience_qa', // Khán giả hỏi người điều hành (Q&A)
-}
-
-export enum QuestionStatus {
-  PENDING = 'pending',
-  ANSWERED = 'answered',
-  DISMISSED = 'dismissed',
-}
-
 @Entity('meeting-questions')
 @Index(['meetingId'])
 export class MeetingQuestion {
@@ -48,25 +37,6 @@ export class MeetingQuestion {
 
   @Column()
   content?: string;
-
-  @Column({
-    type: 'enum',
-    enum: QuestionType,
-  })
-  type?: QuestionType;
-
-  @Column({ default: false })
-  isAnonymous?: boolean;
-
-  @Column({
-    type: 'enum',
-    enum: QuestionStatus,
-    default: QuestionStatus.PENDING,
-  })
-  status?: QuestionStatus;
-
-  @Column({ nullable: true })
-  offsetSeconds?: number;
 
   @OneToMany(() => MeetingAnswer, (answer) => answer.question)
   answers?: MeetingAnswer[];

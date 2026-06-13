@@ -52,7 +52,6 @@ export interface Meeting {
   muteOnJoin?: boolean
   allowDisplayNameEdit?: boolean
   isQaEnabled?: boolean
-  isAnonymousAllowed?: boolean
   inviteeEmails?: string[]
   reminderMinutes?: number
   password?: string

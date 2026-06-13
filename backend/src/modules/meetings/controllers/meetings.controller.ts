@@ -91,7 +91,6 @@ export class MeetingsController {
       hasPassword: !!meeting.password,
       organizerId: meeting.organizerId,
       isQaEnabled: meeting.isQaEnabled,
-      isAnonymousAllowed: meeting.isAnonymousAllowed,
       createdAt: meeting.createdAt,
     };
 

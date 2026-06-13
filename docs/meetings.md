@@ -127,7 +127,6 @@ Quản lý các lượt chạy thực tế của một cuộc họp (cho phép t
 | `status` | `enum` | Trạng thái phiên: `ongoing`, `completed`, `cancelled` |
 | `actualStartTime` | `timestamp` | Thời gian mở phòng thực tế |
 | `actualEndTime` | `timestamp` | Thời gian đóng phòng thực tế |
-| `recordingUrl` | `varchar` | Đường dẫn lưu trữ file ghi âm đầy đủ (nếu có) |
 | `aiActivated` | `boolean` | Đánh dấu Host đã kích hoạt ghi âm/dịch thuật AI trong phiên họp này |
 
 ---

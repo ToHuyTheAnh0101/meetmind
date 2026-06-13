@@ -41,14 +41,14 @@ export const convertFriendlyToRawPlaceholders = (text: string, t: any): string =
     const labelEn = FRIENDLY_VARIABLES_EN[key];
     const labelCurrent = t(`template.variable_labels.${key}`);
     
-    const escapedVi = labelVi.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
-    const escapedEn = labelEn.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const escapedVi = labelVi.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const escapedEn = labelEn.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
     
     res = res.replace(new RegExp(`\\[${escapedVi}\\]`, 'g'), `{{${key}}}`);
     res = res.replace(new RegExp(`\\[${escapedEn}\\]`, 'g'), `{{${key}}}`);
     
     if (labelCurrent) {
-      const escapedCurrent = labelCurrent.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const escapedCurrent = labelCurrent.replace(/[-/\\^$*+?.()|[\]{}]/g, '\\$&');
       res = res.replace(new RegExp(`\\[${escapedCurrent}\\]`, 'g'), `{{${key}}}`);
     }
   });

@@ -75,7 +75,7 @@ const ProfilePage: React.FC = () => {
   const [browserInfo, setBrowserInfo] = useState('')
   useEffect(() => {
     const ua = navigator.userAgent
-    let M = ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || []
+    const M = ua.match(/(opera|chrome|safari|firefox|msie|trident(?=\/))\/?\s*(\d+)/i) || []
     if (/trident/i.test(M[1])) {
       setBrowserInfo('IE')
     } else if (M[1] === 'Chrome') {

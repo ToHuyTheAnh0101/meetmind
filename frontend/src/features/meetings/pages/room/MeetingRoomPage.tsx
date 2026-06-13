@@ -81,7 +81,6 @@ const MeetingRoomPage: React.FC = () => {
     participantCount: number;
     allowDisplayNameEdit: boolean;
     isQaEnabled: boolean;
-    isAnonymousAllowed: boolean;
     organizerId: string;
     status?: string;
     startTime?: string;
@@ -219,7 +218,6 @@ const MeetingRoomPage: React.FC = () => {
           participantCount: res.data.participantCount || 0,
           allowDisplayNameEdit: res.data.allowDisplayNameEdit ?? true,
           isQaEnabled: res.data.isQaEnabled ?? true,
-          isAnonymousAllowed: res.data.isAnonymousAllowed ?? true,
           organizerId: res.data.organizerId,
           status: res.data.status,
           startTime: res.data.startTime,
@@ -565,7 +563,14 @@ const MeetingRoomPage: React.FC = () => {
   if (isWaitingInLobby) {
     return (
       <MeetingLobbyWaiting
-        onCancel={() => setIsWaitingInLobby(false)}
+        onCancel={async () => {
+          try {
+            await apiClient.post(`/meetings/${id}/leave`);
+          } catch (err) {
+            console.error("Failed to cancel waiting request", err);
+          }
+          setIsWaitingInLobby(false);
+        }}
       />
     );
   }

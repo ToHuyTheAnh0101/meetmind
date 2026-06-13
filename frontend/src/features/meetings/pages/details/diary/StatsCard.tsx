@@ -1,10 +1,10 @@
 import React from "react";
 import { useTranslation } from "react-i18next";
 import { motion } from "framer-motion";
-import { MeetingEvent } from "../../../types";
+import { MeetLog } from "../../../types";
 
 interface StatsCardProps {
-  events: MeetingEvent[];
+  logs: MeetLog[];
 }
 
 function getColorClasses(color: string) {
@@ -105,16 +105,16 @@ function getColorClasses(color: string) {
   return map[color] || map.slate;
 }
 
-export const StatsCard: React.FC<StatsCardProps> = ({ events }) => {
+export const StatsCard: React.FC<StatsCardProps> = ({ logs }) => {
   const { t } = useTranslation();
 
-  if (events.length === 0) return null;
+  if (logs.length === 0) return null;
 
-  const joinCount = events.filter((e) => e.type === "user_joined").length;
-  const leaveCount = events.filter((e) => e.type === "user_left").length;
-  const admitCount = events.filter((e) => e.type === "participant_admitted").length;
-  const aiCount = events.filter(
-    (e) => e.type === "ai_assistant_activated" || e.type === "ai_summary_generated"
+  const joinCount = logs.filter((l) => l.type === "user_joined").length;
+  const leaveCount = logs.filter((l) => l.type === "user_left").length;
+  const admitCount = logs.filter((l) => l.type === "participant_admitted").length;
+  const aiCount = logs.filter(
+    (l) => l.type === "ai_assistant_activated" || l.type === "ai_summary_generated"
   ).length;
 
   const stats = [

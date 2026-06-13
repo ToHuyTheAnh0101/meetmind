@@ -11,7 +11,6 @@ import { User } from '../../../users/user.entity';
 import { Participant } from './participant.entity';
 import { Attachment } from '../../../attachments/entities/attachment.entity';
 import { BreakoutRoom } from '../../../breakout-rooms/entities/breakout-room.entity';
-import { AccessRequest } from '../scheduling/access-request.entity';
 import { ChatHistory } from '../ai/chat-history.entity';
 import { SummaryTemplate } from '../../../summaries/entities/summary-template.entity';
 import { TranscriptChunk } from '../content/transcript-chunk.entity';
@@ -66,9 +65,6 @@ export class Meeting {
   @Column({ default: true })
   isQaEnabled?: boolean;
 
-  @Column({ default: true })
-  isAnonymousAllowed?: boolean;
-
   @Column('jsonb', { default: [] })
   inviteeEmails?: string[];
 
@@ -86,9 +82,6 @@ export class Meeting {
 
   @Column({ type: 'timestamptz', nullable: true })
   actualEndTime?: Date;
-
-  @Column({ nullable: true })
-  recordingUrl?: string;
 
   @Column({ type: 'boolean', default: false })
   aiActivated?: boolean;
@@ -127,11 +120,6 @@ export class Meeting {
     cascade: true,
   })
   breakoutRooms?: BreakoutRoom[];
-
-  @OneToMany(() => AccessRequest, (accessRequest) => accessRequest.meeting, {
-    cascade: true,
-  })
-  accessRequests?: AccessRequest[];
 
   @OneToMany(() => ChatHistory, (chatHistory) => chatHistory.meeting, {
     cascade: true,

@@ -76,7 +76,6 @@ Tính năng Bình chọn sử dụng một bảng duy nhất có thiết kế t�
 | `question` | `varchar` | Câu hỏi bình chọn |
 | `type` | `enum` | Loại bình chọn: `single` (chọn 1) hoặc `multiple` (chọn nhiều) |
 | `options` | `jsonb` | Mảng chứa cấu trúc: `Array<{ id: string, text: string, voterIds: string[] }>` |
-| `offsetSeconds` | `integer` | Thời điểm tạo poll tính từ lúc bắt đầu cuộc họp |
 | `closedAt` | `timestamp` | Thời gian đóng bình chọn (nếu null là đang mở) |
 | `createdAt` | `timestamp` | Thời gian tạo |
 | `updatedAt` | `timestamp` | Thời gian cập nhật gần nhất |

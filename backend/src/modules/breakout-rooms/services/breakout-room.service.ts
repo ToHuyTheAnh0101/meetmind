@@ -16,10 +16,7 @@ import {
 import { BreakoutRoomParticipant } from '../entities/breakout-room-participant.entity';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
 import { EntityManager } from 'typeorm';
-import {
-  MeetingEvent,
-  EventType,
-} from '../../events/entities/meeting-event.entity';
+import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
 
 @Injectable()
 export class BreakoutRoomService {
@@ -102,16 +99,16 @@ export class BreakoutRoomService {
 
     // Log BREAKOUT_STARTED event
     try {
-      const newEvent = this.entityManager.create(MeetingEvent, {
+      const newEvent = this.entityManager.create(MeetLog, {
         meetingId,
-        type: EventType.BREAKOUT_STARTED,
+        type: LogType.BREAKOUT_STARTED,
         triggeredByUserId: userId,
         metadata: {
           roomsCount: rooms.length,
           roomNames: rooms.map((r) => r.name),
         },
       });
-      await this.entityManager.save(MeetingEvent, newEvent);
+      await this.entityManager.save(MeetLog, newEvent);
     } catch (err) {
       this.logger.error('Failed to log BREAKOUT_STARTED event:', err);
     }
@@ -127,15 +124,15 @@ export class BreakoutRoomService {
 
     // Log BREAKOUT_ENDED event before deleting rooms
     try {
-      const newEvent = this.entityManager.create(MeetingEvent, {
+      const newEvent = this.entityManager.create(MeetLog, {
         meetingId,
-        type: EventType.BREAKOUT_ENDED,
+        type: LogType.BREAKOUT_ENDED,
         triggeredByUserId: userId,
         metadata: {
           timestamp: new Date().toISOString(),
         },
       });
-      await this.entityManager.save(MeetingEvent, newEvent);
+      await this.entityManager.save(MeetLog, newEvent);
     } catch (err) {
       this.logger.error('Failed to log BREAKOUT_ENDED event:', err);
     }

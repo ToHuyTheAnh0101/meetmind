@@ -377,7 +377,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     // 2. Table Parser
     if (trimmed.startsWith("|")) {
       isInsideTable = true;
-      let cells = line.split("|").map((c) => c.trim());
+      const cells = line.split("|").map((c) => c.trim());
       if (line.startsWith("|")) cells.shift();
       if (line.endsWith("|") && cells[cells.length - 1] === "") cells.pop();
       currentTableRows.push(cells);

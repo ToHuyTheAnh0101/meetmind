@@ -7,8 +7,7 @@ import {
   HelpCircle, 
   Send, 
   CheckCircle2, 
-  User, 
-  XCircle
+  User
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import apiClient from '@/lib/apiClient';
@@ -36,9 +35,6 @@ interface Question {
   askedByParticipant?: {
     displayName: string;
   };
-  type: 'host_qa' | 'audience_qa';
-  isAnonymous: boolean;
-  status: 'pending' | 'answered' | 'dismissed';
   answers: Answer[];
   createdAt: string;
 }
@@ -83,7 +79,7 @@ const QATab: React.FC<QATabProps> = ({
 
   // Mutations
   const createQuestionMutation = useMutation({
-    mutationFn: async (data: { content: string; type: 'host_qa' | 'audience_qa'; isAnonymous: boolean }) => {
+    mutationFn: async (data: { content: string }) => {
       return apiClient.post(`/meetings/${meetingId}/qa`, data);
     },
     onSuccess: () => {
@@ -95,27 +91,12 @@ const QATab: React.FC<QATabProps> = ({
     }
   });
 
-  const updateStatusMutation = useMutation({
-    mutationFn: async ({ questionId, status }: { questionId: string; status: string }) => {
-      return apiClient.patch(`/meetings/${meetingId}/qa/${questionId}/status`, { status });
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['questions', meetingId] });
-      const encoder = new TextEncoder();
-      send(encoder.encode(JSON.stringify({ type: 'QA_UPDATED', meetingId })), { reliable: true });
-    }
-  });
-
-  const discussionQuestions = questions.filter(q => q.type === 'host_qa');
-
   const handleAskQuestion = (e: React.FormEvent) => {
     e.preventDefault();
     if (!newQuestion.trim()) return;
 
     createQuestionMutation.mutate({
       content: newQuestion,
-      type: 'host_qa',
-      isAnonymous: false
     });
   };
 
@@ -149,20 +130,20 @@ const QATab: React.FC<QATabProps> = ({
 
         {/* Question List */}
         <div className="space-y-4 pb-10">
-          {discussionQuestions.length === 0 ? (
+          {questions.length === 0 ? (
             <div className="py-12 flex flex-col items-center justify-center text-slate-500 space-y-3">
               <HelpCircle className="h-12 w-12 opacity-20" />
               <p className="text-sm font-medium">{t('meeting.no_questions')}</p>
             </div>
           ) : (
-            discussionQuestions.map((q) => (
+            questions.map((q) => (
               <motion.div
                 layout
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
                 key={q.id}
                 className={`rounded-2xl border ${
-                  q.status === 'answered' ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-white/10 bg-white/5'
+                  q.answers && q.answers.length > 0 ? 'border-emerald-500/20 bg-emerald-500/5' : 'border-white/10 bg-white/5'
                 } p-4 space-y-3 transition-all hover:border-white/20 shadow-lg`}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -182,15 +163,6 @@ const QATab: React.FC<QATabProps> = ({
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
-                    {hasManagePrivilege && q.status === 'pending' && (
-                      <button 
-                        onClick={() => updateStatusMutation.mutate({ questionId: q.id, status: 'dismissed' })}
-                        className="p-1 hover:text-rose-400 text-slate-600 transition-colors"
-                        title={t('common.dismiss')}
-                      >
-                        <XCircle className="h-4 w-4" />
-                      </button>
-                    )}
                     <span className="text-[12px] text-slate-500 font-medium">
                       {new Date(q.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                     </span>

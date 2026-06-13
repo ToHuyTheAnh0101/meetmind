@@ -10,12 +10,6 @@ export {
   ParticipantStatus,
 } from './core/participant.entity';
 
-// Scheduling
-export {
-  AccessRequest,
-  AccessRequestStatus,
-} from './scheduling/access-request.entity';
-
 // Content & Analytics
 export { TranscriptChunk } from './content/transcript-chunk.entity';
 

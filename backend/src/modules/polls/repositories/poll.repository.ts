@@ -13,14 +13,14 @@ export class PollRepository {
   async findById(id: string): Promise<MeetingPoll | null> {
     return this.repo.findOne({
       where: { id },
-      relations: ['createdByUser'],
+      relations: ['createdByUser', 'options', 'options.votes'],
     });
   }
 
   async findByMeetingId(meetingId: string): Promise<MeetingPoll[]> {
     return this.repo.find({
       where: { meetingId },
-      relations: ['createdByUser'],
+      relations: ['createdByUser', 'options', 'options.votes'],
       order: { createdAt: 'DESC' },
     });
   }

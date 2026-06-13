@@ -24,19 +24,13 @@ import {
   ParticipantStatus,
   MeetingPermission,
 } from '../entities';
-import {
-  JoinResponseDto,
-  ParticipantSummaryDto,
-} from '../dto/join-response.dto';
+import { JoinResponseDto } from '../dto/join-response.dto';
 import { EntityManager } from 'typeorm';
 import {
   BreakoutRoom,
   BreakoutRoomStatus,
 } from '../../breakout-rooms/entities/breakout-room.entity';
-import {
-  MeetingEvent,
-  EventType,
-} from '../../events/entities/meeting-event.entity';
+import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
 
 @Injectable()
 export class ParticipantsService {
@@ -78,7 +72,6 @@ export class ParticipantsService {
         id,
         userId,
       );
-      const wasInMeeting = participant?.isInMeeting || false;
 
       const isOrganizer =
         participant?.isOrganizer || meeting.organizerId === userId;
@@ -141,8 +134,7 @@ export class ParticipantsService {
         if (
           meeting.waitingRoomEnabled &&
           !isOrganizer &&
-          (!participant.isInMeeting ||
-            participant.status === ParticipantStatus.DENIED)
+          participant.status !== ParticipantStatus.ADMITTED
         ) {
           participant.status = ParticipantStatus.WAITING;
         }
@@ -198,46 +190,42 @@ export class ParticipantsService {
       );
 
       if (meeting.status === MeetingStatus.SCHEDULED) {
-        meeting.status = MeetingStatus.ONGOING;
-      }
-      if (!meeting.actualStartTime) {
-        meeting.actualStartTime = meeting.startTime || new Date();
-      }
-      await this.meetingsRepository.save(meeting);
+        const scheduledTime = meeting.startTime
+          ? new Date(meeting.startTime).getTime()
+          : 0;
+        const now = Date.now();
 
-      if (!wasInMeeting) {
-        await this.logMeetingEvent(id, EventType.USER_JOINED, userId, {
-          displayName: fullName,
-          email: user.email,
-          avatar: user.picture || undefined,
-        });
+        // Host prep mode: If organizer joins early, don't change meeting status to ONGOING
+        const isEarlyJoin = scheduledTime - now > 10 * 60 * 1000;
+        if (isOrganizer && isEarlyJoin) {
+          this.logger.log(
+            `Organizer joined meeting ${id} early. Keeping SCHEDULED status for prep.`,
+          );
+        } else {
+          meeting.status = MeetingStatus.ONGOING;
+          meeting.actualStartTime = new Date();
+          await this.meetingsRepository.save(meeting);
+        }
       }
 
-      const participantsData = await this.getParticipants(id, 1, 100);
-      const participantSummaries: ParticipantSummaryDto[] =
-        participantsData.items
-          .filter((p) => p && p.user)
-          .map((p) => ({
-            id: p.user?.id || p.userId,
-            firstName: p.user?.firstName || 'Unknown',
-            lastName: p.user?.lastName || 'Participant',
-            picture: p.user?.picture,
-            isOrganizer: p.isOrganizer,
-            permissions: p.permissions,
-            status: p.status,
-          }));
+      // User actually joined the meeting call, log event
+      await this.logMeetLog(id, LogType.USER_JOINED, userId, {
+        displayName: fullName,
+        email: user.email,
+        avatar: user.picture || undefined,
+      });
 
       return {
         meetingId: meeting.id,
         organizerId: meeting.organizerId,
-        status: ParticipantStatus.ADMITTED,
+        status: participant.status,
         token,
-        liveKitUrl: this.configService.get<string>('LIVEKIT_URL') || '',
-        participants: participantSummaries,
+        liveKitUrl: this.configService.get('LIVEKIT_URL', ''),
+        participants: [],
       };
-    } catch (error) {
-      this.logger.error('CRITICAL ERROR in joinMeeting:', error);
-      throw error;
+    } catch (err) {
+      this.logger.error(`Error in joinMeeting for meeting ${id}:`, err);
+      throw err;
     }
   }
 
@@ -269,7 +257,7 @@ export class ParticipantsService {
     await this.participantsRepository.save(participant);
 
     const targetUser = await this.usersService.findById(userId);
-    await this.logMeetingEvent(id, EventType.PARTICIPANT_ADMITTED, hostId, {
+    await this.logMeetLog(id, LogType.PARTICIPANT_ADMITTED, hostId, {
       targetUserId: userId,
       targetEmail: targetUser?.email || 'Unknown',
       targetName: targetUser
@@ -309,12 +297,21 @@ export class ParticipantsService {
       id,
       userId,
     );
-    if (participant && participant.isInMeeting) {
+    if (!participant) return;
+
+    if (participant.status === ParticipantStatus.WAITING) {
+      // If user cancels or leaves the lobby before ever being admitted, delete the record
+      // to keep the database and host's lobby display clean.
+      await this.participantsRepository.remove(participant);
+      return;
+    }
+
+    if (participant.isInMeeting) {
       participant.isInMeeting = false;
       await this.participantsRepository.save(participant);
 
       const user = await this.usersService.findById(userId);
-      await this.logMeetingEvent(id, EventType.USER_LEFT, userId, {
+      await this.logMeetLog(id, LogType.USER_LEFT, userId, {
         displayName:
           participant.displayName ||
           (user ? `${user.firstName} ${user.lastName}` : 'Unknown'),
@@ -489,17 +486,12 @@ export class ParticipantsService {
       ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
       : 'Unknown';
 
-    await this.logMeetingEvent(
-      meetingId,
-      EventType.PERMISSIONS_CHANGED,
-      requesterId,
-      {
-        targetUserId,
-        targetEmail: targetUser?.email || 'Unknown',
-        targetName,
-        permissions,
-      },
-    );
+    await this.logMeetLog(meetingId, LogType.PERMISSIONS_CHANGED, requesterId, {
+      targetUserId,
+      targetEmail: targetUser?.email || 'Unknown',
+      targetName,
+      permissions,
+    });
 
     return saved;
   }
@@ -558,9 +550,9 @@ export class ParticipantsService {
         `Successfully updated permissions for ${participants.length} participants`,
       );
 
-      await this.logMeetingEvent(
+      await this.logMeetLog(
         meetingId,
-        EventType.PERMISSIONS_CHANGED,
+        LogType.PERMISSIONS_CHANGED,
         requesterId,
         {
           action,
@@ -574,20 +566,20 @@ export class ParticipantsService {
     return { count: participants.length };
   }
 
-  private async logMeetingEvent(
+  private async logMeetLog(
     meetingId: string,
-    type: EventType,
+    type: LogType,
     triggeredByUserId: string,
     metadata?: Record<string, any>,
   ): Promise<void> {
     try {
-      const newEvent = this.entityManager.create(MeetingEvent, {
+      const newEvent = this.entityManager.create(MeetLog, {
         meetingId,
         type,
         triggeredByUserId,
         metadata: metadata || undefined,
       });
-      await this.entityManager.save(MeetingEvent, newEvent);
+      await this.entityManager.save(MeetLog, newEvent);
     } catch (err) {
       this.logger.error(`Failed to log meeting event ${type}:`, err);
     }

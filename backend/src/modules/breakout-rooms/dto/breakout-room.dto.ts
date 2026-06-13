@@ -28,8 +28,4 @@ export class SetupBreakoutRoomsDto {
   @ValidateNested({ each: true })
   @Type(() => CreateBreakoutRoomDto)
   rooms?: CreateBreakoutRoomDto[];
-
-  @IsOptional()
-  @Type(() => Number)
-  durationMinutes?: number;
 }

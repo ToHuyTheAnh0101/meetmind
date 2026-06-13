@@ -1,4 +1,4 @@
-import { MeetingEvent } from "../types";
+import { MeetLog } from "../types";
 
 export function formatDate(iso: string): string {
   const d = new Date(iso);
@@ -50,8 +50,8 @@ export function formatDuration(ms: number, isVi: boolean): string {
     : `${seconds}s`;
 }
 
-export function getUserDisplayName(event: MeetingEvent): string {
-  const user = event.triggeredByUser;
+export function getUserDisplayName(log: MeetLog): string {
+  const user = log.triggeredByUser;
   if (user) {
     const first = user.firstName || "";
     const last = user.lastName || "";
@@ -60,7 +60,7 @@ export function getUserDisplayName(event: MeetingEvent): string {
     if (user.email) return user.email;
   }
 
-  const meta = event.metadata;
+  const meta = log.metadata;
   if (meta) {
     if (typeof meta.displayName === "string" && meta.displayName.trim()) {
       return meta.displayName;

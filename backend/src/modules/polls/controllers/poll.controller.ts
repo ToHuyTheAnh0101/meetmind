@@ -8,6 +8,7 @@ import {
   Request,
 } from '@nestjs/common';
 import { PollService } from '../services/poll.service';
+import { PollResponseDto } from '../entities/meeting-poll.entity';
 import { MeetingPoll } from '../entities/meeting-poll.entity';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { CreatePollDto } from '../dto/create-poll.dto';
@@ -18,13 +19,15 @@ export class PollController {
 
   @Get()
   @UseGuards(JwtAuthGuard)
-  async findAll(@Param('meetingId') meetingId: string): Promise<MeetingPoll[]> {
+  async findAll(
+    @Param('meetingId') meetingId: string,
+  ): Promise<PollResponseDto[]> {
     return this.pollService.findByMeetingId(meetingId);
   }
 
   @Get(':id')
   @UseGuards(JwtAuthGuard)
-  async findOne(@Param('id') id: string): Promise<MeetingPoll> {
+  async findOne(@Param('id') id: string): Promise<PollResponseDto> {
     return this.pollService.findById(id);
   }
 
@@ -34,7 +37,7 @@ export class PollController {
     @Param('meetingId') meetingId: string,
     @Body() dto: CreatePollDto,
     @Request() req: { user: { id: string } },
-  ): Promise<MeetingPoll> {
+  ): Promise<PollResponseDto> {
     return this.pollService.create(
       meetingId,
       req.user.id,
@@ -48,7 +51,7 @@ export class PollController {
     @Param('id') id: string,
     @Body() { optionId }: { optionId: string },
     @Request() req: { user: { id: string } },
-  ): Promise<MeetingPoll> {
+  ): Promise<PollResponseDto> {
     return this.pollService.vote(id, req.user.id, optionId);
   }
 
@@ -57,7 +60,7 @@ export class PollController {
   async close(
     @Param('id') id: string,
     @Request() req: { user: { id: string } },
-  ): Promise<MeetingPoll> {
+  ): Promise<PollResponseDto> {
     return this.pollService.close(id, req.user.id);
   }
 }

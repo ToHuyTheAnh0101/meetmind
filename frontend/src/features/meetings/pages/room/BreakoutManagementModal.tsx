@@ -253,7 +253,9 @@ const BreakoutManagementModal: React.FC<Props> = ({
                               const meta = JSON.parse(p.metadata);
                               avatarFromMeta = meta.avatar;
                             }
-                          } catch (e) {}
+                          } catch (e) {
+                            // Ignore JSON parsing errors
+                          }
                           
                           const finalSrc = p.picture || p.profilePictureUrl || p.user?.picture || p.user?.profilePictureUrl || avatarFromMeta;
                           
@@ -340,7 +342,9 @@ const BreakoutManagementModal: React.FC<Props> = ({
                                     const meta = JSON.parse(p.metadata);
                                     avatarFromMeta = meta.avatar;
                                   }
-                                } catch (e) {}
+                                } catch (e) {
+                                  // Ignore JSON parsing errors
+                                }
                                 
                                 const finalSrc = p.picture || p.profilePictureUrl || p.user?.picture || p.user?.profilePictureUrl || avatarFromMeta;
                                 

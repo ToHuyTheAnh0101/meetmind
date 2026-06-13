@@ -9,7 +9,7 @@ import {
 import { Meeting } from '../../meetings/entities';
 import { User } from '../../users/user.entity';
 
-export enum EventType {
+export enum LogType {
   USER_JOINED = 'user_joined',
   USER_LEFT = 'user_left',
   SCREEN_SHARE_START = 'screen_share_start',
@@ -29,9 +29,9 @@ export enum EventType {
   AI_SUMMARY_GENERATED = 'ai_summary_generated',
 }
 
-@Entity('meeting-events')
+@Entity('meet_logs')
 @Index(['meetingId'])
-export class MeetingEvent {
+export class MeetLog {
   @PrimaryGeneratedColumn('uuid')
   id?: string;
 
@@ -49,8 +49,8 @@ export class MeetingEvent {
   @Column('uuid')
   triggeredByUserId?: string;
 
-  @Column({ type: 'enum', enum: EventType })
-  type?: EventType;
+  @Column({ type: 'enum', enum: LogType })
+  type?: LogType;
 
   @Column({ type: 'jsonb', nullable: true })
   metadata?: Record<string, any>;

@@ -18,16 +18,16 @@ import {
   BotOff,
   Clock,
 } from "lucide-react";
-import { MeetingEvent, EventConfig } from "../../../types";
+import { MeetLog, LogConfig } from "../../../types";
 import { getUserDisplayName, formatTime } from "../../../utils/formatters";
 
-interface DiaryEventListProps {
-  groupedEvents: { date: string; events: MeetingEvent[] }[];
+interface DiaryLogListProps {
+  groupedLogs: { date: string; logs: MeetLog[] }[];
   isVi: boolean;
   templates: any[];
 }
 
-const EVENT_CONFIG: Record<string, EventConfig> = {
+const LOG_CONFIG: Record<string, LogConfig> = {
   user_joined: {
     icon: LogIn,
     color: "emerald",
@@ -149,12 +149,12 @@ const EVENT_CONFIG: Record<string, EventConfig> = {
   },
 };
 
-const DEFAULT_EVENT_CONFIG: EventConfig = {
+const DEFAULT_LOG_CONFIG: LogConfig = {
   icon: Clock,
   color: "slate",
   bgGlow: "slate-400",
   labelVi: "Sự kiện",
-  labelEn: "Event",
+  labelEn: "Log",
 };
 
 function getColorClasses(color: string) {
@@ -184,7 +184,7 @@ function getColorClasses(color: string) {
       text: "text-rose-600",
       iconBg: "bg-rose-500",
       border: "border-rose-200",
-      dotBg: "bg-rose-500",
+      dotBg: "bg-rose-505",
       badgeBg: "bg-rose-50",
       badgeText: "text-rose-700",
     },
@@ -273,8 +273,8 @@ const renderMetadataItem = (key: string, value: unknown, t: any, templates: any[
   return { key: displayKey, value: displayValue };
 };
 
-export const DiaryEventList: React.FC<DiaryEventListProps> = ({
-  groupedEvents,
+export const DiaryLogList: React.FC<DiaryLogListProps> = ({
+  groupedLogs,
   isVi,
   templates,
 }) => {
@@ -282,7 +282,7 @@ export const DiaryEventList: React.FC<DiaryEventListProps> = ({
 
   return (
     <>
-      {groupedEvents.map((group, groupIdx) => (
+      {groupedLogs.map((group, groupIdx) => (
         <div key={group.date} className="mb-8 last:mb-0">
           {/* Date Header */}
           <div className="flex items-center gap-3 mb-5">
@@ -293,31 +293,31 @@ export const DiaryEventList: React.FC<DiaryEventListProps> = ({
             <div className="h-px flex-1 bg-gradient-to-l from-slate-200 to-transparent" />
           </div>
 
-          {/* Event Items */}
+          {/* Log Items */}
           <div className="space-y-4">
-            {group.events.map((event, eventIdx) => {
-              const config = EVENT_CONFIG[event.type] || DEFAULT_EVENT_CONFIG;
+            {group.logs.map((log, logIdx) => {
+              const config = LOG_CONFIG[log.type] || DEFAULT_LOG_CONFIG;
               const colors = getColorClasses(config.color);
-              const userName = getUserDisplayName(event);
+              const userName = getUserDisplayName(log);
               const label = isVi ? config.labelVi : config.labelEn;
-              const meta = event.metadata;
+              const meta = log.metadata;
               const avatarUrl =
-                event.triggeredByUser?.picture ||
+                log.triggeredByUser?.picture ||
                 (meta?.avatar as string) ||
                 (meta?.picture as string);
 
               return (
                 <motion.div
-                  key={event.id}
+                  key={log.id}
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{
-                    delay: groupIdx * 0.05 + eventIdx * 0.03,
+                    delay: groupIdx * 0.05 + logIdx * 0.03,
                     duration: 0.3,
                   }}
                   className="pb-4 last:pb-0 group"
                 >
-                  {/* Event Content Card */}
+                  {/* Log Content Card */}
                   <div className="p-3.5 rounded-2xl bg-white/80 border border-slate-100 transition-all duration-200 group-hover:shadow-md group-hover:scale-[1.005]">
                     <div className="flex items-center justify-between gap-3 flex-wrap">
                       <div className="flex items-center gap-2 flex-wrap min-w-0">
@@ -342,7 +342,7 @@ export const DiaryEventList: React.FC<DiaryEventListProps> = ({
                           {userName}
                         </span>
 
-                        {/* Event Badge */}
+                        {/* Log Badge */}
                         <span
                           className={`px-2 py-0.5 rounded-lg text-[11px] font-bold ${colors.badgeBg} ${colors.badgeText} border ${colors.border}`}
                         >
@@ -352,7 +352,7 @@ export const DiaryEventList: React.FC<DiaryEventListProps> = ({
 
                       {/* Timestamp */}
                       <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap shrink-0">
-                        {formatTime(event.createdAt)}
+                        {formatTime(log.createdAt)}
                       </span>
                     </div>
 

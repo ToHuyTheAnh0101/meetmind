@@ -4,7 +4,7 @@ export interface MeetingDiaryTabProps {
   meetingId: string;
 }
 
-export interface MeetingEvent {
+export interface MeetLog {
   id: string;
   type: string;
   triggeredByUserId: string;
@@ -19,7 +19,7 @@ export interface MeetingEvent {
   createdAt: string;
 }
 
-export interface EventConfig {
+export interface LogConfig {
   icon: React.ElementType;
   color: string;
   bgGlow: string;

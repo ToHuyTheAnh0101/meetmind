@@ -8,7 +8,6 @@ An intelligent meeting management platform built with NestJS. Manage meetings, p
 - Create, schedule, and organize meetings
 - Real-time participant management
 - Meeting status tracking (scheduled, ongoing, completed, cancelled)
-- Video recording URL storage
 
 📝 **Meeting Content**
 - Structured agendas with items
@@ -282,7 +281,7 @@ src/
 - title, description
 - status (scheduled|ongoing|completed|cancelled)
 - startTime, endTime, duration
-- organizerId, livekitRoomName, recordingUrl
+- organizerId, livekitRoomName
 - createdAt, updatedAt
 
 **MeetingParticipant**

@@ -8,13 +8,13 @@ import apiClient from "@/lib/apiClient";
 // Sub-components
 import { TimelineSummaryCard } from "./TimelineSummaryCard";
 import { StatsCard } from "./StatsCard";
-import { DiaryEventList } from "./DiaryEventList";
+import { DiaryLogList } from "./DiaryLogList";
 import { DiaryPagination } from "./DiaryPagination";
 
 // Custom API Hooks & Utils
 import { useMeeting } from "../../../api/getMeeting";
-import { useMeetingEvents } from "../../../api/getMeetingEvents";
-import { MeetingEvent } from "../../../types";
+import { useMeetLogs } from "../../../api/getMeetLogs";
+import { MeetLog } from "../../../types";
 import { formatDate } from "../../../utils/formatters";
 
 interface MeetingDiaryTabProps {
@@ -43,8 +43,8 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({ meetingId }) =
 
   const isOngoing = meetingStatus?.status === "ongoing";
 
-  // 2. Fetch events (via custom hook)
-  const { data: events, isLoading: isLoadingEvents } = useMeetingEvents(meetingId);
+  // 2. Fetch logs (via custom hook)
+  const { data: logs, isLoading: isLoadingLogs } = useMeetLogs(meetingId);
 
   // Local ticker for ongoing meeting duration
   const [now, setNow] = useState(() => new Date());
@@ -93,15 +93,15 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({ meetingId }) =
     ai_summary_generated: { vi: "Tạo bản tóm tắt AI", en: "AI summary generated" },
   };
 
-  // Filter events based on search term
-  const filteredEvents = useMemo(() => {
-    if (!events) return [];
+  // Filter logs based on search term
+  const filteredLogs = useMemo(() => {
+    if (!logs) return [];
 
-    return events.filter((event) => {
-      const config = EVENT_LABEL_MAP[event.type];
-      const label = config ? (isVi ? config.vi : config.en) : (isVi ? "Sự kiện" : "Event");
+    return logs.filter((log) => {
+      const config = EVENT_LABEL_MAP[log.type];
+      const label = config ? (isVi ? config.vi : config.en) : (isVi ? "Sự kiện" : "Log");
 
-      const triggeredByUser = event.triggeredByUser;
+      const triggeredByUser = log.triggeredByUser;
       let userName = "Unknown";
       if (triggeredByUser) {
         const first = triggeredByUser.firstName || "";
@@ -109,11 +109,11 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({ meetingId }) =
         const full = `${first} ${last}`.trim();
         if (full) userName = full;
         else if (triggeredByUser.email) userName = triggeredByUser.email;
-      } else if (event.metadata) {
-        if (typeof event.metadata.displayName === "string" && event.metadata.displayName.trim()) {
-          userName = event.metadata.displayName;
-        } else if (typeof event.metadata.email === "string" && event.metadata.email.trim()) {
-          userName = event.metadata.email;
+      } else if (log.metadata) {
+        if (typeof log.metadata.displayName === "string" && log.metadata.displayName.trim()) {
+          userName = log.metadata.displayName;
+        } else if (typeof log.metadata.email === "string" && log.metadata.email.trim()) {
+          userName = log.metadata.email;
         }
       }
       userName = userName.toLowerCase();
@@ -121,20 +121,20 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({ meetingId }) =
       const matchesSearch =
         userName.includes(searchTerm.toLowerCase()) ||
         label.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        JSON.stringify(event.metadata || {}).toLowerCase().includes(searchTerm.toLowerCase());
+        JSON.stringify(log.metadata || {}).toLowerCase().includes(searchTerm.toLowerCase());
 
       return matchesSearch;
     });
-  }, [events, searchTerm, isVi]);
+  }, [logs, searchTerm, isVi]);
 
-  // Sort events chronologically (oldest first for timeline top-to-bottom)
-  const sortedEvents = useMemo(() => {
-    return [...filteredEvents].sort(
+  // Sort logs chronologically (oldest first for timeline top-to-bottom)
+  const sortedLogs = useMemo(() => {
+    return [...filteredLogs].sort(
       (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
     );
-  }, [filteredEvents]);
+  }, [filteredLogs]);
 
-  const totalPages = Math.ceil(sortedEvents.length / pageSize);
+  const totalPages = Math.ceil(sortedLogs.length / pageSize);
 
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
@@ -142,29 +142,29 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({ meetingId }) =
     }
   }, [totalPages, currentPage]);
 
-  // Sliced events for pagination
-  const paginatedEvents = useMemo(() => {
+  // Sliced logs for pagination
+  const paginatedLogs = useMemo(() => {
     const startIndex = (currentPage - 1) * pageSize;
-    return sortedEvents.slice(startIndex, startIndex + pageSize);
-  }, [sortedEvents, currentPage]);
+    return sortedLogs.slice(startIndex, startIndex + pageSize);
+  }, [sortedLogs, currentPage]);
 
-  // Group events by date
-  const groupedEvents = useMemo(() => {
-    const groups: { date: string; events: MeetingEvent[] }[] = [];
+  // Group logs by date
+  const groupedLogs = useMemo(() => {
+    const groups: { date: string; logs: MeetLog[] }[] = [];
     let currentDate = "";
 
-    for (const event of paginatedEvents) {
-      const date = formatDate(event.createdAt);
+    for (const log of paginatedLogs) {
+      const date = formatDate(log.createdAt);
       if (date !== currentDate) {
         currentDate = date;
-        groups.push({ date, events: [event] });
+        groups.push({ date, logs: [log] });
       } else {
-        groups[groups.length - 1].events.push(event);
+        groups[groups.length - 1].logs.push(log);
       }
     }
 
     return groups;
-  }, [paginatedEvents]);
+  }, [paginatedLogs]);
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
@@ -223,14 +223,14 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({ meetingId }) =
 
           {/* Timeline Content */}
           <div className="flex-1 overflow-y-auto custom-scrollbar">
-            {isLoadingEvents ? (
+            {isLoadingLogs ? (
               <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-3">
                 <Loader2 className="h-8 w-8 animate-spin text-indigo-400" />
                 <p className="text-sm font-bold">
                   {t("meeting.diary.loading")}
                 </p>
               </div>
-            ) : sortedEvents.length === 0 ? (
+            ) : sortedLogs.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-20 text-center">
                 <div className="h-20 w-20 rounded-[2rem] bg-slate-100 flex items-center justify-center text-slate-300 mb-6">
                   <CalendarClock className="h-10 w-10" />
@@ -252,8 +252,8 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({ meetingId }) =
                   transition={{ duration: 0.25 }}
                   className="relative"
                 >
-                  <DiaryEventList
-                    groupedEvents={groupedEvents}
+                  <DiaryLogList
+                    groupedLogs={groupedLogs}
                     isVi={isVi}
                     templates={templates}
                   />
@@ -264,10 +264,10 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({ meetingId }) =
                     onPageChange={setCurrentPage}
                   />
 
-                  {/* Event Count Footer */}
+                  {/* Log Count Footer */}
                   <div className="mt-6 flex items-center justify-center">
                     <span className="text-[11px] font-bold text-slate-300 tracking-wider">
-                      {t("meeting.diary.event_count", { count: sortedEvents.length })}
+                      {t("meeting.diary.event_count", { count: sortedLogs.length })}
                     </span>
                   </div>
                 </motion.div>
@@ -285,7 +285,7 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({ meetingId }) =
           isVi={isVi}
         />
 
-        <StatsCard events={sortedEvents} />
+        <StatsCard logs={sortedLogs} />
       </div>
     </div>
   );

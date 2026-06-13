@@ -1,17 +1,17 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
 import {
-  MeetingQuestion,
-  QuestionStatus,
-  QuestionType,
-} from '../entities/meeting-question.entity';
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
+import { MeetingQuestion } from '../entities/meeting-question.entity';
 import { MeetingAnswer } from '../entities/meeting-answer.entity';
 import { QuestionRepository } from '../repositories/question.repository';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
-import {
-  MeetingEvent,
-  EventType,
-} from '../../events/entities/meeting-event.entity';
+import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
+import { MeetingPermission } from '../../meetings/entities';
+import { ParticipantRepository } from '../../meetings/repositories/participant.repository';
 
 @Injectable()
 export class QuestionService {
@@ -19,6 +19,7 @@ export class QuestionService {
     private questionRepository: QuestionRepository,
     @InjectRepository(MeetingAnswer)
     private answerRepository: Repository<MeetingAnswer>,
+    private participantRepository: ParticipantRepository,
     private entityManager: EntityManager,
   ) {}
 
@@ -26,27 +27,44 @@ export class QuestionService {
     meetingId: string,
     data: Partial<MeetingQuestion>,
   ): Promise<MeetingQuestion> {
+    const userId = data.askedByUserId;
+    if (!userId) {
+      throw new BadRequestException('User ID is required');
+    }
+
+    const participant = await this.participantRepository.findByMeetingAndUser(
+      meetingId,
+      userId,
+    );
+    if (
+      !participant ||
+      (!participant.isOrganizer &&
+        !participant.permissions?.includes(MeetingPermission.MANAGE_QA) &&
+        !participant.permissions?.includes(MeetingPermission.CO_HOST))
+    ) {
+      throw new ForbiddenException(
+        'You do not have permission to ask questions in this meeting',
+      );
+    }
+
     const question = this.questionRepository.create({
       ...data,
       meetingId,
-      type: data.type || QuestionType.HOST_QA,
-      isAnonymous: false, // Discussion questions are never anonymous
     });
 
     const savedQuestion = await this.questionRepository.save(question);
 
-    // Log QA_OPENED event
     try {
-      const newEvent = this.entityManager.create(MeetingEvent, {
+      const newEvent = this.entityManager.create(MeetLog, {
         meetingId,
-        type: EventType.QA_OPENED,
+        type: LogType.QA_OPENED,
         triggeredByUserId: savedQuestion.askedByUserId,
         metadata: {
           questionId: savedQuestion.id,
           content: savedQuestion.content,
         },
       });
-      await this.entityManager.save(MeetingEvent, newEvent);
+      await this.entityManager.save(MeetLog, newEvent);
     } catch (err) {
       console.error('Failed to log QA_OPENED event:', err);
     }
@@ -63,16 +81,7 @@ export class QuestionService {
   }
 
   async findByMeetingId(meetingId: string): Promise<MeetingQuestion[]> {
-    const questions = await this.questionRepository.findByMeetingId(meetingId);
-    return questions.filter((q) => q.type === QuestionType.HOST_QA);
-  }
-
-  async updateStatus(
-    id: string,
-    status: QuestionStatus,
-  ): Promise<MeetingQuestion> {
-    await this.questionRepository.save({ id, status });
-    return this.findById(id);
+    return this.questionRepository.findByMeetingId(meetingId);
   }
 
   async createAnswer(
@@ -89,14 +98,6 @@ export class QuestionService {
     });
 
     const savedAnswer = await this.answerRepository.save(answer);
-
-    // Update question status if it was pending and answered by moderator
-    if (question.status === QuestionStatus.PENDING) {
-      await this.questionRepository.save({
-        id: questionId,
-        status: QuestionStatus.ANSWERED,
-      });
-    }
 
     return savedAnswer;
   }
