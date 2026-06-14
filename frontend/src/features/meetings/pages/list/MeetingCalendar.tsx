@@ -30,38 +30,7 @@ const parseMeetingsPayload = (payload: unknown): Meeting[] => {
   return []
 }
 
-const MOCK_MEETINGS: Meeting[] = [
-  {
-    id: 'mock-1',
-    title: 'Product Strategy Sync',
-    status: 'ongoing',
-    startTime: new Date().toISOString(),
-    participants: [
-      { id: 'u1', user: { firstName: 'Alex', lastName: 'Chen' } },
-      { id: 'u2', user: { firstName: 'Sarah', lastName: 'Miller' } },
-      { id: 'u3', user: { firstName: 'John', lastName: 'Doe' } }
-    ] as any
-  },
-  {
-    id: 'mock-2',
-    title: 'Design Review: MeetMind v2',
-    status: 'scheduled',
-    startTime: new Date(Date.now() + 86400000).toISOString(),
-    participants: [
-      { id: 'u4', user: { firstName: 'Emma', lastName: 'Wilson' } },
-      { id: 'u1', user: { firstName: 'Alex', lastName: 'Chen' } }
-    ] as any
-  },
-  {
-    id: 'mock-3',
-    title: 'Frontend Architecture Sync',
-    status: 'completed',
-    startTime: new Date(Date.now() - 3600000 * 5).toISOString(),
-    participants: [
-      { id: 'u5', user: { firstName: 'David', lastName: 'Lee' } }
-    ] as any
-  }
-]
+const MOCK_MEETINGS: Meeting[] = []
 
 const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onScheduleClick }) => {
   const { t, i18n } = useTranslation()
