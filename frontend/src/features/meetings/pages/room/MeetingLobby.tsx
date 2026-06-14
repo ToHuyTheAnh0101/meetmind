@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -100,30 +100,104 @@ interface MeetingLobbyProps {
 
 const AudioVisualizer = ({ isActive }: { isActive: boolean }) => {
   const [level, setLevel] = useState(0);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const analyserRef = useRef<AnalyserNode | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const animationFrameRef = useRef<number | null>(null);
 
   useEffect(() => {
+    let fallbackInterval: NodeJS.Timeout | null = null;
+
     if (!isActive) {
+      cleanup();
       setLevel(0);
       return;
     }
-    
-    // Simulate audio level for UI feedback
-    const interval = setInterval(() => {
-      setLevel(Math.random() * 60 + 10);
-    }, 100);
-    
-    return () => clearInterval(interval);
+
+    async function startAudio() {
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        streamRef.current = stream;
+
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) {
+          throw new Error("Web Audio API not supported");
+        }
+        const audioContext = new AudioContextClass();
+        audioContextRef.current = audioContext;
+
+        const source = audioContext.createMediaStreamSource(stream);
+        const analyser = audioContext.createAnalyser();
+        analyser.fftSize = 64;
+        analyserRef.current = analyser;
+        source.connect(analyser);
+
+        const bufferLength = analyser.frequencyBinCount;
+        const dataArray = new Uint8Array(bufferLength);
+
+        const checkVolume = () => {
+          if (!analyserRef.current) return;
+          analyserRef.current.getByteFrequencyData(dataArray);
+
+          let total = 0;
+          for (let i = 0; i < bufferLength; i++) {
+            total += dataArray[i];
+          }
+          const average = total / bufferLength;
+          const percentage = Math.min((average / 128) * 100, 100);
+          setLevel(percentage);
+
+          animationFrameRef.current = requestAnimationFrame(checkVolume);
+        };
+
+        checkVolume();
+      } catch (err) {
+        console.warn("Failed to initialize real audio visualizer, falling back to simulation:", err);
+        fallbackInterval = setInterval(() => {
+          setLevel(Math.random() * 30 + 5);
+        }, 150);
+      }
+    }
+
+    startAudio();
+
+    return () => {
+      cleanup();
+      if (fallbackInterval) {
+        clearInterval(fallbackInterval);
+      }
+    };
+
+    function cleanup() {
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+        animationFrameRef.current = null;
+      }
+      if (streamRef.current) {
+        streamRef.current.getTracks().forEach((track) => track.stop());
+        streamRef.current = null;
+      }
+      if (audioContextRef.current) {
+        if (audioContextRef.current.state !== 'closed') {
+          audioContextRef.current.close().catch(() => {});
+        }
+        audioContextRef.current = null;
+      }
+    }
   }, [isActive]);
 
   return (
     <div className="flex items-end gap-1 h-8 w-16">
-      {[1, 2, 3, 4, 5].map((i) => (
-        <motion.div
-          key={i}
-          animate={{ height: isActive ? `${level * (0.4 + Math.random() * 0.6)}%` : '10%' }}
-          className="w-1.5 bg-cyan-500 rounded-full transition-all duration-75"
-        />
-      ))}
+      {[1, 2, 3, 4, 5].map((i) => {
+        const multiplier = 0.4 + (i * 0.12);
+        return (
+          <motion.div
+            key={i}
+            animate={{ height: isActive ? `${Math.max(10, level * multiplier)}%` : '10%' }}
+            className="w-1.5 bg-cyan-500 rounded-full transition-all duration-75"
+          />
+        );
+      })}
     </div>
   );
 };

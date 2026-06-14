@@ -306,7 +306,7 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
         /* Attachments List */
         <div className={`space-y-3 ${isInRoom ? "flex-1 overflow-y-auto pr-1.5 custom-scrollbar pb-10" : ""}`}>
           <div className="flex items-center justify-between mb-1 px-1">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+            <span className="text-[10px] font-black text-slate-400">
               {t("meeting.attachments_manager.list_title", { count: attachments.length })}
             </span>
           </div>
@@ -331,7 +331,9 @@ export const AttachmentManager: React.FC<AttachmentManagerProps> = ({
                     </div>
                     
                     <div className="min-w-0">
-                      <p className="text-[13px] font-black truncate text-slate-800 dark:text-white group-hover:text-cyan-500 transition-colors" title={item.fileName}>
+                      <p className={`text-[13px] font-black truncate group-hover:text-cyan-500 transition-colors ${
+                        isInRoom ? "text-slate-200" : "text-slate-800 dark:text-white"
+                      }`} title={item.fileName}>
                         {item.fileName}
                       </p>
                       <div className="flex items-center gap-2 mt-1 text-[10px] font-bold text-slate-400">

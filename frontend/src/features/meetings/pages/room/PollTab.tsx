@@ -285,10 +285,15 @@ const PollItem: React.FC<{
 
             return (
               <div key={option.id} className="space-y-2">
-                <button
-                  disabled={isVoteDisabled}
-                  onClick={() => onVote?.(option.id)}
+                <div
+                  onClick={() => {
+                    if (!isVoteDisabled) {
+                      onVote?.(option.id);
+                    }
+                  }}
                   className={`w-full relative group overflow-hidden rounded-[1.25rem] border transition-all py-3 px-4 flex flex-col items-start gap-2 text-left ${
+                    isVoteDisabled ? 'cursor-default' : 'cursor-pointer'
+                  } ${
                     isSelected
                       ? 'border-rose-500/40 bg-rose-500/10'
                       : hasVotedAtAll || isClosed
@@ -356,7 +361,7 @@ const PollItem: React.FC<{
                       )}
                     </div>
                   )}
-                </button>
+                </div>
               </div>
             );
           })}

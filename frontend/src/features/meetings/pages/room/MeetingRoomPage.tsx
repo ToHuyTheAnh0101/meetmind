@@ -482,7 +482,10 @@ const MeetingRoomPage: React.FC = () => {
 
   useEffect(() => {
     const handleRefreshMeeting = (e: any) => {
-      if (e.detail?.meetingId === id) fetchMeetingDetails();
+      if (e.detail?.meetingId === id) {
+        fetchMeetingDetails();
+        queryClient.invalidateQueries({ queryKey: ["meeting-participants", id] });
+      }
     };
     const handleRefreshQA = (e: any) => {
       if (e.detail?.meetingId === id) {

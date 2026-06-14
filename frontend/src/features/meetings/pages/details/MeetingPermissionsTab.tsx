@@ -10,6 +10,7 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useLocalParticipant } from '@livekit/components-react';
 import apiClient from '@/lib/apiClient';
 import { Participant, MeetingPermission } from '@/types/api';
 
@@ -139,6 +140,39 @@ const ParticipantRow: React.FC<{
   );
 };
 
+const RoomPermissionsBroadcastHelper: React.FC<{
+  meetingId: string;
+  triggerRef: React.MutableRefObject<((targetUserId?: string, userIds?: string[]) => void) | null>;
+}> = ({ meetingId, triggerRef }) => {
+  const { localParticipant } = useLocalParticipant();
+
+  React.useEffect(() => {
+    triggerRef.current = (targetUserId?: string, userIds?: string[]) => {
+      try {
+        if (!localParticipant) return;
+        const payload = {
+          type: 'PERMISSIONS_UPDATED',
+          meetingId,
+          targetUserId,
+          userIds,
+        };
+        const encoder = new TextEncoder();
+        const data = encoder.encode(JSON.stringify(payload));
+        localParticipant.publishData(data, { reliable: true }).catch(err => {
+          console.error("Failed to publish permissions update data signal:", err);
+        });
+      } catch (err) {
+        console.error("Error broadcasting permissions update:", err);
+      }
+    };
+    return () => {
+      triggerRef.current = null;
+    };
+  }, [localParticipant, meetingId, triggerRef]);
+
+  return null;
+};
+
 const MeetingPermissionsTab: React.FC<MeetingPermissionsTabProps> = ({ 
   meetingId, 
   variant = 'room' 
@@ -149,6 +183,7 @@ const MeetingPermissionsTab: React.FC<MeetingPermissionsTabProps> = ({
   const [expandedParticipantId, setExpandedParticipantId] = useState<string | null>(null);
 
   const isRoom = variant === 'room';
+  const broadcastTriggerRef = React.useRef<((targetUserId?: string, userIds?: string[]) => void) | null>(null);
 
   // 1. Fetch participants
   const { data, isLoading } = useQuery<{ items: Participant[] }>({
@@ -166,8 +201,9 @@ const MeetingPermissionsTab: React.FC<MeetingPermissionsTabProps> = ({
     mutationFn: async ({ userId, permissions }: { userId: string, permissions: MeetingPermission[] }) => {
       return apiClient.put(`/meetings/${meetingId}/participants/${userId}/permissions`, { permissions });
     },
-    onSuccess: () => {
+    onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ['meeting-participants', meetingId] });
+      broadcastTriggerRef.current?.(variables.userId);
     }
   });
 
@@ -177,6 +213,7 @@ const MeetingPermissionsTab: React.FC<MeetingPermissionsTabProps> = ({
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['meeting-participants', meetingId] });
+      broadcastTriggerRef.current?.(undefined, participants.map(p => p.userId));
     }
   });
 
@@ -230,6 +267,12 @@ const MeetingPermissionsTab: React.FC<MeetingPermissionsTabProps> = ({
       animate={{ opacity: 1 }}
       className={`flex flex-col h-full ${isRoom ? '' : 'space-y-6'}`}
     >
+      {isRoom && (
+        <RoomPermissionsBroadcastHelper 
+          meetingId={meetingId} 
+          triggerRef={broadcastTriggerRef} 
+        />
+      )}
       {/* Header & Search Bar */}
       {isRoom ? (
         <div className="px-4 py-3 border-b border-white/5 space-y-3">

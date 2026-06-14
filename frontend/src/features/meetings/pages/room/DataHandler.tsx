@@ -30,7 +30,7 @@ export const DataHandler: React.FC<DataHandlerProps> = ({
           new CustomEvent("refresh-qa", { detail: { meetingId } }),
         );
       }
-      if (data.type === "MEETING_UPDATED") {
+      if (data.type === "MEETING_UPDATED" || data.type === "PERMISSIONS_UPDATED") {
         window.dispatchEvent(
           new CustomEvent("refresh-meeting", { detail: { meetingId } }),
         );
