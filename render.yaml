@@ -51,7 +51,7 @@ services:
       - key: GOOGLE_CLIENT_SECRET
         sync: false
       - key: GOOGLE_CALLBACK_URL
-        value: https://meetmind-backend.onrender.com/auth/google/callback
+        value: https://meetmind-backend-ygzg.onrender.com/auth/google/callback
       - key: GEMINI_API_KEY
         sync: false
       - key: LIVEKIT_URL
