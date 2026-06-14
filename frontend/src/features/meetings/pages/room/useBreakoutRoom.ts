@@ -13,43 +13,67 @@ export interface JoinResponse {
   status?: string;
   isBreakoutRoom?: boolean;
   room?: string;
+  breakoutRoomId?: string;
 }
 
 export const useBreakoutRoom = (meetingId: string | undefined, userId: string | undefined) => {
   const { t } = useTranslation();
   const [joinData, setJoinData] = useState<JoinResponse | null>(null);
   const [originalJoinData, setOriginalJoinData] = useState<JoinResponse | null>(null);
-  const [isTransitioning, setIsTransitioning] = useState(false);
-  const [transitionTarget, setTransitionTarget] = useState("");
+  const isTransitioningRef = useRef(false);
+  const setIsTransitioning = (val: boolean) => {
+    isTransitioningRef.current = val;
+  };
+
+  const transitionTargetRef = useRef("");
+  const setTransitionTarget = (val: string) => {
+    transitionTargetRef.current = val;
+  };
+
+  const originalJoinDataRef = useRef<JoinResponse | null>(null);
+  const joinDataRef = useRef<JoinResponse | null>(null);
+  useEffect(() => {
+    joinDataRef.current = joinData;
+  }, [joinData]);
+
   const loadingToastIdRef = useRef<string | undefined>(undefined);
+  const isOrganizer = !!(userId && (joinData?.organizerId === userId || originalJoinData?.organizerId === userId || originalJoinDataRef.current?.organizerId === userId));
 
   // Keep track of the original main room join data
   useEffect(() => {
-    if (joinData && !originalJoinData && !joinData.token.includes("breakout")) {
+    if (joinData && !originalJoinDataRef.current && !joinData.token.includes("breakout") && !joinData.isBreakoutRoom) {
+      originalJoinDataRef.current = joinData;
       setOriginalJoinData(joinData);
     }
-  }, [joinData, originalJoinData]);
+  }, [joinData]);
 
   const handleConnected = useCallback(() => {
-    if (isTransitioning) {
+    if (isTransitioningRef.current) {
       if (loadingToastIdRef.current) {
         toast.dismiss(loadingToastIdRef.current);
         loadingToastIdRef.current = undefined;
       }
       showSuccessToast(
-        transitionTarget 
-          ? t('meeting.joined_room', 'Đã tham gia {{room}}', { room: transitionTarget }) 
+        transitionTargetRef.current 
+          ? t('meeting.joined_room', 'Đã tham gia {{room}}', { room: transitionTargetRef.current }) 
           : t('meeting.connection_success', 'Kết nối thành công'),
-        transitionTarget === t('meeting.main_room', 'phòng chính') ? "🏠" : "🚪"
+        transitionTargetRef.current === t('meeting.main_room', 'phòng chính') ? "🏠" : "🚪"
       );
       setIsTransitioning(false);
     }
-  }, [isTransitioning, transitionTarget, t]);
+  }, [t]);
 
   const handleBreakoutStarted = useCallback(
     async (e?: any) => {
       if (!meetingId) return;
       const isEvent = !!e;
+      
+      const currentlyInBreakout = !!(joinDataRef.current?.isBreakoutRoom || joinDataRef.current?.token.includes("breakout"));
+      if (isEvent && currentlyInBreakout) {
+        console.log("[BREAKOUT] Start signal received but user is already in a breakout room. Ignoring.");
+        return;
+      }
+
       console.log(
         "[BREAKOUT] Signal received:",
         e?.detail || "Manual/Mount check",
@@ -110,6 +134,7 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
             token: resp.data.token,
             room: resp.data.roomName,
             isBreakoutRoom: true,
+            breakoutRoomId: resp.data.roomId,
           }));
         } else {
           console.log(
@@ -131,12 +156,20 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
         }
       }
     },
-    [meetingId, userId],
+    [meetingId, userId, t]
   );
 
   const handleBreakoutEnded = useCallback(async () => {
     if (!meetingId) return;
+
+    const currentlyInBreakout = !!(joinDataRef.current?.isBreakoutRoom || joinDataRef.current?.token.includes("breakout"));
+    if (!currentlyInBreakout) {
+      console.log("[BREAKOUT] End signal received but user is already in the main room. Ignoring.");
+      return;
+    }
+
     console.log("[BREAKOUT] End signal received.");
+    sessionStorage.removeItem(`host_breakout_room:${meetingId}`);
 
     loadingToastIdRef.current = toast.loading(t('meeting.moving_to_main', 'Đang di chuyển về phòng chính...'), {
       style: {
@@ -147,17 +180,15 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
       },
     });
 
-    try {
-      await apiClient.post(`/meetings/${meetingId}/breakout-rooms/leave`);
-    } catch (err) {
+    apiClient.post(`/meetings/${meetingId}/breakout-rooms/leave`).catch((err) => {
       console.error("Failed to clear breakout room assignment on backend", err);
-    }
+    });
 
     setIsTransitioning(true);
     setTransitionTarget(t('meeting.main_room', 'phòng chính'));
 
-    if (originalJoinData) {
-      setJoinData(originalJoinData);
+    if (originalJoinDataRef.current) {
+      setJoinData(originalJoinDataRef.current);
     } else {
       try {
         const res = await apiClient.post(`/meetings/${meetingId}/join`);
@@ -176,7 +207,7 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
         showErrorToast(t('meeting.return_to_main_error', 'Lỗi khi quay lại phòng chính'));
       }
     }
-  }, [meetingId, originalJoinData]);
+  }, [meetingId, t]);
 
   const handleJoinBreakoutAsHost = useCallback(
     async (roomId: string) => {
@@ -203,11 +234,14 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
             id: loadingToastIdRef.current,
           });
 
+          sessionStorage.setItem(`host_breakout_room:${meetingId}`, roomId);
+
           setJoinData((prev: any) => ({
             ...prev!,
             token: resp.data.token,
             room: resp.data.roomName,
             isBreakoutRoom: true,
+            breakoutRoomId: resp.data.roomId,
           }));
         } else {
           console.log("[BREAKOUT] No token returned for host.");
@@ -228,12 +262,19 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
     [meetingId],
   );
 
-  // Check breakout on mount
+  // Check and auto-join active breakout room once user actually enters the meeting room
   useEffect(() => {
-    if (meetingId) {
+    if (meetingId && joinData && !joinData.isBreakoutRoom && !joinData.token.includes("breakout")) {
+      if (isOrganizer) {
+        const savedRoomId = sessionStorage.getItem(`host_breakout_room:${meetingId}`);
+        if (savedRoomId) {
+          handleJoinBreakoutAsHost(savedRoomId);
+          return;
+        }
+      }
       handleBreakoutStarted();
     }
-  }, [meetingId, handleBreakoutStarted]);
+  }, [meetingId, joinData?.token, joinData?.isBreakoutRoom, isOrganizer, handleBreakoutStarted, handleJoinBreakoutAsHost]);
 
   // Listen to breakout room signals
   useEffect(() => {
@@ -251,7 +292,7 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
     let interval: NodeJS.Timeout;
     const isInBreakout = joinData?.isBreakoutRoom;
 
-    if (isInBreakout && meetingId) {
+    if (isInBreakout && meetingId && !isOrganizer) {
       interval = setInterval(async () => {
         try {
           const resp = await apiClient.get(
@@ -273,7 +314,7 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
     return () => {
       if (interval) clearInterval(interval);
     };
-  }, [meetingId, joinData?.token, joinData?.isBreakoutRoom, handleBreakoutEnded]);
+  }, [meetingId, joinData?.token, joinData?.isBreakoutRoom, handleBreakoutEnded, isOrganizer]);
 
   return {
     joinData,

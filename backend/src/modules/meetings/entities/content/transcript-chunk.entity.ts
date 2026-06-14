@@ -37,10 +37,10 @@ export class TranscriptChunk {
   @Column({ nullable: true })
   chunkIndex?: number;
 
-  @Column({ nullable: true })
+  @Column('float', { nullable: true })
   startTime?: number; // seconds into meeting
 
-  @Column({ nullable: true })
+  @Column('float', { nullable: true })
   endTime?: number; // seconds into meeting
 
   @CreateDateColumn()

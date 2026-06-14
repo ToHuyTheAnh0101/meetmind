@@ -238,7 +238,11 @@
         "status": "Status",
         "duration": "Duration",
         "reason": "Reason",
-        "roomName": "Room"
+        "roomName": "Room",
+        "roomNames": "Breakout Room Names",
+        "roomsCount": "Number of Rooms",
+        "targetName": "Member Name",
+        "targetEmail": "Member Email"
       },
       "title": "Meeting Timeline",
       "subtitle": "Chronological activity log for the session",

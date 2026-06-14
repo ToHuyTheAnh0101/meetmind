@@ -127,10 +127,10 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({ meetingId }) =
     });
   }, [logs, searchTerm, isVi]);
 
-  // Sort logs chronologically (oldest first for timeline top-to-bottom)
+  // Sort logs reverse chronologically (newest first)
   const sortedLogs = useMemo(() => {
     return [...filteredLogs].sort(
-      (a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      (a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime(),
     );
   }, [filteredLogs]);
 

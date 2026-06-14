@@ -68,7 +68,11 @@ export class PollService {
 
     const result: PollResponseDto[] = pollList.map((poll) => {
       const rawOptions: PollOption[] = (poll.options as PollOption[]) || [];
-      const options = rawOptions.map((opt) => {
+      const sortedRawOptions = [...rawOptions].sort(
+        (a, b) =>
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime(),
+      );
+      const options = sortedRawOptions.map((opt) => {
         const votes: PollVote[] = (opt.votes as PollVote[]) || [];
         const voterIds: string[] = votes.map((v: PollVote) => v.userId);
         const voters = votes

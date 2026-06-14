@@ -366,7 +366,11 @@ export const DiaryLogList: React.FC<DiaryLogListProps> = ({
                               key !== "email" &&
                               key !== "avatar" &&
                               key !== "picture" &&
-                              key !== "timestamp"
+                              key !== "timestamp" &&
+                              key !== "targetUserId" &&
+                              key !== "userId" &&
+                              key !== "meetingId" &&
+                              key !== "breakoutRoomId"
                           )
                           .map(([key, value]) => {
                             const prettified = renderMetadataItem(

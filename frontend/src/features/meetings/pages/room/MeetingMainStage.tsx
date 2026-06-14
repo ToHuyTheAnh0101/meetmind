@@ -357,6 +357,9 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
     try {
       // 1. Ensure meeting session is active and broadcast signal (Organizer only)
       if (isOrganizer) {
+        // Call backend API to activate AI Assistant
+        await apiClient.put(`/meetings/${meetingId}`, { aiActivated: true });
+
         // Broadcast RECORDING_STARTED signal
         const payload = JSON.stringify({ type: "RECORDING_STARTED" });
         try {
@@ -574,21 +577,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
 
   return (
     <div className="flex-1 flex flex-col relative overflow-hidden max-h-full bg-[#020202]">
-      {/* Floating Breakout Leave Button */}
-      {isInBreakout && onReturnToMain && (
-        <div className="absolute top-8 right-8 z-[50]">
-          <button
-            onClick={onReturnToMain}
-            className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-indigo-500/10 hover:bg-indigo-500/20 text-indigo-400 border border-indigo-500/20 backdrop-blur-3xl transition-all shadow-2xl group active:scale-95"
-          >
-            <div className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_10px_rgba(129,140,248,0.5)]" />
-            <span className="text-sm font-black tracking-tight">
-              {t('meeting.leave_breakout', 'Rời phòng thảo luận')}
-            </span>
-            <LogOut className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </div>
-      )}
+
 
       <AnimatePresence>
         {showEndConfirmation && (
@@ -652,33 +641,44 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
         <div className="flex items-center gap-3">
           {isOrganizer && (
             <>
-              <button
-                onClick={isRecording ? stopRecording : startRecording}
-                className={`px-5 py-3 rounded-2xl flex items-center gap-2.5 font-semibold text-sm transition-all tracking-tight active:scale-95 border ${
-                  isRecording
-                    ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
-                    : "bg-white/5 border-white/10 hover:bg-white/10 text-white/80"
-                }`}
-              >
-                {isRecording ? (
-                  <>
-                    <Radio className="h-4 w-4 animate-pulse text-cyan-400" />
-                    <span>Dừng trợ lý ghi chép</span>
-                  </>
-                ) : (
-                  <>
-                    <Mic className="h-4 w-4 text-white/60" />
-                    <span>Trợ lý ghi chép AI</span>
-                  </>
-                )}
-              </button>
+              {!isInBreakout && (
+                <button
+                  onClick={isRecording ? stopRecording : startRecording}
+                  className={`px-5 py-3 rounded-2xl flex items-center gap-2.5 font-semibold text-sm transition-all tracking-tight active:scale-95 border ${
+                    isRecording
+                      ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
+                      : "bg-white/5 border-white/10 hover:bg-white/10 text-white/80"
+                  }`}
+                >
+                  {isRecording ? (
+                    <>
+                      <Radio className="h-4 w-4 animate-pulse text-cyan-400" />
+                      <span>Dừng trợ lý ghi chép</span>
+                    </>
+                  ) : (
+                    <>
+                      <Mic className="h-4 w-4 text-white/60" />
+                      <span>Trợ lý ghi chép AI</span>
+                    </>
+                  )}
+                </button>
+              )}
               <button
                 onClick={() => setShowEndConfirmation(true)}
-                className="px-6 py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-medium transition-all shadow-lg shadow-rose-500/20"
+                className="px-6 py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-sm transition-all shadow-lg shadow-rose-500/20 active:scale-95"
               >
                 {t("meeting.end_session")}
               </button>
             </>
+          )}
+          {isInBreakout && onReturnToMain && (
+            <button
+              onClick={onReturnToMain}
+              className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2 active:scale-95"
+            >
+              <span>{t('meeting.leave_breakout', 'Rời phòng thảo luận')}</span>
+              <LogOut className="h-4 w-4" />
+            </button>
           )}
         </div>
       </div>

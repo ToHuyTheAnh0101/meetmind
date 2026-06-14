@@ -46,6 +46,7 @@ interface MeetingSidebarProps {
   onJoinBreakoutAsHost?: (roomId: string) => void;
   currentRoomName?: string;
   isInBreakout: boolean;
+  breakoutRoomId?: string;
   hasUnreadPolls?: boolean;
   hasUnreadQA?: boolean;
   hasWaitingLobby?: boolean;
@@ -70,6 +71,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   onJoinBreakoutAsHost,
   currentRoomName,
   isInBreakout,
+  breakoutRoomId,
   hasUnreadPolls,
   hasUnreadQA,
   hasWaitingLobby,
@@ -151,7 +153,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
 
             {/* Tab Body */}
             <div className="flex-1 overflow-hidden flex flex-col bg-slate-900/30">
-              {activeTab === 'chat' && <CustomChat meetingId={meetingId} isInBreakout={isInBreakout} />}
+              {activeTab === 'chat' && <CustomChat meetingId={meetingId} isInBreakout={isInBreakout} breakoutRoomId={breakoutRoomId} />}
               {activeTab === 'roster' && (
                 <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col">
                    <CustomParticipantList organizerId={organizerId} />
@@ -174,6 +176,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                    canManagePolls={canManagePolls} 
                    onOpenCreateModal={onOpenCreateModal}
                    isInBreakout={isInBreakout}
+                   breakoutRoomId={breakoutRoomId}
                  />
               )}
               {activeTab === 'qa' && (
@@ -183,6 +186,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                   hasManagePrivilege={canManageQA} 
                   onOpenQuestionModal={onOpenQuestionModal}
                   isInBreakout={isInBreakout}
+                  breakoutRoomId={breakoutRoomId}
                 />
               )}
               {activeTab === 'attachments' && (

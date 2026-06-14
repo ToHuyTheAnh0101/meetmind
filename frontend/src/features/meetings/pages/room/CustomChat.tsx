@@ -1,8 +1,9 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useChat } from '@livekit/components-react';
+import { useChat, useLocalParticipant } from '@livekit/components-react';
 import { MessageSquare, Send } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
+import { useAuth } from '@/features/auth/AuthContext';
 
 interface SavedMessage {
   id: string;
@@ -28,10 +29,13 @@ interface DbChatMessage {
 interface CustomChatProps {
   meetingId: string;
   isInBreakout?: boolean;
+  breakoutRoomId?: string;
 }
 
-const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout }) => {
+const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout, breakoutRoomId }) => {
   const { t } = useTranslation();
+  const { localParticipant } = useLocalParticipant();
+  const { user } = useAuth();
   const { chatMessages, send } = useChat();
   const [input, setInput] = useState('');
   const lastMessageRef = useRef<HTMLDivElement>(null);
@@ -48,8 +52,8 @@ const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout }) => {
     try {
       const params: Record<string, string> = {};
       if (isInBreakout) {
-        // The backend derives breakoutRoomId from the participant assignment
-        params.breakoutRoomId = 'current';
+        // The backend derives breakoutRoomId from the participant assignment or uses specific room ID
+        params.breakoutRoomId = breakoutRoomId || 'current';
       }
       const res = await apiClient.get(`/meetings/${meetingId}/chat-messages`, { params });
       const dbMessages: DbChatMessage[] = res.data;
@@ -62,7 +66,7 @@ const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout }) => {
           identity: m.senderUserId,
           name: m.senderName,
           metadata: m.senderAvatar ? JSON.stringify({ avatar: m.senderAvatar }) : undefined,
-          isLocal: false, // History messages are never "local" in rendering
+          isLocal: m.senderUserId === user?.id || m.senderUserId === localParticipant.identity,
         },
       }));
 
@@ -72,7 +76,7 @@ const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout }) => {
     } finally {
       setIsLoadingHistory(false);
     }
-  }, [meetingId, isInBreakout]);
+  }, [meetingId, isInBreakout, breakoutRoomId, user?.id, localParticipant.identity]);
 
   useEffect(() => {
     loadHistory();
@@ -92,7 +96,7 @@ const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout }) => {
               identity: msg.from.identity,
               name: msg.from.name,
               metadata: msg.from.metadata,
-              isLocal: msg.from.isLocal,
+              isLocal: msg.from.isLocal || msg.from.identity === user?.id,
             }
           : undefined,
       }));
@@ -107,7 +111,7 @@ const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout }) => {
       merged.sort((a, b) => a.timestamp - b.timestamp);
       return merged;
     });
-  }, [chatMessages]);
+  }, [chatMessages, user?.id]);
 
   useEffect(() => {
     lastMessageRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -133,7 +137,7 @@ const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout }) => {
     apiClient
       .post(`/meetings/${meetingId}/chat-messages`, { 
         message: trimmed,
-        breakoutRoomId: isInBreakout ? 'current' : undefined,
+        breakoutRoomId: isInBreakout ? (breakoutRoomId || 'current') : undefined,
       })
       .catch((err) => console.error('[CustomChat] Failed to save message to DB', err));
   };

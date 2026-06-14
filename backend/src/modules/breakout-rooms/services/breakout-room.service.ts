@@ -233,6 +233,7 @@ export class BreakoutRoomService {
       roomName: room.name,
       livekitRoomName: room.livekitRoomName,
       isBreakoutRoom: true,
+      roomId: room.id,
     };
   }
 
@@ -294,6 +295,7 @@ export class BreakoutRoomService {
       roomName: room.name,
       livekitRoomName: room.livekitRoomName,
       isBreakoutRoom: true,
+      roomId: room.id,
     };
   }
 

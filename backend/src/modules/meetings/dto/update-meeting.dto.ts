@@ -66,4 +66,8 @@ export class UpdateMeetingDto {
   @IsString()
   @IsOptional()
   templateId?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  aiActivated?: boolean;
 }

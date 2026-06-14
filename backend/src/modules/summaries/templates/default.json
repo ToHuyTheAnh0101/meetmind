@@ -1,0 +1,45 @@
+{
+  "name": "Mẫu mặc định (Standard)",
+  "description": "Mẫu tóm tắt cơ bản cho mọi loại cuộc họp, bao gồm Tổng quan, Các chủ đề thảo luận chính, Quyết định và Hành động tiếp theo.",
+  "purpose": "custom",
+  "summaryStyle": "detailed",
+  "globalRules": "Không bị ảo giác hóa, chỉ trích xuất những thông tin có thực tế trong đoạn transcript cuộc họp. Nếu bất kỳ mục nào hoàn toàn không được thảo luận hoặc không có thông tin, hãy ghi rõ 'Không được đề cập trong cuộc họp'.",
+  "sections": [
+    {
+      "name": "overview",
+      "label": "Tổng quan cuộc họp",
+      "blockType": "executive_summary",
+      "description": "Tóm tắt ngắn gọn mục đích và không khí cuộc họp",
+      "aiInstructions": "Tóm tắt ngắn gọn mục đích chính, những người tham gia chính và bầu không khí chung của cuộc họp.",
+      "placeholders": "[Tóm tắt tổng quan về cuộc họp]",
+      "order": 1
+    },
+    {
+      "name": "topics",
+      "label": "Các chủ đề thảo luận chính",
+      "blockType": "custom",
+      "description": "Nội dung chi tiết thảo luận từng phần trong cuộc họp",
+      "aiInstructions": "Liệt kê và phân tích ngắn gọn các chủ đề chính được thảo luận trong cuộc họp.",
+      "placeholders": "- **[Chủ đề 1]**: [Tóm tắt nội dung thảo luận thảo luận]\n- **[Chủ đề 2]**: [Tóm tắt nội dung thảo luận thảo luận]",
+      "order": 2
+    },
+    {
+      "name": "decisions",
+      "label": "Quyết định quan trọng",
+      "blockType": "decisions",
+      "description": "Các quyết định đã được thống nhất",
+      "aiInstructions": "Trích xuất toàn bộ các quyết định lớn nhỏ đã được thống nhất bởi các thành viên.",
+      "placeholders": "- [Quyết định 1]\n- [Quyết định 2]",
+      "order": 3
+    },
+    {
+      "name": "action_items",
+      "label": "Hành động tiếp theo (Action Items)",
+      "blockType": "action_items",
+      "description": "Công việc cần làm, người phụ trách và thời hạn nếu có",
+      "aiInstructions": "Trích xuất danh sách các việc cần làm tiếp theo dưới dạng hộp kiểm (checkbox), kèm theo tên người phụ trách và thời hạn hoàn thành.",
+      "placeholders": "- [ ] [Công việc 1] - Phụ trách: [Tên người] - Hạn: [Thời gian]",
+      "order": 4
+    }
+  ]
+}

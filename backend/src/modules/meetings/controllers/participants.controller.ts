@@ -10,11 +10,18 @@ import {
   Query,
   HttpCode,
   HttpStatus,
+  Sse,
+  MessageEvent,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
-import { ParticipantsService } from '../services/participants.service';
+import {
+  ParticipantsService,
+  LobbyEvent,
+} from '../services/participants.service';
 import { JoinMeetingDto } from '../dto/join-meeting.dto';
 import { MeetingPermission } from '../entities';
+import { Observable, concat, of } from 'rxjs';
+import { filter, map } from 'rxjs/operators';
 
 @Controller('meetings')
 export class ParticipantsController {
@@ -112,5 +119,50 @@ export class ParticipantsController {
       dto.permissions,
       req.user.id,
     );
+  }
+
+  @Sse(':id/lobby/sse')
+  @UseGuards(JwtAuthGuard)
+  streamLobbyUpdates(@Param('id') id: string): Observable<MessageEvent> {
+    return this.participantsService.getLobbyEventsObservable().pipe(
+      filter(
+        (event: LobbyEvent) =>
+          event.meetingId === id && event.type === 'lobby_updated',
+      ),
+      map(() => ({ data: { type: 'lobby_updated' } }) as MessageEvent),
+    );
+  }
+
+  @Sse(':id/participants/status-sse')
+  @UseGuards(JwtAuthGuard)
+  async streamParticipantStatus(
+    @Param('id') id: string,
+    @Request() req: { user: { id: string } },
+  ): Promise<Observable<MessageEvent>> {
+    const currentStatus = await this.participantsService.getParticipantStatus(
+      id,
+      req.user.id,
+    );
+
+    const initialEvent: MessageEvent = {
+      data: { type: 'status_updated', status: currentStatus },
+    };
+
+    const stream$ = this.participantsService.getLobbyEventsObservable().pipe(
+      filter(
+        (event: LobbyEvent) =>
+          event.meetingId === id &&
+          event.userId === req.user.id &&
+          event.type === 'status_updated',
+      ),
+      map(
+        (event: LobbyEvent) =>
+          ({
+            data: { type: 'status_updated', status: event.status },
+          }) as MessageEvent,
+      ),
+    );
+
+    return concat(of(initialEvent), stream$);
   }
 }

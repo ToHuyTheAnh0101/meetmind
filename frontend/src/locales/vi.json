@@ -238,7 +238,11 @@
         "status": "Trạng thái",
         "duration": "Thời lượng",
         "reason": "Lý do",
-        "roomName": "Phòng"
+        "roomName": "Phòng",
+        "roomNames": "Các phòng thảo luận",
+        "roomsCount": "Số lượng phòng",
+        "targetName": "Tên thành viên",
+        "targetEmail": "Email thành viên"
       },
       "title": "Nhật Ký Cuộc Họp",
       "subtitle": "Dòng thời gian hoạt động trong phiên",

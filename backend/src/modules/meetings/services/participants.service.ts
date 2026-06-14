@@ -7,6 +7,14 @@ import {
   UnauthorizedException,
   Logger,
 } from '@nestjs/common';
+import { Subject } from 'rxjs';
+
+export interface LobbyEvent {
+  meetingId: string;
+  type: 'lobby_updated' | 'status_updated';
+  userId?: string;
+  status?: string;
+}
 import { ConfigService } from '@nestjs/config';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
@@ -35,6 +43,26 @@ import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
 @Injectable()
 export class ParticipantsService {
   private readonly logger = new Logger(ParticipantsService.name);
+  private readonly lobbyEvents$ = new Subject<LobbyEvent>();
+
+  getLobbyEventsObservable() {
+    return this.lobbyEvents$.asObservable();
+  }
+
+  emitLobbyEvent(event: LobbyEvent) {
+    this.lobbyEvents$.next(event);
+  }
+
+  async getParticipantStatus(
+    meetingId: string,
+    userId: string,
+  ): Promise<string> {
+    const participant = await this.participantsRepository.findByMeetingAndUser(
+      meetingId,
+      userId,
+    );
+    return participant?.status || 'none';
+  }
 
   constructor(
     private readonly participantsRepository: ParticipantRepository,
@@ -157,6 +185,12 @@ export class ParticipantsService {
 
       // If user is WAITING or DENIED, do not generate token
       if (!participant || participant.status !== ParticipantStatus.ADMITTED) {
+        if (participant?.status === ParticipantStatus.WAITING) {
+          this.emitLobbyEvent({
+            meetingId: id,
+            type: 'lobby_updated',
+          });
+        }
         return {
           meetingId: meeting.id,
           organizerId: meeting.organizerId,
@@ -256,6 +290,17 @@ export class ParticipantsService {
     participant.isInMeeting = true;
     await this.participantsRepository.save(participant);
 
+    this.emitLobbyEvent({
+      meetingId: id,
+      type: 'status_updated',
+      userId,
+      status: ParticipantStatus.ADMITTED,
+    });
+    this.emitLobbyEvent({
+      meetingId: id,
+      type: 'lobby_updated',
+    });
+
     const targetUser = await this.usersService.findById(userId);
     await this.logMeetLog(id, LogType.PARTICIPANT_ADMITTED, hostId, {
       targetUserId: userId,
@@ -290,6 +335,17 @@ export class ParticipantsService {
 
     participant.status = ParticipantStatus.DENIED;
     await this.participantsRepository.save(participant);
+
+    this.emitLobbyEvent({
+      meetingId: id,
+      type: 'status_updated',
+      userId,
+      status: ParticipantStatus.DENIED,
+    });
+    this.emitLobbyEvent({
+      meetingId: id,
+      type: 'lobby_updated',
+    });
   }
 
   async leaveMeeting(id: string, userId: string): Promise<void> {
@@ -303,6 +359,10 @@ export class ParticipantsService {
       // If user cancels or leaves the lobby before ever being admitted, delete the record
       // to keep the database and host's lobby display clean.
       await this.participantsRepository.remove(participant);
+      this.emitLobbyEvent({
+        meetingId: id,
+        type: 'lobby_updated',
+      });
       return;
     }
 

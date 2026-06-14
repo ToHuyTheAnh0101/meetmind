@@ -20,6 +20,7 @@ async function main() {
   // 2. Read and insert corrected system templates in NFC form
   const dir = "/home/theanh/meetmind/backend/src/modules/summaries/templates";
   const files = [
+    "default.json",
     "project-discussion.json",
     "brainstorming.json",
     "retrospective.json",

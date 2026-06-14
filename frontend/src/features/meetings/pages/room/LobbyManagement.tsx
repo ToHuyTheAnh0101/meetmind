@@ -10,7 +10,7 @@ interface LobbyManagementProps {
   enabled?: boolean;
 }
 
-const LobbyManagement: React.FC<LobbyManagementProps> = ({ meetingId, enabled }) => {
+const LobbyManagement: React.FC<LobbyManagementProps> = ({ meetingId }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
@@ -21,8 +21,7 @@ const LobbyManagement: React.FC<LobbyManagementProps> = ({ meetingId, enabled })
       const response = await apiClient.get(`/meetings/${meetingId}/participants`);
       return response.data;
     },
-    // Poll every 5 seconds to catch new waiting users when enabled
-    refetchInterval: typeof enabled === 'boolean' ? (enabled ? 5000 : false) : 5000,
+    refetchInterval: false,
   });
 
   const waitingUsers = participants?.items?.filter(p => p.status === ParticipantStatus.WAITING) || [];

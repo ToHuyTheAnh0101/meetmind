@@ -45,6 +45,7 @@ interface QATabProps {
   hasManagePrivilege: boolean;
   onOpenQuestionModal: (question: Question) => void;
   isInBreakout?: boolean;
+  breakoutRoomId?: string;
 }
 
 const QATab: React.FC<QATabProps> = ({ 
@@ -52,7 +53,8 @@ const QATab: React.FC<QATabProps> = ({
   userId, 
   hasManagePrivilege,
   onOpenQuestionModal,
-  isInBreakout
+  isInBreakout,
+  breakoutRoomId
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -61,11 +63,11 @@ const QATab: React.FC<QATabProps> = ({
 
   // Fetch Questions
   const { data: questions = [] } = useQuery<Question[]>({
-    queryKey: ['questions', meetingId, isInBreakout],
+    queryKey: ['questions', meetingId, isInBreakout, breakoutRoomId],
     queryFn: async () => {
       const params: Record<string, string> = {};
       if (isInBreakout) {
-        params.breakoutRoomId = 'current';
+        params.breakoutRoomId = breakoutRoomId || 'current';
       }
       const response = await apiClient.get(`/meetings/${meetingId}/qa`, { params });
       return response.data;
@@ -88,7 +90,7 @@ const QATab: React.FC<QATabProps> = ({
     mutationFn: async (data: { content: string }) => {
       const payload = {
         ...data,
-        breakoutRoomId: isInBreakout ? 'current' : undefined,
+        breakoutRoomId: isInBreakout ? (breakoutRoomId || 'current') : undefined,
       };
       return apiClient.post(`/meetings/${meetingId}/qa`, payload);
     },

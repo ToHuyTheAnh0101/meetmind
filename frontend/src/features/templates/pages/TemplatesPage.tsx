@@ -170,6 +170,7 @@ const TemplatesPage: React.FC = () => {
 
   const handleOpenCreateForm = () => {
     setFormMode("new");
+    setSelectedTemplateId(null);
     setFormName("");
     setFormDesc("");
     setFormPurpose(SummaryTemplatePurpose.CUSTOM);

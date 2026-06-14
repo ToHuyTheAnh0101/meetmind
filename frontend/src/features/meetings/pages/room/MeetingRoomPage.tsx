@@ -19,6 +19,7 @@ import { useTranslation } from "react-i18next";
 
 import apiClient from "@/lib/apiClient";
 import { useAuth } from "@/features/auth/AuthContext";
+import { getToken } from "@/lib/tokenStorage";
 
 // Sub-components
 import MeetingLobby from "./MeetingLobby";
@@ -128,42 +129,53 @@ const MeetingRoomPage: React.FC = () => {
     return joinData?.organizerId || meetingDetails?.organizerId || "";
   }, [joinData, meetingDetails]);
 
+  // Poll participants to detect waiting users in the lobby and show live lobby avatars
+  const { data: participantsData } = useQuery<any>({
+    queryKey: ["meeting-participants", id],
+    queryFn: async () => {
+      const response = await apiClient.get(`/meetings/${id}/participants`);
+      return response.data;
+    },
+    enabled: !!id,
+    refetchInterval: false,
+  });
+
   const isOrganizer = useMemo(() => {
     if (user && organizerId) return organizerId === user.id;
     return false;
   }, [organizerId, user]);
 
+  const currentParticipant = useMemo(() => {
+    if (!participantsData?.items || !user) return null;
+    return participantsData.items.find(
+      (part: any) => part.userId === user.id || part.user?.id === user.id,
+    );
+  }, [participantsData, user]);
+
   const canManagePolls = useMemo(() => {
-    if (!joinData || !user) return false;
-    const p = joinData.participants.find(
-      (part: any) => part.id === user.id || part.userId === user.id,
-    );
+    if (isOrganizer) return true;
+    const p = currentParticipant;
     return (
-      p?.isOrganizer ||
       p?.permissions?.includes("manage_polls") ||
-      p?.permissions?.includes("co_host")
+      p?.permissions?.includes("co_host") ||
+      false
     );
-  }, [joinData, user]);
+  }, [isOrganizer, currentParticipant]);
 
   const canManageQA = useMemo(() => {
-    if (!joinData || !user) return false;
-    const p = joinData.participants.find(
-      (part: any) => part.id === user.id || part.userId === user.id,
-    );
+    if (isOrganizer) return true;
+    const p = currentParticipant;
     return (
-      p?.isOrganizer ||
       p?.permissions?.includes("manage_qa") ||
-      p?.permissions?.includes("co_host")
+      p?.permissions?.includes("co_host") ||
+      false
     );
-  }, [joinData, user]);
+  }, [isOrganizer, currentParticipant]);
 
   const isCoHost = useMemo(() => {
-    if (!joinData || !user) return false;
-    const p = joinData.participants.find(
-      (part: any) => part.id === user.id || part.userId === user.id,
-    );
-    return p?.permissions?.includes("co_host");
-  }, [joinData, user]);
+    const p = currentParticipant;
+    return p?.permissions?.includes("co_host") || false;
+  }, [currentParticipant]);
 
   const isPasswordError = useMemo(() => {
     return (
@@ -183,19 +195,35 @@ const MeetingRoomPage: React.FC = () => {
     enabled: !!id && (isQuestionModalOpen || activeTab === "qa"),
   });
 
-  // Poll participants to detect waiting users in the lobby and show live lobby avatars
-  const { data: participantsData } = useQuery<any>({
-    queryKey: ["meeting-participants", id],
-    queryFn: async () => {
-      const response = await apiClient.get(`/meetings/${id}/participants`);
-      return response.data;
-    },
-    enabled: !!id,
-    refetchInterval:
-      (isOrganizer || isCoHost || !joinData)
-        ? 5000
-        : false,
-  });
+  // Listen to Server-Sent Events (SSE) for lobby updates (for Host/Co-host)
+  useEffect(() => {
+    if (!id || (!isOrganizer && !isCoHost)) return;
+
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+    const token = getToken() || "";
+    const eventSource = new EventSource(
+      `${apiBaseUrl}/meetings/${id}/lobby/sse?token=${encodeURIComponent(token)}`
+    );
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "lobby_updated") {
+          queryClient.invalidateQueries({ queryKey: ["meeting-participants", id] });
+        }
+      } catch (err) {
+        console.error("Error parsing lobby SSE event in MeetingRoomPage", err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("Lobby SSE connection error in MeetingRoomPage", err);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [id, isOrganizer, isCoHost, queryClient]);
 
   const hasWaitingLobby = useMemo(() => {
     if (!participantsData?.items) return false;
@@ -483,29 +511,59 @@ const MeetingRoomPage: React.FC = () => {
   }, [id, fetchMeetingDetails, queryClient]);
 
   useEffect(() => {
-    let interval: NodeJS.Timeout;
-    if (isWaitingInLobby && id) {
-      interval = setInterval(async () => {
-        try {
-          const response = await apiClient.post<JoinResponse>(
-            `/meetings/${id}/join`,
-            { password },
-            { _skipLogout: true } as any,
-          );
-          if (
-            response.data.status === "admitted" ||
-            response.data.status === "active"
-          ) {
-            setIsWaitingInLobby(false);
-            setJoinData(response.data);
-          }
-        } catch (err) {
-          console.error("Polling for admittance failed", err);
+    if (!isWaitingInLobby || !id) return;
+
+    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+    const token = getToken() || "";
+    const eventSource = new EventSource(
+      `${apiBaseUrl}/meetings/${id}/participants/status-sse?token=${encodeURIComponent(token)}`
+    );
+
+    const checkAndJoin = async () => {
+      try {
+        const response = await apiClient.post<JoinResponse>(
+          `/meetings/${id}/join`,
+          { password },
+          { _skipLogout: true } as any,
+        );
+        if (
+          response.data.status === "admitted" ||
+          response.data.status === "active"
+        ) {
+          setIsWaitingInLobby(false);
+          setJoinData(response.data);
         }
-      }, 5000);
-    }
-    return () => clearInterval(interval);
-  }, [isWaitingInLobby, id, password]);
+      } catch (err) {
+        console.error("Failed to automatically join after SSE admittance notification", err);
+      }
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        if (data.type === "status_updated") {
+          if (data.status === "admitted") {
+            eventSource.close();
+            checkAndJoin();
+          } else if (data.status === "denied") {
+            eventSource.close();
+            setIsWaitingInLobby(false);
+            setError(t("meeting.access_denied"));
+          }
+        }
+      } catch (err) {
+        console.error("Error parsing status SSE event", err);
+      }
+    };
+
+    eventSource.onerror = (err) => {
+      console.error("Status SSE connection error", err);
+    };
+
+    return () => {
+      eventSource.close();
+    };
+  }, [isWaitingInLobby, id, password, t]);
 
   useEffect(() => {
     let activeTrack: LocalVideoTrack | null = null;
@@ -730,6 +788,7 @@ const MeetingRoomPage: React.FC = () => {
             onJoinBreakoutAsHost={handleJoinBreakoutAsHost}
             currentRoomName={joinData?.room}
             isInBreakout={isInBreakout}
+            breakoutRoomId={joinData?.breakoutRoomId}
           />
         </LayoutContextProvider>
         <PollModal
@@ -737,6 +796,7 @@ const MeetingRoomPage: React.FC = () => {
           onClose={handleClosePollModal}
           meetingId={joinData.meetingId}
           isInBreakout={isInBreakout}
+          breakoutRoomId={joinData?.breakoutRoomId}
         />
         <BreakoutModalWrapper
           isOpen={isBreakoutModalOpen}

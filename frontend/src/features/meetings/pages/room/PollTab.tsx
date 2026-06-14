@@ -45,6 +45,7 @@ interface PollTabProps {
   canManagePolls: boolean;
   onOpenCreateModal: () => void;
   isInBreakout?: boolean;
+  breakoutRoomId?: string;
 }
 
 // ─── Voter Avatar Stack ────────────────────────────────────────────────────────
@@ -125,7 +126,7 @@ const VoterDetailModal: React.FC<{
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+        className="fixed inset-0 z-[1000] flex items-center justify-center p-4"
         onClick={onClose}
       >
         {/* Backdrop */}
@@ -385,6 +386,7 @@ const PollTab: React.FC<PollTabProps> = ({
   canManagePolls,
   onOpenCreateModal,
   isInBreakout,
+  breakoutRoomId,
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -392,11 +394,11 @@ const PollTab: React.FC<PollTabProps> = ({
 
   // Fetch Polls
   const { data: polls = [] } = useQuery<Poll[]>({
-    queryKey: ['polls', meetingId, isInBreakout],
+    queryKey: ['polls', meetingId, isInBreakout, breakoutRoomId],
     queryFn: async () => {
       const params: Record<string, string> = {};
       if (isInBreakout) {
-        params.breakoutRoomId = 'current';
+        params.breakoutRoomId = breakoutRoomId || 'current';
       }
       const response = await apiClient.get(`/meetings/${meetingId}/polls`, { params });
       return response.data;

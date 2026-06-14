@@ -14,9 +14,10 @@ interface PollModalProps {
   onClose: () => void;
   meetingId: string;
   isInBreakout?: boolean;
+  breakoutRoomId?: string;
 }
 
-const PollModal: React.FC<PollModalProps> = ({ isOpen, onClose, meetingId, isInBreakout }) => {
+const PollModal: React.FC<PollModalProps> = ({ isOpen, onClose, meetingId, isInBreakout, breakoutRoomId }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
 
@@ -63,6 +64,7 @@ const PollModal: React.FC<PollModalProps> = ({ isOpen, onClose, meetingId, isInB
                 meetingId={meetingId} 
                 onClose={onClose}
                 isInBreakout={isInBreakout}
+                breakoutRoomId={breakoutRoomId}
                 onSuccess={() => {
                   queryClient.invalidateQueries({ queryKey: ['polls', meetingId] });
                   onClose();
@@ -81,7 +83,8 @@ const CreatePollForm: React.FC<{
   onClose: () => void;
   onSuccess: () => void;
   isInBreakout?: boolean;
-}> = ({ meetingId, onClose, onSuccess, isInBreakout }) => {
+  breakoutRoomId?: string;
+}> = ({ meetingId, onClose, onSuccess, isInBreakout, breakoutRoomId }) => {
   const { t } = useTranslation();
   const { send } = useDataChannel();
   const [question, setQuestion] = useState('');
@@ -96,7 +99,7 @@ const CreatePollForm: React.FC<{
         options: options
           .filter(opt => opt.trim())
           .map((text, idx) => ({ id: `opt-${idx}`, text })),
-        breakoutRoomId: isInBreakout ? 'current' : undefined,
+        breakoutRoomId: isInBreakout ? (breakoutRoomId || 'current') : undefined,
       };
       return apiClient.post(`/meetings/${meetingId}/polls`, payload);
     },
