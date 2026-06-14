@@ -42,6 +42,8 @@ services:
         fromDatabase:
           name: meetmind-db
           property: database
+      - key: DB_SYNCHRONIZE
+        value: "true"
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_EXPIRATION

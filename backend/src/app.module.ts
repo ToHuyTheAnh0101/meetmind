@@ -37,7 +37,9 @@ import { ScheduleModule } from '@nestjs/schedule';
         password: configService.get('DB_PASSWORD'),
         database: configService.get('DB_NAME'),
         entities: [__dirname + '/modules/**/*.entity{.ts,.js}'],
-        synchronize: configService.get('NODE_ENV') !== 'production',
+        synchronize:
+          configService.get('NODE_ENV') !== 'production' ||
+          configService.get('DB_SYNCHRONIZE') === 'true',
         logging: configService.get('NODE_ENV') === 'development',
       }),
     }),

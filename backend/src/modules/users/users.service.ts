@@ -37,14 +37,26 @@ export class UsersService {
     let user = await this.findByGoogleId(profile.id);
 
     if (!user) {
-      user = await this.createUser({
-        googleId: profile.id,
-        email: profile.email,
-        firstName: profile.given_name || 'User',
-        lastName: profile.family_name || '',
-        picture: profile.picture,
-        isActive: true,
-      });
+      // Check if user with this email already exists
+      user = await this.findByEmail(profile.email);
+      if (user) {
+        // Link Google ID to existing account
+        user.googleId = profile.id;
+        if (profile.picture && !user.picture) {
+          user.picture = profile.picture;
+        }
+        user = await this.usersRepository.save(user);
+      } else {
+        // Create new user if not found by Google ID or email
+        user = await this.createUser({
+          googleId: profile.id,
+          email: profile.email,
+          firstName: profile.given_name || 'User',
+          lastName: profile.family_name || '',
+          picture: profile.picture,
+          isActive: true,
+        });
+      }
     }
 
     return user;
