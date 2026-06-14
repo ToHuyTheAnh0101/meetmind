@@ -548,52 +548,75 @@ const TemplatesPage: React.FC = () => {
           </div>
 
           <div className="space-y-8">
-            {/* Top Row: Full-width Basic Info */}
-            <TemplateFormBasicInfo
-              formName={formName}
-              setFormName={setFormName}
-              formPurpose={formPurpose}
-              setFormPurpose={setFormPurpose}
-              formStyle={formStyle}
-              setFormStyle={setFormStyle}
-              formDesc={formDesc}
-              setFormDesc={setFormDesc}
-              formGlobalRules={formGlobalRules}
-              setFormGlobalRules={setFormGlobalRules}
-              isFormPurposeOpen={isFormPurposeOpen}
-              setIsFormPurposeOpen={setIsFormPurposeOpen}
-              isFormStyleOpen={isFormStyleOpen}
-              setIsFormStyleOpen={setIsFormStyleOpen}
-              isVi={isVi}
-              isSystem={!!selectedTemplate?.isSystem}
-            />
+            {/* Top Row: Full-width Basic Info (Only for editable custom templates) */}
+            {!selectedTemplate?.isSystem && (
+              <TemplateFormBasicInfo
+                formName={formName}
+                setFormName={setFormName}
+                formPurpose={formPurpose}
+                setFormPurpose={setFormPurpose}
+                formStyle={formStyle}
+                setFormStyle={setFormStyle}
+                formDesc={formDesc}
+                setFormDesc={setFormDesc}
+                formGlobalRules={formGlobalRules}
+                setFormGlobalRules={setFormGlobalRules}
+                isFormPurposeOpen={isFormPurposeOpen}
+                setIsFormPurposeOpen={setIsFormPurposeOpen}
+                isFormStyleOpen={isFormStyleOpen}
+                setIsFormStyleOpen={setIsFormStyleOpen}
+                isVi={isVi}
+                isSystem={false}
+              />
+            )}
 
             {/* Bottom Row: Two-Column Editor & Preview */}
             <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
-              {/* Left Column: Block Editor */}
+              {/* Left Column: Block Editor (for custom template) OR Basic Info (for system template) */}
               <div className="xl:col-span-5 space-y-6">
-                <TemplateBlockEditor
-                  editingSecName={editingSecName}
-                  setEditingSecName={setEditingSecName}
-                  secBuilderError={secBuilderError}
-                  newSecBlockType={newSecBlockType}
-                  setNewSecBlockType={setNewSecBlockType}
-                  newSecLabel={newSecLabel}
-                  setNewSecLabel={setNewSecLabel}
-                  newSecPlaceholders={newSecPlaceholders}
-                  newSecAiInstructions={newSecAiInstructions}
-                  setNewSecAiInstructions={setNewSecAiInstructions}
-                  isNewSecBlockTypeOpen={isNewSecBlockTypeOpen}
-                  setIsNewSecBlockTypeOpen={setIsNewSecBlockTypeOpen}
-                  handleSelectPredefinedBlock={handleSelectPredefinedBlock}
-                  handleInsertPlaceholder={handleInsertPlaceholder}
-                  handleAddOrUpdateSection={handleAddOrUpdateSection}
-                  renderCompiledBlock={renderCompiledBlock}
-                  selectedTemplate={selectedTemplate}
-                  setNewSecName={setNewSecName}
-                  setNewSecDesc={setNewSecDesc}
-                  setNewSecPlaceholders={setNewSecPlaceholders}
-                />
+                {selectedTemplate?.isSystem ? (
+                  <TemplateFormBasicInfo
+                    formName={formName}
+                    setFormName={setFormName}
+                    formPurpose={formPurpose}
+                    setFormPurpose={setFormPurpose}
+                    formStyle={formStyle}
+                    setFormStyle={setFormStyle}
+                    formDesc={formDesc}
+                    setFormDesc={setFormDesc}
+                    formGlobalRules={formGlobalRules}
+                    setFormGlobalRules={setFormGlobalRules}
+                    isFormPurposeOpen={isFormPurposeOpen}
+                    setIsFormPurposeOpen={setIsFormPurposeOpen}
+                    isFormStyleOpen={isFormStyleOpen}
+                    setIsFormStyleOpen={setIsFormStyleOpen}
+                    isVi={isVi}
+                    isSystem={true}
+                  />
+                ) : (
+                  <TemplateBlockEditor
+                    editingSecName={editingSecName}
+                    setEditingSecName={setEditingSecName}
+                    secBuilderError={secBuilderError}
+                    newSecBlockType={newSecBlockType}
+                    setNewSecBlockType={setNewSecBlockType}
+                    newSecLabel={newSecLabel}
+                    setNewSecLabel={setNewSecLabel}
+                    newSecPlaceholders={newSecPlaceholders}
+                    newSecAiInstructions={newSecAiInstructions}
+                    setNewSecAiInstructions={setNewSecAiInstructions}
+                    isNewSecBlockTypeOpen={isNewSecBlockTypeOpen}
+                    setIsNewSecBlockTypeOpen={setIsNewSecBlockTypeOpen}
+                    handleSelectPredefinedBlock={handleSelectPredefinedBlock}
+                    handleInsertPlaceholder={handleInsertPlaceholder}
+                    handleAddOrUpdateSection={handleAddOrUpdateSection}
+                    renderCompiledBlock={renderCompiledBlock}
+                    selectedTemplate={selectedTemplate}
+                    setNewSecName={setNewSecName}
+                    setNewSecDesc={setNewSecDesc}
+                    setNewSecPlaceholders={setNewSecPlaceholders}
+                  />
+                )}
               </div>
 
               {/* Right Column: Notion-style Realtime Preview with Outline Sidebar */}

@@ -10,6 +10,7 @@ import {
   LiveKitRoom,
   LocalUserChoices,
   LayoutContextProvider,
+  RoomAudioRenderer,
 } from "@livekit/components-react";
 import { LocalVideoTrack, createLocalVideoTrack } from "livekit-client";
 import "@livekit/components-styles";
@@ -735,6 +736,7 @@ const MeetingRoomPage: React.FC = () => {
         data-lk-theme="default"
         className="w-full h-full flex overflow-hidden lg:flex-row flex-col"
       >
+        <RoomAudioRenderer />
         <DataHandler
           meetingId={id!}
           onNotify={() => {
