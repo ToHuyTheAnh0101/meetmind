@@ -11,25 +11,6 @@ services:
     plan: free
     ipAllowList: []
 
-  - type: pserv
-    name: meetmind-whisper
-    plan: starter
-    runtime: image
-    image:
-      url: docker.io/onerahmet/openai-whisper-asr-webservice:latest
-    envVars:
-      - key: ASR_MODEL
-        value: medium
-      - key: ASR_ENGINE
-        value: faster-whisper
-
-  - type: pserv
-    name: meetmind-ollama
-    plan: starter
-    runtime: image
-    image:
-      url: docker.io/ollama/ollama:latest
-
   - type: web
     name: meetmind-backend
     plan: free
@@ -90,9 +71,9 @@ services:
           name: meetmind-redis
           property: port
       - key: CORS_ORIGIN
-        value: https://meetmind-frontend.onrender.com
+        value: https://meetmind-orcin.vercel.app
       - key: FRONTEND_URL
-        value: https://meetmind-frontend.onrender.com
+        value: https://meetmind-orcin.vercel.app
       - key: MAIL_HOST
         value: smtp.gmail.com
       - key: MAIL_PORT
@@ -103,10 +84,10 @@ services:
         sync: false
       - key: MAIL_FROM
         sync: false
-      - key: WHISPER_API_URL
-        value: http://meetmind-whisper:9000
-      - key: OLLAMA_API_URL
-        value: http://meetmind-ollama:11434
-      - key: OLLAMA_MODEL
-        value: qwen2:7b
+      - key: GROQ_API_KEY
+        sync: false
+      - key: GROQ_API_URL
+        value: https://api.groq.com/openai
+      - key: GROQ_CHAT_MODEL
+        value: llama-3.1-8b-instant
   # Frontend is deployed separately (e.g., Vercel); not managed by Render blueprint.
