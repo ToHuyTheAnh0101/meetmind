@@ -32,12 +32,15 @@ export const TemplateListHeader: React.FC<TemplateListHeaderProps> = ({
     <motion.header
       initial={{ opacity: 0, y: -20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="relative overflow-hidden rounded-[2.5rem] border border-white/40 bg-white/70 p-6 shadow-2xl backdrop-blur-xl sm:p-10"
+      className="relative rounded-[2.5rem] border border-white/40 bg-white/70 p-6 shadow-2xl backdrop-blur-xl sm:p-10 z-10"
     >
-      <div className="absolute -right-8 -top-8 h-48 w-48 rounded-full bg-cyan-400/10 blur-3xl" />
-      <div className="absolute -left-8 -bottom-8 h-48 w-48 rounded-full bg-indigo-400/10 blur-3xl" />
+      {/* Decorative Blur Background Container */}
+      <div className="absolute inset-0 rounded-[2.5rem] overflow-hidden pointer-events-none z-0">
+        <div className="absolute -right-8 -top-8 h-48 w-48 rounded-full bg-cyan-400/10 blur-3xl" />
+        <div className="absolute -left-8 -bottom-8 h-48 w-48 rounded-full bg-indigo-400/10 blur-3xl" />
+      </div>
 
-      <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+      <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between z-10">
         <div className="max-w-xl">
           <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
             {t("dashboard.template_list_title_prefix")}{" "}
