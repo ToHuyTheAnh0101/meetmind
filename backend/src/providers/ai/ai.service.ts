@@ -8,6 +8,7 @@ import {
   DEFAULT_SUMMARY_PROMPT,
   compileSummaryTemplatePrompt,
   PromptTemplateInput,
+  CLEAN_TRANSCRIPT_PROMPT,
 } from './prompts';
 import { OllamaEmbeddingService } from './embedding.service';
 
@@ -17,6 +18,16 @@ type TranscriptionSegment = {
   startTime: number;
   endTime: number;
 };
+
+interface GeminiResponse {
+  candidates?: Array<{
+    content?: {
+      parts?: Array<{
+        text?: string;
+      }>;
+    };
+  }>;
+}
 
 /**
  * AI Service — 100% Ollama local (text generation + embedding).
@@ -397,5 +408,52 @@ export class AiService {
       }
     }
     return results.sort((a, b) => a.startTime - b.startTime);
+  }
+
+  async cleanTranscriptChunk(
+    text: string,
+    meetingTitle: string,
+    speakerName?: string,
+  ): Promise<string> {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (!apiKey) {
+      this.logger.warn(
+        'GEMINI_API_KEY is not configured. Skipping transcript cleaning.',
+      );
+      return text;
+    }
+
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const prompt = CLEAN_TRANSCRIPT_PROMPT(text, meetingTitle, speakerName);
+
+    try {
+      const response = await axios.post<GeminiResponse>(
+        url,
+        {
+          contents: [
+            {
+              parts: [{ text: prompt }],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.1,
+          },
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 15000,
+        },
+      );
+
+      const cleanedText =
+        response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      return cleanedText ? cleanedText.trim() : text;
+    } catch (error) {
+      this.logger.error(
+        'Failed to clean transcript chunk using Gemini:',
+        error,
+      );
+      return text;
+    }
   }
 }

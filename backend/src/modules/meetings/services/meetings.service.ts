@@ -963,7 +963,20 @@ export class MeetingsService {
         }
 
         // 4. Lưu trữ TranscriptChunk vào cơ sở dữ liệu với metadata đầy đủ
-        const cleanedTranscript = transcriptText.trim();
+        const cleanedTranscriptText = await this.aiService.cleanTranscriptChunk(
+          transcriptText.trim(),
+          meeting.title || 'Họp MeetMind',
+          speakerName,
+        );
+
+        if (!cleanedTranscriptText || !cleanedTranscriptText.trim()) {
+          this.logger.log(
+            `[Background Clean STT] Cleaned transcript is empty for meeting ${meetingId}`,
+          );
+          return;
+        }
+
+        const cleanedTranscript = cleanedTranscriptText.trim();
         const embedding = await this.aiService.embed(cleanedTranscript);
 
         const chunk = this.transcriptRepository.create({

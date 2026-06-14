@@ -138,3 +138,25 @@ export const DEFAULT_SUMMARY_PROMPT = (title: string, transcript: string) => `
         - LỌC TRÙNG LẶP DO GỐI ĐẦU 5S: Đoạn transcript được tạo bởi các đoạn audio gối đầu 5 giây nên sẽ có các câu nói lặp lại hoặc bị cắt dở ở ranh giới. Hãy tự động đối chiếu và loại bỏ các phần trùng lặp dở dang này, chỉ chọn lọc và tổng hợp từ phiên bản câu nói đầy đủ, rõ nghĩa nhất.
         - Trình bày thật ngắn gọn, súc tích, trực quan và dễ đọc.
       `;
+
+export const CLEAN_TRANSCRIPT_PROMPT = (
+  text: string,
+  meetingTitle: string,
+  speakerName?: string,
+) =>
+  `
+Bạn là trợ lý chuyên làm sạch biên bản cuộc họp công nghệ thông tin.
+Văn bản đầu vào được dịch từ giọng nói STT nên có thể bị lỗi âm học hoặc dịch sai các thuật ngữ tiếng Anh thường dùng (Vietglish).
+Hãy sửa các lỗi chính tả tiếng Việt, khôi phục các thuật ngữ tiếng Anh gốc hay dùng (Ví dụ: "xe màn hình" -> "share màn hình", "chết code" -> "check code", "đề lây" -> "delay", "cháy" -> "chat").
+Lưu ý quan trọng:
+- Không tự ý dịch các thuật ngữ tiếng Anh sang tiếng Việt (giữ nguyên "share", "check", "code", "deploy").
+- Nếu gặp các câu rác do ảo giác STT tạo ra khi im lặng (Ví dụ: "Hãy subscribe cho kênh...", "Cảm ơn các bạn đã theo dõi"), hãy xóa bỏ hoàn toàn.
+- Chỉ trả về văn bản đã làm sạch, không thêm bất kỳ câu giải thích nào khác.
+
+Ngữ cảnh cuộc họp:
+- Tên cuộc họp: "${meetingTitle}"
+${speakerName ? `- Người nói: "${speakerName}"` : ''}
+
+Đoạn văn bản thô cần làm sạch:
+"${text}"
+`.trim();
