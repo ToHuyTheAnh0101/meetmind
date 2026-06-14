@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { MeetingPoll } from '../entities/meeting-poll.entity';
 
 @Injectable()
@@ -17,9 +17,15 @@ export class PollRepository {
     });
   }
 
-  async findByMeetingId(meetingId: string): Promise<MeetingPoll[]> {
+  async findByMeetingId(
+    meetingId: string,
+    breakoutRoomId?: string,
+  ): Promise<MeetingPoll[]> {
     return this.repo.find({
-      where: { meetingId },
+      where: {
+        meetingId,
+        breakoutRoomId: breakoutRoomId || IsNull(),
+      },
       relations: ['createdByUser', 'options', 'options.votes'],
       order: { createdAt: 'DESC' },
     });

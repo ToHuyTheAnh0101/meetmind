@@ -17,7 +17,10 @@
     "participant": "Người tham gia",
     "upvote": "Bình chọn",
     "dismiss": "Bỏ qua",
-    "empty": "Trống"
+    "empty": "Trống",
+    "accept": "Chấp nhận",
+    "manage": "Quản lý",
+    "enter": "Vào"
   },
   "calendar": {
     "days": {
@@ -564,6 +567,38 @@
       "empty_no_summary": "Chọn mẫu tóm tắt và nhấp nút khởi tạo bên dưới để bắt đầu phân tích cuộc họp.",
       "chatbot_agent_subtitle": "Trợ lý AI sẵn sàng trả lời",
       "chatbot_no_ai_warning": "Lưu ý: Cuộc họp này không kích hoạt trợ lý AI. Hỏi đáp có thể không tìm thấy dữ liệu hội thoại."
-    }
+    },
+    "breakout_initializing": "Đang khởi tạo các phòng thảo luận...",
+    "breakout_started_toast": "Đã bắt đầu chia phòng họp nhỏ!",
+    "breakout_start_failed_toast": "Không thể khởi động phòng họp nhỏ",
+    "active_rooms": "Phòng đang hoạt động",
+    "here": "Đang ở đây",
+    "no_participants_yet": "Chưa có người tham gia",
+    "end_breakout_all": "Thu hồi toàn bộ",
+    "breakout_rooms_desc": "Tạo các nhóm thảo luận riêng biệt để tăng hiệu quả làm việc nhóm.",
+    "start_setup": "Bắt đầu thiết lập",
+    "leave_breakout": "Rời phòng thảo luận",
+    "joined_room": "Đã tham gia {{room}}",
+    "connection_success": "Kết nối thành công",
+    "preparing_breakout": "Đang chuẩn bị phòng thảo luận...",
+    "moving_to_room": "Đang di chuyển sang {{room}}...",
+    "cannot_join_breakout": "Không thể chuyển sang phòng thảo luận",
+    "moving_to_main": "Đang di chuyển về phòng chính...",
+    "main_room": "phòng chính",
+    "return_to_main_error": "Lỗi khi quay lại phòng chính",
+    "screenshare_of": "Màn hình của",
+    "loading_chat_history": "Đang tải lịch sử tin nhắn...",
+    "recording": {
+      "mic_permission_error": "Không thể bắt đầu ghi âm. Vui lòng cấp quyền micro.",
+      "ai_paused": "Đã tạm dừng trợ lý ghi chép AI.",
+      "transcription_paused": "Đã tạm dừng ghi âm dịch thoại.",
+      "ai_activated": "Đã kích hoạt trợ lý ghi chép AI!",
+      "transcription_activated": "Hệ thống tự động ghi âm để dịch thoại.",
+      "ai_start_failed": "Không thể bắt đầu trợ lý AI."
+    },
+    "end_breakout_success": "Đã kết thúc thảo luận nhóm",
+    "end_breakout_failed": "Không thể kết thúc chia phòng",
+    "end_breakout_title": "Kết thúc thảo luận",
+    "end_breakout_message": "Bạn có chắc chắn muốn kết thúc tất cả các phòng thảo luận và thu hồi mọi người về phòng chính ngay bây giờ không?"
   }
 }

@@ -1,5 +1,6 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import apiClient from "@/lib/apiClient";
 import { showSuccessToast, showErrorToast } from "@/lib/toastUtils";
 
@@ -15,8 +16,12 @@ export interface JoinResponse {
 }
 
 export const useBreakoutRoom = (meetingId: string | undefined, userId: string | undefined) => {
+  const { t } = useTranslation();
   const [joinData, setJoinData] = useState<JoinResponse | null>(null);
   const [originalJoinData, setOriginalJoinData] = useState<JoinResponse | null>(null);
+  const [isTransitioning, setIsTransitioning] = useState(false);
+  const [transitionTarget, setTransitionTarget] = useState("");
+  const loadingToastIdRef = useRef<string | undefined>(undefined);
 
   // Keep track of the original main room join data
   useEffect(() => {
@@ -24,6 +29,22 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
       setOriginalJoinData(joinData);
     }
   }, [joinData, originalJoinData]);
+
+  const handleConnected = useCallback(() => {
+    if (isTransitioning) {
+      if (loadingToastIdRef.current) {
+        toast.dismiss(loadingToastIdRef.current);
+        loadingToastIdRef.current = undefined;
+      }
+      showSuccessToast(
+        transitionTarget 
+          ? t('meeting.joined_room', 'Đã tham gia {{room}}', { room: transitionTarget }) 
+          : t('meeting.connection_success', 'Kết nối thành công'),
+        transitionTarget === t('meeting.main_room', 'phòng chính') ? "🏠" : "🚪"
+      );
+      setIsTransitioning(false);
+    }
+  }, [isTransitioning, transitionTarget, t]);
 
   const handleBreakoutStarted = useCallback(
     async (e?: any) => {
@@ -34,7 +55,6 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
         e?.detail || "Manual/Mount check",
       );
 
-      // If it's a real-time event, check if the current user is assigned first
       if (isEvent && e.detail?.assignments) {
         const assignments = e.detail.assignments;
         const isAssigned = assignments.some(
@@ -48,10 +68,8 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
         }
       }
 
-      let loadingToastId: string | undefined;
-
       if (isEvent) {
-        loadingToastId = toast.loading("Đang chuẩn bị phòng thảo luận...", {
+        loadingToastIdRef.current = toast.loading(t('meeting.preparing_breakout', 'Đang chuẩn bị phòng thảo luận...'), {
           style: {
             background: "#111115",
             color: "#fff",
@@ -59,9 +77,6 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
             borderRadius: "1rem",
           },
         });
-
-        // Wait 1.5 seconds to make sure backend commits are done
-        await new Promise((resolve) => setTimeout(resolve, 1500));
       }
 
       try {
@@ -69,12 +84,18 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
           `/meetings/${meetingId}/breakout-rooms/my-token`,
         );
         if (resp.data && resp.data.token) {
-          if (isEvent && loadingToastId) {
-            toast.loading(`Đang di chuyển sang ${resp.data.roomName}...`, {
-              id: loadingToastId,
+          setIsTransitioning(true);
+          setTransitionTarget(resp.data.roomName);
+
+          if (isEvent && loadingToastIdRef.current) {
+            toast.loading(t('meeting.moving_to_room', 'Đang di chuyển sang {{room}}...', { room: resp.data.roomName }), {
+              id: loadingToastIdRef.current,
             });
           } else {
-            loadingToastId = toast.loading(`Đang di chuyển sang ${resp.data.roomName}...`, {
+            if (loadingToastIdRef.current) {
+              toast.dismiss(loadingToastIdRef.current);
+            }
+            loadingToastIdRef.current = toast.loading(t('meeting.moving_to_room', 'Đang di chuyển sang {{room}}...', { room: resp.data.roomName }), {
               style: {
                 background: "#111115",
                 color: "#fff",
@@ -90,22 +111,23 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
             room: resp.data.roomName,
             isBreakoutRoom: true,
           }));
-
-          setTimeout(() => {
-            if (loadingToastId) toast.dismiss(loadingToastId);
-            showSuccessToast(`Đã tham gia ${resp.data.roomName}`, "🚪");
-          }, 3500);
         } else {
           console.log(
             "[BREAKOUT] No token returned for this user. Staying in current room.",
           );
-          if (loadingToastId) toast.dismiss(loadingToastId);
+          if (loadingToastIdRef.current) {
+            toast.dismiss(loadingToastIdRef.current);
+            loadingToastIdRef.current = undefined;
+          }
         }
       } catch (err) {
         console.error("Failed to join breakout room", err);
-        if (loadingToastId) toast.dismiss(loadingToastId);
+        if (loadingToastIdRef.current) {
+          toast.dismiss(loadingToastIdRef.current);
+          loadingToastIdRef.current = undefined;
+        }
         if (isEvent) {
-          showErrorToast("Không thể chuyển sang phòng thảo luận");
+          showErrorToast(t('meeting.cannot_join_breakout', 'Không thể chuyển sang phòng thảo luận'));
         }
       }
     },
@@ -116,7 +138,7 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
     if (!meetingId) return;
     console.log("[BREAKOUT] End signal received.");
 
-    const loadingToastId = toast.loading("Đang di chuyển về phòng chính...", {
+    loadingToastIdRef.current = toast.loading(t('meeting.moving_to_main', 'Đang di chuyển về phòng chính...'), {
       style: {
         background: "#111115",
         color: "#fff",
@@ -125,19 +147,17 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
       },
     });
 
-    // Notify backend that this user is leaving the breakout room
     try {
       await apiClient.post(`/meetings/${meetingId}/breakout-rooms/leave`);
     } catch (err) {
       console.error("Failed to clear breakout room assignment on backend", err);
     }
 
+    setIsTransitioning(true);
+    setTransitionTarget(t('meeting.main_room', 'phòng chính'));
+
     if (originalJoinData) {
       setJoinData(originalJoinData);
-      setTimeout(() => {
-        toast.dismiss(loadingToastId);
-        showSuccessToast("Đã quay lại phòng chính", "🏠");
-      }, 3500);
     } else {
       try {
         const res = await apiClient.post(`/meetings/${meetingId}/join`);
@@ -146,14 +166,14 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
             ? { ...prev, token: res.data.token, isBreakoutRoom: false }
             : res.data,
         );
-        setTimeout(() => {
-          toast.dismiss(loadingToastId);
-          showSuccessToast("Đã quay lại phòng chính", "🏠");
-        }, 3500);
       } catch (err) {
         console.error("Failed to return to main room", err);
-        toast.dismiss(loadingToastId);
-        showErrorToast("Lỗi khi quay lại phòng chính");
+        if (loadingToastIdRef.current) {
+          toast.dismiss(loadingToastIdRef.current);
+          loadingToastIdRef.current = undefined;
+        }
+        setIsTransitioning(false);
+        showErrorToast(t('meeting.return_to_main_error', 'Lỗi khi quay lại phòng chính'));
       }
     }
   }, [meetingId, originalJoinData]);
@@ -162,7 +182,7 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
     async (roomId: string) => {
       if (!meetingId) return;
 
-      const loadingToastId = toast.loading("Đang di chuyển sang phòng thảo luận...", {
+      loadingToastIdRef.current = toast.loading(t('meeting.preparing_breakout', 'Đang chuẩn bị phòng thảo luận...'), {
         style: {
           background: "#111115",
           color: "#fff",
@@ -176,8 +196,11 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
           `/meetings/${meetingId}/breakout-rooms/${roomId}/token-host`,
         );
         if (resp.data && resp.data.token) {
-          toast.loading(`Đang di chuyển sang ${resp.data.roomName}...`, {
-            id: loadingToastId,
+          setIsTransitioning(true);
+          setTransitionTarget(resp.data.roomName);
+
+          toast.loading(t('meeting.moving_to_room', 'Đang di chuyển sang {{room}}...', { room: resp.data.roomName }), {
+            id: loadingToastIdRef.current,
           });
 
           setJoinData((prev: any) => ({
@@ -186,19 +209,20 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
             room: resp.data.roomName,
             isBreakoutRoom: true,
           }));
-
-          setTimeout(() => {
-            if (loadingToastId) toast.dismiss(loadingToastId);
-            showSuccessToast(`Đã tham gia ${resp.data.roomName}`, "🚪");
-          }, 3500);
         } else {
           console.log("[BREAKOUT] No token returned for host.");
-          if (loadingToastId) toast.dismiss(loadingToastId);
+          if (loadingToastIdRef.current) {
+            toast.dismiss(loadingToastIdRef.current);
+            loadingToastIdRef.current = undefined;
+          }
         }
       } catch (err) {
         console.error("Failed to join breakout room as host", err);
-        if (loadingToastId) toast.dismiss(loadingToastId);
-        showErrorToast("Không thể chuyển sang phòng thảo luận");
+        if (loadingToastIdRef.current) {
+          toast.dismiss(loadingToastIdRef.current);
+          loadingToastIdRef.current = undefined;
+        }
+        showErrorToast(t('meeting.cannot_join_breakout', 'Không thể chuyển sang phòng thảo luận'));
       }
     },
     [meetingId],
@@ -259,5 +283,6 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
     handleBreakoutEnded,
     handleJoinBreakoutAsHost,
     isInBreakout: !!(joinData?.isBreakoutRoom || joinData?.token.includes("breakout")),
+    handleConnected,
   };
 };

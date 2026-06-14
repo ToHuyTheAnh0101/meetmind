@@ -89,7 +89,7 @@ const LobbyManagement: React.FC<LobbyManagementProps> = ({ meetingId, enabled })
                     <button 
                       onClick={() => admitMutation.mutate(p.userId)}
                       disabled={admitMutation.isPending}
-                      title="Chấp nhận"
+                      title={t('common.accept', 'Chấp nhận')}
                       className="h-10 w-10 flex items-center justify-center rounded-[1.25rem] bg-emerald-500 text-white shadow-lg shadow-emerald-500/20 hover:bg-emerald-600 hover:-translate-y-0.5 transition-all active:scale-95 disabled:opacity-50"
                     >
                        {admitMutation.isPending ? (

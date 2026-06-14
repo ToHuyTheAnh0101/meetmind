@@ -1,6 +1,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { AlertCircle, X } from 'lucide-react';
+import { useTranslation } from 'react-i18next';
 
 interface Props {
   isOpen: boolean;
@@ -11,6 +12,7 @@ interface Props {
 }
 
 const ConfirmEndBreakoutModal: React.FC<Props> = ({ isOpen, onClose, onConfirm, title, message }) => {
+  const { t } = useTranslation();
   return (
     <AnimatePresence>
       {isOpen && (
@@ -44,7 +46,7 @@ const ConfirmEndBreakoutModal: React.FC<Props> = ({ isOpen, onClose, onConfirm, 
                   onClick={onClose}
                   className="flex-1 py-3 px-4 rounded-xl bg-white/5 hover:bg-white/10 text-white font-bold text-sm transition-all border border-white/5"
                 >
-                  Hủy bỏ
+                  {t('common.cancel', 'Hủy bỏ')}
                 </button>
                 <button
                   onClick={() => {
@@ -53,7 +55,7 @@ const ConfirmEndBreakoutModal: React.FC<Props> = ({ isOpen, onClose, onConfirm, 
                   }}
                   className="flex-1 py-3 px-4 rounded-xl bg-rose-500 hover:bg-rose-400 text-white font-bold text-sm transition-all shadow-lg shadow-rose-500/20"
                 >
-                  Xác nhận kết thúc
+                  {t('meeting.status.completed_short', 'Xác nhận kết thúc')}
                 </button>
               </div>
             </div>

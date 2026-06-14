@@ -43,7 +43,6 @@ interface MeetingSidebarProps {
   onOpenQuestionModal: (question: any) => void;
   onOpenBreakoutModal: () => void;
   onOpenConfirmEndModal: () => void;
-  onReturnToMain: () => void;
   onJoinBreakoutAsHost?: (roomId: string) => void;
   currentRoomName?: string;
   isInBreakout: boolean;
@@ -68,7 +67,6 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   onOpenQuestionModal,
   onOpenBreakoutModal,
   onOpenConfirmEndModal,
-  onReturnToMain,
   onJoinBreakoutAsHost,
   currentRoomName,
   isInBreakout,
@@ -121,7 +119,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
     
     if (isOrganizer) {
       tabs.push({ id: 'permissions', icon: Shield, label: t('meeting.permissions.tab_permissions'), color: 'text-slate-100' });
-      tabs.push({ id: 'breakout', icon: Grid2X2, label: 'Chia phòng', color: 'text-teal-400' });
+      tabs.push({ id: 'breakout', icon: Grid2X2, label: t('meeting.breakout_rooms_title', 'Chia phòng'), color: 'text-teal-400' });
     }
 
     tabs.push({ id: 'settings', icon: Settings, label: t('common.settings'), color: 'text-amber-400' });
@@ -158,15 +156,6 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                 <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col">
                    <CustomParticipantList organizerId={organizerId} />
                    
-                   {isInBreakout && (
-                     <button 
-                       onClick={onReturnToMain}
-                       className="mt-6 w-full py-3.5 rounded-2xl border-2 border-dashed border-white/10 text-slate-400 hover:border-indigo-500/50 hover:text-indigo-400 hover:bg-indigo-500/5 transition-all text-[13px] font-bold flex items-center justify-center gap-2"
-                     >
-                       <ChevronRight className="h-4 w-4 rotate-180" />
-                       Quay lại phòng chính
-                     </button>
-                   )}
                 </div>
               )}
                 {activeTab === 'lobby' && (
@@ -184,6 +173,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                    userId={userId} 
                    canManagePolls={canManagePolls} 
                    onOpenCreateModal={onOpenCreateModal}
+                   isInBreakout={isInBreakout}
                  />
               )}
               {activeTab === 'qa' && (
@@ -192,6 +182,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                   userId={userId} 
                   hasManagePrivilege={canManageQA} 
                   onOpenQuestionModal={onOpenQuestionModal}
+                  isInBreakout={isInBreakout}
                 />
               )}
               {activeTab === 'attachments' && (
@@ -208,13 +199,13 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                   {breakoutRooms.length > 0 ? (
                     <div className="space-y-4">
                       <div className="flex items-center justify-between mb-2">
-                        <span className="text-xs font-bold text-teal-400/80 tracking-wider">Phòng đang hoạt động</span>
+                        <span className="text-xs font-bold text-teal-400/80 tracking-wider">{t('meeting.active_rooms', 'Phòng đang hoạt động')}</span>
                         <button 
                           onClick={onOpenBreakoutModal}
                           className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500/20 text-[11px] font-bold text-teal-400 hover:text-teal-300 transition-all border border-teal-500/20 shadow-lg shadow-teal-500/5"
                         >
                           <Settings size={12} className="animate-spin-slow" />
-                          <span>Quản lý</span>
+                          <span>{t('common.manage', 'Quản lý')}</span>
                         </button>
                       </div>
                       {breakoutRooms.map(room => (
@@ -223,18 +214,18 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                             <div className="flex items-center gap-2">
                               <span className="text-sm font-bold text-white">{room.name}</span>
                               <span className="text-[10px] px-2 py-0.5 rounded-full bg-teal-500/20 text-teal-400 border border-teal-500/20">
-                                {room.status === 'active' ? 'Đang họp' : 'Đã kết thúc'}
+                                {room.status === 'active' ? t('meeting.status.ongoing_short', 'Đang họp') : t('meeting.status.completed_short', 'Đã kết thúc')}
                               </span>
                             </div>
                             {isOrganizer && room.status === 'active' && onJoinBreakoutAsHost && (
                               room.name === currentRoomName ? (
-                                <span className="text-[11px] font-bold text-slate-500">Đang ở đây</span>
+                                <span className="text-[11px] font-bold text-slate-500">{t('meeting.here', 'Đang ở đây')}</span>
                               ) : (
                                 <button
                                   onClick={() => onJoinBreakoutAsHost(room.id)}
                                   className="px-3 py-1.5 rounded-xl bg-teal-500/10 hover:bg-teal-500 text-teal-400 hover:text-white text-[11px] font-bold transition-all border border-teal-500/20 shadow-lg shadow-teal-500/5 cursor-pointer"
                                 >
-                                  Vào
+                                  {t('common.enter', 'Vào')}
                                 </button>
                               )
                             )}
@@ -255,13 +246,13 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                                       />
                                     </div>
                                     <span className="text-[10px] text-slate-300 truncate max-w-[60px]">
-                                      {p.user?.firstName || 'Người dùng'}
+                                      {p.user?.firstName || t('common.user', 'Người dùng')}
                                     </span>
                                   </div>
                                 );
                               })
                             ) : (
-                              <span className="text-[10px] text-slate-500 italic">Chưa có người tham gia</span>
+                              <span className="text-[10px] text-slate-500 italic">{t('meeting.no_participants_yet', 'Chưa có người tham gia')}</span>
                             )}
                           </div>
                         </div>
@@ -272,7 +263,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                         onClick={onOpenConfirmEndModal}
                         className="w-full mt-6 py-4 rounded-2xl bg-rose-500/10 hover:bg-rose-500 text-rose-400 hover:text-white font-black text-sm transition-all border border-rose-500/20 shadow-xl shadow-rose-500/5 flex items-center justify-center gap-2"
                       >
-                        Thu hồi toàn bộ
+                        {t('meeting.end_breakout_all', 'Thu hồi toàn bộ')}
                       </button>
                     </div>
                   ) : (
@@ -280,15 +271,15 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                       <div className="w-16 h-16 rounded-3xl bg-teal-500/10 flex items-center justify-center mb-6">
                         <Grid2X2 className="text-teal-400" />
                       </div>
-                      <h4 className="text-lg font-bold text-white mb-2">Chia phòng họp nhỏ</h4>
+                      <h4 className="text-lg font-bold text-white mb-2">{t('meeting.breakout_rooms_title', 'Chia phòng họp nhỏ')}</h4>
                       <p className="text-sm text-slate-400 mb-8 leading-relaxed">
-                        Tạo các nhóm thảo luận riêng biệt để tăng hiệu quả làm việc nhóm.
+                        {t('meeting.breakout_rooms_desc', 'Tạo các nhóm thảo luận riêng biệt để tăng hiệu quả làm việc nhóm.')}
                       </p>
                       <button 
                         onClick={onOpenBreakoutModal}
                         className="w-full py-4 rounded-2xl bg-teal-500 hover:bg-teal-400 text-white font-black text-sm transition-all shadow-xl shadow-teal-500/20"
                       >
-                        Bắt đầu thiết lập
+                        {t('meeting.start_setup', 'Bắt đầu thiết lập')}
                       </button>
                     </div>
                   )}

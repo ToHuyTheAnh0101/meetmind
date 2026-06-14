@@ -59,7 +59,7 @@ export class MeetingsWebhookService {
           await this.handleParticipantJoined(event);
           break;
         case 'participant_left':
-          this.handleParticipantLeft(event);
+          await this.handleParticipantLeft(event);
           break;
         case 'egress_ended':
           await this.handleEgressEnded(event);
@@ -109,6 +109,10 @@ export class MeetingsWebhookService {
     const cacheKey = `active_room:${meetingId}:${userId}`;
     await this.cacheManager.set(cacheKey, roomName, 86400000); // cache for 1 day
 
+    // Clear transitioning flag since transition completed successfully
+    const transitionKey = `transitioning:${meetingId}:${userId}`;
+    await this.cacheManager.del(transitionKey);
+
     // Mark participant as in meeting in the DB
     const participant = await this.participantRepository.findByMeetingAndUser(
       meetingId,
@@ -121,7 +125,9 @@ export class MeetingsWebhookService {
     }
   }
 
-  private handleParticipantLeft(event: LiveKitWebhookEvent): void {
+  private async handleParticipantLeft(
+    event: LiveKitWebhookEvent,
+  ): Promise<void> {
     const roomName = event.room?.name;
     const userId = event.participant?.identity;
 
@@ -139,37 +145,32 @@ export class MeetingsWebhookService {
       `Participant ${userId} left room ${roomName} in meeting ${meetingId}`,
     );
 
-    // Set a grace period of 4 seconds to check if they transition to another room
-    setTimeout(() => {
-      void (async () => {
-        try {
-          const cacheKey = `active_room:${meetingId}:${userId}`;
-          const currentActiveRoom =
-            await this.cacheManager.get<string>(cacheKey);
+    try {
+      // Check if user is currently transitioning between rooms
+      const transitionKey = `transitioning:${meetingId}:${userId}`;
+      const isTransitioning =
+        await this.cacheManager.get<boolean>(transitionKey);
 
-          // If the active room is still the one they just left (meaning they haven't joined another room),
-          // they have completely disconnected from the meeting.
-          if (currentActiveRoom === roomName) {
-            this.logger.log(
-              `Participant ${userId} is confirmed offline after grace period.`,
-            );
-            await this.cacheManager.del(cacheKey);
+      if (isTransitioning) {
+        this.logger.log(
+          `Participant ${userId} is transitioning from ${roomName}. Ignoring offline trigger.`,
+        );
+        return;
+      }
 
-            // Mark them as offline and run auto-close logic
-            await this.participantsService.leaveMeeting(meetingId, userId);
-          } else {
-            this.logger.log(
-              `Participant ${userId} transitioned from ${roomName} to ${currentActiveRoom || 'none'}. Ignoring offline trigger.`,
-            );
-          }
-        } catch (err) {
-          this.logger.error(
-            `Error in participant_left grace period processing for user ${userId}:`,
-            err,
-          );
-        }
-      })();
-    }, 4000);
+      // If not transitioning, they are actually leaving the meeting.
+      this.logger.log(
+        `Participant ${userId} left the meeting entirely from room ${roomName}.`,
+      );
+      const cacheKey = `active_room:${meetingId}:${userId}`;
+      await this.cacheManager.del(cacheKey);
+      await this.participantsService.leaveMeeting(meetingId, userId);
+    } catch (err) {
+      this.logger.error(
+        `Error in participant_left processing for user ${userId}:`,
+        err,
+      );
+    }
   }
 
   private async handleEgressEnded(event: LiveKitWebhookEvent): Promise<void> {

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -90,12 +90,12 @@ interface MeetingLobbyProps {
   error?: string | null;
   meetingTitle?: string;
   meetingDescription?: string;
-  participantCount?: number;
   allowDisplayNameEdit?: boolean;
   selectedVideoId: string;
   setSelectedVideoId: (id: string) => void;
   selectedAudioId: string;
   setSelectedAudioId: (id: string) => void;
+  participants?: any[];
 }
 
 const AudioVisualizer = ({ isActive }: { isActive: boolean }) => {
@@ -146,15 +146,19 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
   error,
   meetingTitle = "Chiến lược lộ trình Q3",
   meetingDescription = "Thảo luận về kế hoạch phát triển sản phẩm cho quý tới và thống nhất các mục tiêu quan trọng.",
-  participantCount = 3,
   allowDisplayNameEdit = true,
   selectedVideoId,
   setSelectedVideoId,
   selectedAudioId,
   setSelectedAudioId,
+  participants = [],
 }) => {
   const { t } = useTranslation();
   const [showSettings, setShowSettings] = useState(false);
+  
+  const activeParticipants = useMemo(() => {
+    return participants.filter((p) => p.isInMeeting);
+  }, [participants]);
   
   // Device Selection (Using LiveKit hooks)
   const devices = useMediaDevices({ kind: 'videoinput' });
@@ -424,19 +428,27 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                       {meetingDescription}
                    </p>
 
-                   <div className="flex flex-col gap-3 py-5 border-y border-white/5 mb-6">
-                      <span className="text-base font-medium text-slate-300">{t('meeting.already_joined')}</span>
-                      <div className="flex -space-x-3">
-                         {[1, 2, 3].map(i => (
-                           <div key={i} className="h-10 w-10 rounded-full border-2 border-[#0a0a0b] bg-slate-800 flex items-center justify-center text-[10px] font-bold text-white overflow-hidden">
-                              <img src={`https://i.pravatar.cc/100?img=${i+10}`} alt="" />
-                           </div>
-                         ))}
-                         <div className="h-10 w-10 rounded-full border-2 border-[#0a0a0b] bg-cyan-500 flex items-center justify-center text-[10px] font-black text-white">
-                            +{participantCount}
+                   {activeParticipants.length > 0 && (
+                      <div className="flex flex-col gap-3 py-5 border-y border-white/5 mb-6">
+                         <span className="text-base font-medium text-slate-300">{t('meeting.already_joined')}</span>
+                         <div className="flex -space-x-3">
+                            {activeParticipants.slice(0, 3).map((p, idx) => {
+                              const displayName = p.displayName || (p.user ? `${p.user.firstName} ${p.user.lastName}` : 'User');
+                              const imgUrl = p.user?.picture || p.user?.profilePictureUrl || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=random&color=fff`;
+                              return (
+                                <div key={p.id || idx} className="h-10 w-10 rounded-full border-2 border-[#0a0a0b] bg-slate-800 flex items-center justify-center text-[10px] font-bold text-white overflow-hidden" title={displayName}>
+                                   <img src={imgUrl} alt={displayName} className="h-full w-full object-cover" />
+                                </div>
+                              );
+                            })}
+                            {activeParticipants.length > 3 && (
+                              <div className="h-10 w-10 rounded-full border-2 border-[#0a0a0b] bg-cyan-500 flex items-center justify-center text-[10px] font-black text-white">
+                                 +{activeParticipants.length - 3}
+                              </div>
+                            )}
                          </div>
                       </div>
-                   </div>
+                    )}
 
                    <div className="space-y-4">
                       <div className="space-y-2">

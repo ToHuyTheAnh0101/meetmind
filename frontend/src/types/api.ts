@@ -12,7 +12,7 @@ export interface AuthVerifyResponse {
   user: User
 }
 
-export type MeetingStatus = 'scheduled' | 'ongoing' | 'completed' | 'canceled' | 'pending_completion';
+export type MeetingStatus = 'scheduled' | 'ongoing' | 'completed' | 'canceled' | 'cancelled' | 'pending_completion';
 export type MeetingAccessType = 'public' | 'invite_only';
 
 export enum ParticipantStatus {

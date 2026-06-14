@@ -7,6 +7,7 @@ import {
   UseGuards,
   Request,
   BadRequestException,
+  Query,
 } from '@nestjs/common';
 import { QuestionService } from '../services/question.service';
 import { MeetingQuestion } from '../entities/meeting-question.entity';
@@ -22,8 +23,14 @@ export class QuestionController {
   @UseGuards(JwtAuthGuard)
   async findAll(
     @Param('meetingId') meetingId: string,
+    @Query('breakoutRoomId') breakoutRoomId: string,
+    @Request() req: { user: { id: string } },
   ): Promise<MeetingQuestion[]> {
-    return this.questionService.findByMeetingId(meetingId);
+    return this.questionService.findByMeetingId(
+      meetingId,
+      breakoutRoomId,
+      req.user.id,
+    );
   }
 
   @Post()

@@ -1,6 +1,7 @@
 import React from "react";
 import { useLocalParticipant, useParticipants } from "@livekit/components-react";
 import { toast } from "react-hot-toast";
+import { useTranslation } from "react-i18next";
 import apiClient from "@/lib/apiClient";
 import { showSuccessToast, showErrorToast } from "@/lib/toastUtils";
 import BreakoutManagementModal from "./BreakoutManagementModal";
@@ -18,6 +19,7 @@ export const BreakoutModalWrapper: React.FC<BreakoutModalWrapperProps> = ({
   meetingId,
   organizerId,
 }) => {
+  const { t } = useTranslation();
   const { localParticipant } = useLocalParticipant();
   const remoteParticipants = useParticipants();
 
@@ -44,7 +46,7 @@ export const BreakoutModalWrapper: React.FC<BreakoutModalWrapperProps> = ({
       ]}
       onStart={async (roomsData) => {
         const startToastId = toast.loading(
-          "Đang khởi tạo các phòng thảo luận...",
+          t('meeting.breakout_initializing', 'Đang khởi tạo các phòng thảo luận...'),
           {
             style: {
               background: "#111115",
@@ -76,12 +78,12 @@ export const BreakoutModalWrapper: React.FC<BreakoutModalWrapperProps> = ({
           );
 
           toast.dismiss(startToastId);
-          showSuccessToast("Đã bắt đầu chia phòng họp nhỏ!");
+          showSuccessToast(t('meeting.breakout_started_toast', 'Đã bắt đầu chia phòng họp nhỏ!'));
           onClose();
         } catch (err) {
           console.error("Failed to start breakout", err);
           toast.dismiss(startToastId);
-          showErrorToast("Không thể khởi động phòng họp nhỏ");
+          showErrorToast(t('meeting.breakout_start_failed_toast', 'Không thể khởi động phòng họp nhỏ'));
         }
       }}
     />

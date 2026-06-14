@@ -40,7 +40,8 @@ export class ChatController {
   async getChatMessages(
     @Param('id') id: string,
     @Query('breakoutRoomId') breakoutRoomId: string,
+    @Request() req: { user: { id: string } },
   ): Promise<ChatMessageDto[]> {
-    return this.chatService.getChatMessages(id, breakoutRoomId);
+    return this.chatService.getChatMessages(id, breakoutRoomId, req.user.id);
   }
 }

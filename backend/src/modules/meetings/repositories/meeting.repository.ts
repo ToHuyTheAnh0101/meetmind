@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
-import { Meeting } from '../entities';
+import { Repository, Brackets } from 'typeorm';
+import { Meeting, MeetingStatus } from '../entities';
 
 @Injectable()
 export class MeetingRepository {
@@ -25,20 +25,43 @@ export class MeetingRepository {
     userEmail?: string,
     skip?: number,
     take?: number,
+    status?: MeetingStatus,
+    search?: string,
   ): Promise<[Meeting[], number]> {
     const query = this.repo
       .createQueryBuilder('meeting')
       .leftJoinAndSelect('meeting.participants', 'participant')
       .leftJoinAndSelect('participant.user', 'user')
-      .leftJoinAndSelect('meeting.organizer', 'organizer')
-      .where('meeting.organizerId = :userId', { userId })
-      .orWhere('participant.userId = :userId', { userId });
+      .leftJoinAndSelect('meeting.organizer', 'organizer');
 
-    if (userEmail) {
-      // Check if userEmail exists in inviteeEmails JSONB array
-      query.orWhere('meeting.inviteeEmails @> :emailJson', {
-        emailJson: JSON.stringify([userEmail]),
-      });
+    query.where(
+      new Brackets((qb) => {
+        qb.where('meeting.organizerId = :userId', { userId }).orWhere(
+          'participant.userId = :userId',
+          { userId },
+        );
+        if (userEmail) {
+          qb.orWhere('meeting.inviteeEmails @> :emailJson', {
+            emailJson: JSON.stringify([userEmail]),
+          });
+        }
+      }),
+    );
+
+    if (status) {
+      query.andWhere('meeting.status = :status', { status });
+    }
+
+    if (search) {
+      query.andWhere(
+        new Brackets((qb) => {
+          qb.where('meeting.title ILIKE :search', {
+            search: `%${search}%`,
+          }).orWhere('meeting.description ILIKE :search', {
+            search: `%${search}%`,
+          });
+        }),
+      );
     }
 
     query.orderBy('meeting.startTime', 'DESC').distinct(true);

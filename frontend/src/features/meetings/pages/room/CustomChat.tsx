@@ -131,7 +131,10 @@ const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout }) => {
 
     // 2. Persist to DB (async, fire-and-forget)
     apiClient
-      .post(`/meetings/${meetingId}/chat-messages`, { message: trimmed })
+      .post(`/meetings/${meetingId}/chat-messages`, { 
+        message: trimmed,
+        breakoutRoomId: isInBreakout ? 'current' : undefined,
+      })
       .catch((err) => console.error('[CustomChat] Failed to save message to DB', err));
   };
 
@@ -152,7 +155,7 @@ const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout }) => {
       <div className="flex-1 overflow-y-auto p-6 space-y-6 custom-scrollbar">
         {isLoadingHistory ? (
           <div className="h-full flex items-center justify-center text-slate-500 text-sm">
-            Đang tải lịch sử tin nhắn...
+            {t('meeting.loading_chat_history', 'Đang tải lịch sử tin nhắn...')}
           </div>
         ) : messages.length === 0 ? (
           <div className="h-full flex flex-col items-center justify-center text-slate-400 space-y-3">

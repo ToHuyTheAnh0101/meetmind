@@ -76,6 +76,10 @@ export class MeetingPoll {
   @Column({ nullable: true })
   closedAt?: Date;
 
+  @Column('uuid', { nullable: true })
+  @Index()
+  breakoutRoomId?: string;
+
   @CreateDateColumn()
   createdAt?: Date;
 

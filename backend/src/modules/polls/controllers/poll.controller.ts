@@ -6,6 +6,7 @@ import {
   Body,
   UseGuards,
   Request,
+  Query,
 } from '@nestjs/common';
 import { PollService } from '../services/poll.service';
 import { PollResponseDto } from '../entities/meeting-poll.entity';
@@ -21,8 +22,14 @@ export class PollController {
   @UseGuards(JwtAuthGuard)
   async findAll(
     @Param('meetingId') meetingId: string,
+    @Query('breakoutRoomId') breakoutRoomId: string,
+    @Request() req: { user: { id: string } },
   ): Promise<PollResponseDto[]> {
-    return this.pollService.findByMeetingId(meetingId);
+    return this.pollService.findByMeetingId(
+      meetingId,
+      breakoutRoomId,
+      req.user.id,
+    );
   }
 
   @Get(':id')

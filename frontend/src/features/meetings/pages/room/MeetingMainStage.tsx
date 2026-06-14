@@ -98,6 +98,7 @@ const ParticipantStatusOverlay = ({
 }: {
   trackSource?: Track.Source;
 }) => {
+  const { t } = useTranslation();
   const p = useParticipantContext();
   const isScreenShare = trackSource === Track.Source.ScreenShare;
 
@@ -114,7 +115,7 @@ const ParticipantStatusOverlay = ({
           <div className="flex items-center gap-1.5 text-emerald-400">
             <Monitor className="h-3.5 w-3.5 animate-pulse" />
             <span className="text-xs font-bold uppercase tracking-wider">
-              Màn hình của <ParticipantName />
+              {t('meeting.screenshare_of', 'Màn hình của')} <ParticipantName />
             </span>
           </div>
         ) : (
@@ -178,7 +179,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   isInBreakout,
 }) => {
   const { t } = useTranslation();
-  const { localParticipant, isScreenShareEnabled } = useLocalParticipant();
+  const { localParticipant, isMicrophoneEnabled, isScreenShareEnabled } = useLocalParticipant();
   const screenShareTrack = localParticipant.getTrackPublication(
     Track.Source.ScreenShare,
   );
@@ -188,81 +189,58 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   // Background Media Recording states & refs
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
-  const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
-  const timeoutRef = useRef<NodeJS.Timeout | null>(null);
   const chunkIndexRef = useRef(0);
   const hiddenVideoRef = useRef<HTMLVideoElement>(null);
   const prevPixelsRef = useRef<Uint8ClampedArray | null>(null);
   const recordingStartTimeRef = useRef<number | null>(null);
 
-  const stopRecording = () => {
-    isRecordingRef.current = false;
-    setIsRecording(false);
-    recordingStartTimeRef.current = null;
+  // New refs to manage dynamic recording segments
+  const currentRecorderRef = useRef<MediaRecorder | null>(null);
+  const activeTimeoutsRef = useRef<NodeJS.Timeout[]>([]);
 
-    if (timeoutRef.current) {
-      clearTimeout(timeoutRef.current);
-      timeoutRef.current = null;
-    }
+  const clearAllTimeouts = () => {
+    activeTimeoutsRef.current.forEach((t) => clearTimeout(t));
+    activeTimeoutsRef.current = [];
+  };
 
-    if (recorderRef.current && recorderRef.current.state === "recording") {
-      recorderRef.current.stop();
+  const stopLocalMediaRecording = () => {
+    clearAllTimeouts();
+
+    if (currentRecorderRef.current && currentRecorderRef.current.state === "recording") {
+      try {
+        currentRecorderRef.current.stop();
+      } catch (err) {
+        console.error("Error stopping recorder:", err);
+      }
+      currentRecorderRef.current = null;
     }
 
     if (streamRef.current) {
       streamRef.current.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
     }
-
-    if (isOrganizer) {
-      // Broadcast RECORDING_STOPPED signal
-      const payload = JSON.stringify({ type: "RECORDING_STOPPED" });
-      try {
-        localParticipant.publishData(new TextEncoder().encode(payload), {
-          reliable: true,
-        });
-      } catch (err) {
-        console.error("Failed to publish RECORDING_STOPPED signal", err);
-      }
-      showSuccessToast("Đã tạm dừng trợ lý ghi chép AI.");
-    } else {
-      showSuccessToast("Đã tạm dừng ghi âm dịch thoại.");
-    }
   };
 
-  const startRecording = async () => {
+  const startLocalMediaRecording = async () => {
     try {
-      // 1. Ensure meeting session is active and broadcast signal (Organizer only)
-      if (isOrganizer) {
-        // Broadcast RECORDING_STARTED signal
-        const payload = JSON.stringify({ type: "RECORDING_STARTED" });
-        try {
-          await localParticipant.publishData(
-            new TextEncoder().encode(payload),
-            {
-              reliable: true,
-            },
-          );
-        } catch (err) {
-          console.error("Failed to publish RECORDING_STARTED signal", err);
-        }
-      }
+      // Clean up any existing stream/recorder first
+      stopLocalMediaRecording();
 
-      // 2. Request mic permission and get stream
+      // Request micro permission for the private transcription stream
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       streamRef.current = stream;
 
-      isRecordingRef.current = true;
-      setIsRecording(true);
-      recordingStartTimeRef.current = Date.now();
+      if (!recordingStartTimeRef.current) {
+        recordingStartTimeRef.current = Date.now();
+      }
 
-      // Helper function to start a recorder instance
-      const startNewRecorder = () => {
+      const startNewRecorder = (chunkStartOffset: number) => {
         if (
           !streamRef.current ||
           !streamRef.current.active ||
-          !isRecordingRef.current
+          !isRecordingRef.current ||
+          !isMicrophoneEnabled
         )
           return;
 
@@ -274,20 +252,18 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
         }
 
         const recorder = new MediaRecorder(streamRef.current, options);
-        recorderRef.current = recorder;
+        currentRecorderRef.current = recorder;
 
         recorder.ondataavailable = async (e) => {
-          // Always upload available data, even if recording was just stopped.
-          // The final chunk (e.g. last 15s before session end) must not be lost.
-          // The backend now accepts chunks for both ONGOING and COMPLETED sessions.
-          if (!isRecordingRef.current) {
-            console.log("[Recording] Uploading final chunk after stop...");
-          }
           if (e.data && e.data.size > 0) {
             const audioBlob = e.data;
             const chunkIndex = chunkIndexRef.current++;
+            const chunkEndOffset = recordingStartTimeRef.current
+              ? (Date.now() - recordingStartTimeRef.current) / 1000
+              : chunkStartOffset + 15;
+
             console.log(
-              `Uploading audio chunk ${chunkIndex}, size: ${audioBlob.size} bytes`,
+              `Uploading audio chunk ${chunkIndex}, size: ${audioBlob.size} bytes, range: ${chunkStartOffset.toFixed(1)}s - ${chunkEndOffset.toFixed(1)}s`
             );
 
             const formData = new FormData();
@@ -297,8 +273,8 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
               "speakerName",
               localParticipant.name || localParticipant.identity,
             );
-            formData.append("startTime", String(chunkIndex * 30));
-            formData.append("endTime", String(chunkIndex * 30 + 35));
+            formData.append("startTime", String(chunkStartOffset));
+            formData.append("endTime", String(chunkEndOffset));
             formData.append("chunkIndex", String(chunkIndex));
 
             try {
@@ -320,36 +296,98 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
 
         recorder.start();
 
-        // Cứ mỗi 15 giây, khởi chạy gối đầu recorder tiếp theo trước khi dừng hẳn recorder cũ
-        timeoutRef.current = setTimeout(() => {
-          if (!isRecordingRef.current) return;
+        // Rollover timeout: slice chunks every 15 seconds of continuous talking
+        const currentTimeout = setTimeout(() => {
+          if (!isRecordingRef.current || !isMicrophoneEnabled) return;
 
-          // 1. Kích hoạt recorder tiếp theo ngay lập tức (Bắt đầu thu gối đầu không khe hở)
-          startNewRecorder();
+          const nextOffset = recordingStartTimeRef.current
+            ? (Date.now() - recordingStartTimeRef.current) / 1000
+            : chunkStartOffset + 15;
+          
+          startNewRecorder(nextOffset);
 
-          // 2. Đợi đúng 5 giây (5000ms) gối đầu an toàn rồi mới dừng hẳn recorder hiện tại
-          setTimeout(() => {
+          // 3-second overlap before stopping the previous recorder
+          const stopTimeout = setTimeout(() => {
             if (recorder.state === "recording") {
-              recorder.stop();
+              try {
+                recorder.stop();
+              } catch (err) {
+                console.error("Error stopping old recorder:", err);
+              }
             }
-          }, 5000);
+          }, 3000);
+          activeTimeoutsRef.current.push(stopTimeout);
         }, 15000);
+
+        activeTimeoutsRef.current.push(currentTimeout);
       };
 
-      startNewRecorder();
-      showSuccessToast(
-        isOrganizer
-          ? "Đã kích hoạt trợ lý ghi chép AI!"
-          : "Hệ thống tự động ghi âm để dịch thoại.",
-      );
+      const initialOffset = recordingStartTimeRef.current
+        ? (Date.now() - recordingStartTimeRef.current) / 1000
+        : 0;
+      startNewRecorder(initialOffset);
     } catch (err) {
       console.error("Failed to start MediaRecorder", err);
-      showErrorToast("Không thể bắt đầu ghi âm. Vui lòng cấp quyền micro.");
+      showErrorToast(t('meeting.recording.mic_permission_error', 'Không thể bắt đầu ghi âm. Vui lòng cấp quyền micro.'));
+    }
+  };
+
+  const stopRecording = () => {
+    isRecordingRef.current = false;
+    setIsRecording(false);
+    recordingStartTimeRef.current = null;
+
+    if (isOrganizer) {
+      // Broadcast RECORDING_STOPPED signal
+      const payload = JSON.stringify({ type: "RECORDING_STOPPED" });
+      try {
+        localParticipant.publishData(new TextEncoder().encode(payload), {
+          reliable: true,
+        });
+      } catch (err) {
+        console.error("Failed to publish RECORDING_STOPPED signal", err);
+      }
+      showSuccessToast(t('meeting.recording.ai_paused', 'Đã tạm dừng trợ lý ghi chép AI.'));
+    } else {
+      showSuccessToast(t('meeting.recording.transcription_paused', 'Đã tạm dừng ghi âm dịch thoại.'));
+    }
+  };
+
+  const startRecording = async () => {
+    try {
+      // 1. Ensure meeting session is active and broadcast signal (Organizer only)
+      if (isOrganizer) {
+        // Broadcast RECORDING_STARTED signal
+        const payload = JSON.stringify({ type: "RECORDING_STARTED" });
+        try {
+          await localParticipant.publishData(
+            new TextEncoder().encode(payload),
+            {
+              reliable: true,
+            },
+          );
+        } catch (err) {
+          console.error("Failed to publish RECORDING_STARTED signal", err);
+        }
+      }
+
+      isRecordingRef.current = true;
+      setIsRecording(true);
+      recordingStartTimeRef.current = Date.now();
+      showSuccessToast(
+        isOrganizer
+          ? t('meeting.recording.ai_activated', 'Đã kích hoạt trợ lý ghi chép AI!')
+          : t('meeting.recording.transcription_activated', 'Hệ thống tự động ghi âm để dịch thoại.'),
+      );
+    } catch (err) {
+      console.error("Failed to start AI Assistant", err);
+      showErrorToast(t('meeting.recording.ai_start_failed', 'Không thể bắt đầu trợ lý AI.'));
       setIsRecording(false);
       isRecordingRef.current = false;
     }
   };
 
+  // Effect to receive signal triggers from Organizer
   useEffect(() => {
     const handleRecordingStarted = () => {
       if (!isOrganizer && !isRecordingRef.current) {
@@ -369,20 +407,23 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
     return () => {
       window.removeEventListener("recording-started", handleRecordingStarted);
       window.removeEventListener("recording-stopped", handleRecordingStopped);
-
-      // Clean up recording on unmount
-      isRecordingRef.current = false;
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-      }
-      if (recorderRef.current && recorderRef.current.state === "recording") {
-        recorderRef.current.stop();
-      }
-      if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => track.stop());
-      }
     };
-  }, [isOrganizer, localParticipant]);
+  }, [isOrganizer]);
+
+  // Effect to reactively start/stop local MediaRecorder based on active assistant & mic status
+  const shouldLocalRecord = isRecording && isMicrophoneEnabled;
+
+  useEffect(() => {
+    if (shouldLocalRecord) {
+      startLocalMediaRecording();
+    } else {
+      stopLocalMediaRecording();
+    }
+
+    return () => {
+      stopLocalMediaRecording();
+    };
+  }, [shouldLocalRecord]);
 
   // Effect 1: Attach local screen share track to the hidden video element
   useEffect(() => {
@@ -542,7 +583,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
           >
             <div className="h-2 w-2 rounded-full bg-indigo-400 animate-pulse shadow-[0_0_10px_rgba(129,140,248,0.5)]" />
             <span className="text-sm font-black tracking-tight">
-              RỜI PHÒNG THẢO LUẬN
+              {t('meeting.leave_breakout', 'Rời phòng thảo luận')}
             </span>
             <LogOut className="h-5 w-5 group-hover:translate-x-1 transition-transform" />
           </button>

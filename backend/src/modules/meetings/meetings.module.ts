@@ -9,6 +9,7 @@ import {
   MeetingChatMessage,
   ScreenCapture,
 } from './entities';
+import { BreakoutRoomParticipant } from '../breakout-rooms/entities/breakout-room-participant.entity';
 
 // Controllers
 import { MeetingsController } from './controllers/meetings.controller';
@@ -46,6 +47,7 @@ import { AiModule } from '../../providers/ai/ai.module';
       ChatHistory,
       MeetingChatMessage,
       ScreenCapture,
+      BreakoutRoomParticipant,
     ]),
     LiveKitModule,
     UsersModule,

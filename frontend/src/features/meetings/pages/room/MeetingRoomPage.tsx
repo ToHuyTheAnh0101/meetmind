@@ -65,6 +65,7 @@ const MeetingRoomPage: React.FC = () => {
     handleBreakoutEnded,
     handleJoinBreakoutAsHost,
     isInBreakout,
+    handleConnected,
   } = useBreakoutRoom(id, user?.id);
 
   // State
@@ -182,16 +183,16 @@ const MeetingRoomPage: React.FC = () => {
     enabled: !!id && (isQuestionModalOpen || activeTab === "qa"),
   });
 
-  // Poll participants to detect waiting users in the lobby for organizers/co-hosts
+  // Poll participants to detect waiting users in the lobby and show live lobby avatars
   const { data: participantsData } = useQuery<any>({
     queryKey: ["meeting-participants", id],
     queryFn: async () => {
       const response = await apiClient.get(`/meetings/${id}/participants`);
       return response.data;
     },
-    enabled: !!id && (isOrganizer || isCoHost),
+    enabled: !!id,
     refetchInterval:
-      (isOrganizer || isCoHost) && (!isSidebarOpen || activeTab !== "lobby")
+      (isOrganizer || isCoHost || !joinData)
         ? 5000
         : false,
   });
@@ -616,7 +617,7 @@ const MeetingRoomPage: React.FC = () => {
         localVideoTrack={localVideoTrack}
         isLoading={isLoading}
         onJoin={handlePreJoinSubmit}
-        onExit={() => navigate("/")}
+        onExit={() => navigate(`/meetings/${id}/manage`)}
         avatarUrl={user?.picture || user?.profilePictureUrl || null}
         requiresPassword={requiresPassword && !isOrganizer}
         password={password}
@@ -624,12 +625,12 @@ const MeetingRoomPage: React.FC = () => {
         error={isPasswordError ? error : null}
         meetingTitle={meetingDetails?.title}
         meetingDescription={meetingDetails?.description}
-        participantCount={meetingDetails?.participantCount}
         allowDisplayNameEdit={meetingDetails?.allowDisplayNameEdit}
         selectedVideoId={selectedVideoId}
         setSelectedVideoId={setSelectedVideoId}
         selectedAudioId={selectedAudioId}
         setSelectedAudioId={setSelectedAudioId}
+        participants={(participantsData?.items || []).filter((p: any) => p.userId !== user?.id)}
       />
     );
   }
@@ -649,6 +650,7 @@ const MeetingRoomPage: React.FC = () => {
             navigate("/");
           }
         }}
+        onConnected={handleConnected}
         onError={(e) => {
           const errMsg = e.message || "";
           if (errMsg.includes("Client initiated disconnect")) {
@@ -725,7 +727,6 @@ const MeetingRoomPage: React.FC = () => {
             onOpenQuestionModal={handleOpenQuestionModal}
             onOpenBreakoutModal={handleOpenBreakoutModal}
             onOpenConfirmEndModal={() => setIsConfirmEndOpen(true)}
-            onReturnToMain={handleBreakoutEnded}
             onJoinBreakoutAsHost={handleJoinBreakoutAsHost}
             currentRoomName={joinData?.room}
             isInBreakout={isInBreakout}
@@ -735,6 +736,7 @@ const MeetingRoomPage: React.FC = () => {
           isOpen={isPollModalOpen}
           onClose={handleClosePollModal}
           meetingId={joinData.meetingId}
+          isInBreakout={isInBreakout}
         />
         <BreakoutModalWrapper
           isOpen={isBreakoutModalOpen}
@@ -758,15 +760,15 @@ const MeetingRoomPage: React.FC = () => {
             try {
               await apiClient.post(`/meetings/${id}/breakout-rooms/end`);
               window.dispatchEvent(new CustomEvent("send-breakout-end-signal"));
-              showSuccessToast("Đã kết thúc thảo luận nhóm", "🏠");
+              showSuccessToast(t('meeting.end_breakout_success', 'Đã kết thúc thảo luận nhóm'), "🏠");
               setIsConfirmEndOpen(false);
             } catch (err) {
               console.error("Failed to end breakout", err);
-              showErrorToast("Không thể kết thúc chia phòng");
+              showErrorToast(t('meeting.end_breakout_failed', 'Không thể kết thúc chia phòng'));
             }
           }}
-          title="Kết thúc thảo luận"
-          message="Bạn có chắc chắn muốn kết thúc tất cả các phòng thảo luận và thu hồi mọi người về phòng chính ngay bây giờ không?"
+          title={t('meeting.end_breakout_title', 'Kết thúc thảo luận')}
+          message={t('meeting.end_breakout_message', 'Bạn có chắc chắn muốn kết thúc tất cả các phòng thảo luận và thu hồi mọi người về phòng chính ngay bây giờ không?')}
         />
       </LiveKitRoom>
       <style
@@ -777,6 +779,7 @@ const MeetingRoomPage: React.FC = () => {
         .lk-premium-theme .lk-button:hover { background: rgba(255, 255, 255, 0.1) !important; transform: translateY(-2px); }
         .lk-premium-theme .lk-button[data-lk-active="true"] { background: rgba(34, 211, 238, 0.1) !important; color: #22d3ee !important; border-color: rgba(34, 211, 238, 0.2) !important; }
         .lk-premium-theme .lk-disconnect-button { background: #ef4444 !important; }
+        .lk-premium-theme .lk-focus-toggle-button { display: none !important; }
         .custom-scrollbar::-webkit-scrollbar { width: 4px; }
         .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
         .custom-scrollbar::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.1); border-radius: 10px; }

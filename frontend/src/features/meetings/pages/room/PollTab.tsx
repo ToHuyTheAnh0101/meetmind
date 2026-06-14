@@ -44,6 +44,7 @@ interface PollTabProps {
   userId: string;
   canManagePolls: boolean;
   onOpenCreateModal: () => void;
+  isInBreakout?: boolean;
 }
 
 // ─── Voter Avatar Stack ────────────────────────────────────────────────────────
@@ -383,6 +384,7 @@ const PollTab: React.FC<PollTabProps> = ({
   userId,
   canManagePolls,
   onOpenCreateModal,
+  isInBreakout,
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -390,9 +392,13 @@ const PollTab: React.FC<PollTabProps> = ({
 
   // Fetch Polls
   const { data: polls = [] } = useQuery<Poll[]>({
-    queryKey: ['polls', meetingId],
+    queryKey: ['polls', meetingId, isInBreakout],
     queryFn: async () => {
-      const response = await apiClient.get(`/meetings/${meetingId}/polls`);
+      const params: Record<string, string> = {};
+      if (isInBreakout) {
+        params.breakoutRoomId = 'current';
+      }
+      const response = await apiClient.get(`/meetings/${meetingId}/polls`, { params });
       return response.data;
     },
   });

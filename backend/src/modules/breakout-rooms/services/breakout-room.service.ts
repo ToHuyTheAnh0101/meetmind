@@ -4,7 +4,10 @@ import {
   ForbiddenException,
   BadRequestException,
   Logger,
+  Inject,
 } from '@nestjs/common';
+import { CACHE_MANAGER } from '@nestjs/cache-manager';
+import type { Cache } from 'cache-manager';
 import { MeetingRepository } from '../../meetings/repositories/meeting.repository';
 import { BreakoutRoomRepository } from '../repositories/breakout-room.repository';
 import { BreakoutRoomParticipantRepository } from '../repositories/breakout-room-participant.repository';
@@ -28,6 +31,7 @@ export class BreakoutRoomService {
     private readonly participantRepository: BreakoutRoomParticipantRepository,
     private readonly liveKitService: LiveKitService,
     private readonly entityManager: EntityManager,
+    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
   async setupBreakoutRooms(
@@ -221,6 +225,9 @@ export class BreakoutRoomService {
       metadata,
     );
 
+    const cacheKey = `transitioning:${meetingId}:${userId}`;
+    await this.cacheManager.set(cacheKey, livekitRoomName, 15000);
+
     return {
       token,
       roomName: room.name,
@@ -278,6 +285,9 @@ export class BreakoutRoomService {
       grants,
       metadata,
     );
+
+    const cacheKey = `transitioning:${meetingId}:${userId}`;
+    await this.cacheManager.set(cacheKey, room.livekitRoomName, 15000);
 
     return {
       token,

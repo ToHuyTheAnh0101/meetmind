@@ -9,6 +9,8 @@ import { MeetingAnswer } from '../entities/meeting-answer.entity';
 import { QuestionRepository } from '../repositories/question.repository';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository, EntityManager } from 'typeorm';
+import { BreakoutRoomParticipant } from '../../breakout-rooms/entities/breakout-room-participant.entity';
+import { BreakoutRoomStatus } from '../../breakout-rooms/entities/breakout-room.entity';
 import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
 import { MeetingPermission } from '../../meetings/entities';
 import { ParticipantRepository } from '../../meetings/repositories/participant.repository';
@@ -21,11 +23,35 @@ export class QuestionService {
     private answerRepository: Repository<MeetingAnswer>,
     private participantRepository: ParticipantRepository,
     private entityManager: EntityManager,
+    @InjectRepository(BreakoutRoomParticipant)
+    private readonly breakoutRoomParticipantRepo: Repository<BreakoutRoomParticipant>,
   ) {}
+
+  private async resolveBreakoutRoomId(
+    meetingId: string,
+    userId: string,
+    breakoutRoomId?: string,
+  ): Promise<string | undefined> {
+    if (!breakoutRoomId) return undefined;
+    if (breakoutRoomId === 'current') {
+      const assignment = await this.breakoutRoomParticipantRepo.findOne({
+        where: {
+          userId,
+          breakoutRoom: {
+            meetingId,
+            status: BreakoutRoomStatus.ACTIVE,
+          },
+        },
+        relations: ['breakoutRoom'],
+      });
+      return assignment?.breakoutRoomId || undefined;
+    }
+    return breakoutRoomId;
+  }
 
   async create(
     meetingId: string,
-    data: Partial<MeetingQuestion>,
+    data: Partial<MeetingQuestion> & { breakoutRoomId?: string },
   ): Promise<MeetingQuestion> {
     const userId = data.askedByUserId;
     if (!userId) {
@@ -47,9 +73,16 @@ export class QuestionService {
       );
     }
 
+    const resolvedRoomId = await this.resolveBreakoutRoomId(
+      meetingId,
+      userId,
+      data.breakoutRoomId,
+    );
+
     const question = this.questionRepository.create({
       ...data,
       meetingId,
+      breakoutRoomId: resolvedRoomId || undefined,
     });
 
     const savedQuestion = await this.questionRepository.save(question);
@@ -80,8 +113,16 @@ export class QuestionService {
     return question;
   }
 
-  async findByMeetingId(meetingId: string): Promise<MeetingQuestion[]> {
-    return this.questionRepository.findByMeetingId(meetingId);
+  async findByMeetingId(
+    meetingId: string,
+    breakoutRoomId?: string,
+    userId?: string,
+  ): Promise<MeetingQuestion[]> {
+    const resolvedRoomId = userId
+      ? await this.resolveBreakoutRoomId(meetingId, userId, breakoutRoomId)
+      : breakoutRoomId;
+
+    return this.questionRepository.findByMeetingId(meetingId, resolvedRoomId);
   }
 
   async createAnswer(

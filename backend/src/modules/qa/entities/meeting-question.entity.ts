@@ -41,6 +41,10 @@ export class MeetingQuestion {
   @OneToMany(() => MeetingAnswer, (answer) => answer.question)
   answers?: MeetingAnswer[];
 
+  @Column({ type: 'uuid', nullable: true })
+  @Index()
+  breakoutRoomId?: string;
+
   @CreateDateColumn()
   createdAt?: Date;
 

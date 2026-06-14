@@ -1,6 +1,10 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Repository } from 'typeorm';
 import { MeetingChatMessageRepository } from '../repositories/meeting-chat-message.repository';
 import { MeetingChatMessage } from '../entities';
+import { BreakoutRoomParticipant } from '../../breakout-rooms/entities/breakout-room-participant.entity';
+import { BreakoutRoomStatus } from '../../breakout-rooms/entities/breakout-room.entity';
 
 export interface ChatMessageDto {
   id: string;
@@ -15,7 +19,31 @@ export interface ChatMessageDto {
 export class ChatService {
   constructor(
     private readonly chatMessageRepository: MeetingChatMessageRepository,
+    @InjectRepository(BreakoutRoomParticipant)
+    private readonly breakoutRoomParticipantRepo: Repository<BreakoutRoomParticipant>,
   ) {}
+
+  private async resolveBreakoutRoomId(
+    meetingId: string,
+    userId: string,
+    breakoutRoomId?: string,
+  ): Promise<string | undefined> {
+    if (!breakoutRoomId) return undefined;
+    if (breakoutRoomId === 'current') {
+      const assignment = await this.breakoutRoomParticipantRepo.findOne({
+        where: {
+          userId,
+          breakoutRoom: {
+            meetingId,
+            status: BreakoutRoomStatus.ACTIVE,
+          },
+        },
+        relations: ['breakoutRoom'],
+      });
+      return assignment?.breakoutRoomId || undefined;
+    }
+    return breakoutRoomId;
+  }
 
   async saveChatMessage(
     meetingId: string,
@@ -27,11 +55,17 @@ export class ChatService {
       throw new BadRequestException('Message cannot be empty');
     }
 
+    const resolvedRoomId = await this.resolveBreakoutRoomId(
+      meetingId,
+      userId,
+      breakoutRoomId,
+    );
+
     const chatMsg = this.chatMessageRepository.create({
       meetingId,
       senderUserId: userId,
       message: message.trim(),
-      breakoutRoomId: breakoutRoomId || undefined,
+      breakoutRoomId: resolvedRoomId || undefined,
     });
 
     return this.chatMessageRepository.save(chatMsg);
@@ -40,10 +74,15 @@ export class ChatService {
   async getChatMessages(
     meetingId: string,
     breakoutRoomId?: string,
+    userId?: string,
   ): Promise<ChatMessageDto[]> {
+    const resolvedRoomId = userId
+      ? await this.resolveBreakoutRoomId(meetingId, userId, breakoutRoomId)
+      : breakoutRoomId;
+
     const messages = await this.chatMessageRepository.findByMeeting(
       meetingId,
-      breakoutRoomId,
+      resolvedRoomId,
     );
 
     return messages.map((m) => {

@@ -7,10 +7,16 @@ import { PollController } from './controllers/poll.controller';
 import { PollService } from './services/poll.service';
 import { PollRepository } from './repositories/poll.repository';
 import { MeetingsModule } from '../meetings/meetings.module';
+import { BreakoutRoomParticipant } from '../breakout-rooms/entities/breakout-room-participant.entity';
 
 @Module({
   imports: [
-    TypeOrmModule.forFeature([MeetingPoll, PollOption, PollVote]),
+    TypeOrmModule.forFeature([
+      MeetingPoll,
+      PollOption,
+      PollVote,
+      BreakoutRoomParticipant,
+    ]),
     MeetingsModule,
   ],
   providers: [PollRepository, PollService],

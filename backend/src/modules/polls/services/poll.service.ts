@@ -14,7 +14,10 @@ import { PollVote } from '../entities/poll-vote.entity';
 import { MeetingPermission } from '../../meetings/entities';
 import { PollRepository } from '../repositories/poll.repository';
 import { ParticipantRepository } from '../../meetings/repositories/participant.repository';
-import { EntityManager, In } from 'typeorm';
+import { EntityManager, In, Repository } from 'typeorm';
+import { InjectRepository } from '@nestjs/typeorm';
+import { BreakoutRoomParticipant } from '../../breakout-rooms/entities/breakout-room-participant.entity';
+import { BreakoutRoomStatus } from '../../breakout-rooms/entities/breakout-room.entity';
 import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
 
 @Injectable()
@@ -23,6 +26,8 @@ export class PollService {
     private pollRepository: PollRepository,
     private participantRepository: ParticipantRepository,
     private entityManager: EntityManager,
+    @InjectRepository(BreakoutRoomParticipant)
+    private readonly breakoutRoomParticipantRepo: Repository<BreakoutRoomParticipant>,
   ) {}
 
   private async mapPolls(
@@ -96,10 +101,32 @@ export class PollService {
     return isArray ? result : result[0];
   }
 
+  private async resolveBreakoutRoomId(
+    meetingId: string,
+    userId: string,
+    breakoutRoomId?: string,
+  ): Promise<string | undefined> {
+    if (!breakoutRoomId) return undefined;
+    if (breakoutRoomId === 'current') {
+      const assignment = await this.breakoutRoomParticipantRepo.findOne({
+        where: {
+          userId,
+          breakoutRoom: {
+            meetingId,
+            status: BreakoutRoomStatus.ACTIVE,
+          },
+        },
+        relations: ['breakoutRoom'],
+      });
+      return assignment?.breakoutRoomId || undefined;
+    }
+    return breakoutRoomId;
+  }
+
   async create(
     meetingId: string,
     userId: string,
-    data: Partial<MeetingPoll>,
+    data: Partial<MeetingPoll> & { breakoutRoomId?: string },
   ): Promise<PollResponseDto> {
     const participant = await this.participantRepository.findByMeetingAndUser(
       meetingId,
@@ -121,11 +148,18 @@ export class PollService {
       });
     });
 
+    const resolvedRoomId = await this.resolveBreakoutRoomId(
+      meetingId,
+      userId,
+      data.breakoutRoomId,
+    );
+
     const poll = this.pollRepository.create({
       question: data.question,
       type: data.type,
       meetingId,
       createdByUserId: userId,
+      breakoutRoomId: resolvedRoomId || undefined,
       options,
     });
 
@@ -158,8 +192,19 @@ export class PollService {
     return this.mapPolls(poll.meetingId ?? '', poll);
   }
 
-  async findByMeetingId(meetingId: string): Promise<PollResponseDto[]> {
-    const polls = await this.pollRepository.findByMeetingId(meetingId);
+  async findByMeetingId(
+    meetingId: string,
+    breakoutRoomId?: string,
+    userId?: string,
+  ): Promise<PollResponseDto[]> {
+    const resolvedRoomId = userId
+      ? await this.resolveBreakoutRoomId(meetingId, userId, breakoutRoomId)
+      : breakoutRoomId;
+
+    const polls = await this.pollRepository.findByMeetingId(
+      meetingId,
+      resolvedRoomId,
+    );
     return this.mapPolls(meetingId, polls);
   }
 

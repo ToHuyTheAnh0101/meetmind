@@ -37,6 +37,7 @@ const getStatusStyles = (status: MeetingStatus, t: any) => {
         border: 'border-emerald-200'
       }
     case 'canceled':
+    case 'cancelled':
       return {
         bg: 'bg-rose-50',
         text: 'text-rose-700',

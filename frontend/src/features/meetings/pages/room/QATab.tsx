@@ -44,13 +44,15 @@ interface QATabProps {
   userId: string;
   hasManagePrivilege: boolean;
   onOpenQuestionModal: (question: Question) => void;
+  isInBreakout?: boolean;
 }
 
 const QATab: React.FC<QATabProps> = ({ 
   meetingId, 
   userId, 
   hasManagePrivilege,
-  onOpenQuestionModal
+  onOpenQuestionModal,
+  isInBreakout
 }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
@@ -59,9 +61,13 @@ const QATab: React.FC<QATabProps> = ({
 
   // Fetch Questions
   const { data: questions = [] } = useQuery<Question[]>({
-    queryKey: ['questions', meetingId],
+    queryKey: ['questions', meetingId, isInBreakout],
     queryFn: async () => {
-      const response = await apiClient.get(`/meetings/${meetingId}/qa`);
+      const params: Record<string, string> = {};
+      if (isInBreakout) {
+        params.breakoutRoomId = 'current';
+      }
+      const response = await apiClient.get(`/meetings/${meetingId}/qa`, { params });
       return response.data;
     }
   });
@@ -80,7 +86,11 @@ const QATab: React.FC<QATabProps> = ({
   // Mutations
   const createQuestionMutation = useMutation({
     mutationFn: async (data: { content: string }) => {
-      return apiClient.post(`/meetings/${meetingId}/qa`, data);
+      const payload = {
+        ...data,
+        breakoutRoomId: isInBreakout ? 'current' : undefined,
+      };
+      return apiClient.post(`/meetings/${meetingId}/qa`, payload);
     },
     onSuccess: () => {
       setNewQuestion('');

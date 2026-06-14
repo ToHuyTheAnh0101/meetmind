@@ -11,6 +11,7 @@ import MeetingCard from './MeetingCard'
 // --- Interfaces ---
 interface MeetingListProps {
   searchQuery: string
+  status: string
 }
 
 // --- Helper Functions ---
@@ -135,39 +136,57 @@ const MOCK_MEETINGS: Meeting[] = [
 ]
 
 // --- Component ---
-const MeetingList: React.FC<MeetingListProps> = ({ searchQuery }) => {
+const MeetingList: React.FC<MeetingListProps> = ({ searchQuery, status }) => {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const [page, setPage] = useState(1)
   const LIMIT = 8
 
+  // Reset page to 1 when filters or search query changes
+  React.useEffect(() => {
+    setPage(1)
+  }, [searchQuery, status])
+
   const { data: apiResponse, isLoading, isError, refetch } = useQuery({
-    queryKey: ['meetings', page],
+    queryKey: ['meetings', page, searchQuery, status],
     queryFn: async (): Promise<PaginatedResponse<Meeting> | null> => {
-      const response = await apiClient.get('/meetings', { params: { page, limit: LIMIT } })
+      const response = await apiClient.get('/meetings', {
+        params: {
+          page,
+          limit: LIMIT,
+          search: searchQuery || undefined,
+          status: status || undefined,
+        },
+      })
       return parsePaginatedPayload(response.data)
     },
   })
 
   const filteredMock = useMemo(() => {
-    return MOCK_MEETINGS.filter(meeting => 
-      meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (meeting.description && meeting.description.toLowerCase().includes(searchQuery.toLowerCase()))
-    ).sort((a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime())
-  }, [searchQuery])
+    return MOCK_MEETINGS.filter((meeting) => {
+      const matchesSearch =
+        meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (meeting.description &&
+          meeting.description.toLowerCase().includes(searchQuery.toLowerCase()))
+      const matchesStatus = !status || meeting.status === status
+      return matchesSearch && matchesStatus
+    }).sort(
+      (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
+    )
+  }, [searchQuery, status])
 
   const { items, totalPages } = useMemo(() => {
     if (apiResponse && apiResponse.items.length > 0) {
-      return { 
-        items: apiResponse.items, 
-        totalPages: apiResponse.meta.totalPages 
+      return {
+        items: apiResponse.items,
+        totalPages: apiResponse.meta.totalPages,
       }
     }
-    
+
     const start = (page - 1) * LIMIT
     return {
       items: filteredMock.slice(start, start + LIMIT),
-      totalPages: Math.ceil(filteredMock.length / LIMIT)
+      totalPages: Math.ceil(filteredMock.length / LIMIT),
     }
   }, [apiResponse, filteredMock, page])
 

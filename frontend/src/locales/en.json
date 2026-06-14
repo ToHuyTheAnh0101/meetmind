@@ -17,7 +17,10 @@
     "participant": "Participant",
     "upvote": "Upvote",
     "dismiss": "Dismiss",
-    "empty": "Empty"
+    "empty": "Empty",
+    "accept": "Accept",
+    "manage": "Manage",
+    "enter": "Enter"
   },
   "calendar": {
     "days": {
@@ -561,6 +564,38 @@
       "empty_no_summary": "Choose a template and click the generate button below to begin analyzing the meeting.",
       "chatbot_agent_subtitle": "AI Agent is ready to answer",
       "chatbot_no_ai_warning": "Note: AI assistant was not activated for this meeting. Chat Q&A may not find any conversation history."
-    }
+    },
+    "breakout_initializing": "Initializing breakout rooms...",
+    "breakout_started_toast": "Breakout rooms started successfully!",
+    "breakout_start_failed_toast": "Failed to start breakout rooms",
+    "active_rooms": "Active Rooms",
+    "here": "Here",
+    "no_participants_yet": "No participants yet",
+    "end_breakout_all": "Recall All",
+    "breakout_rooms_desc": "Create separate discussion groups to increase team collaboration.",
+    "start_setup": "Start Setup",
+    "leave_breakout": "Leave breakout room",
+    "joined_room": "Joined {{room}}",
+    "connection_success": "Connected successfully",
+    "preparing_breakout": "Preparing breakout room...",
+    "moving_to_room": "Moving to {{room}}...",
+    "cannot_join_breakout": "Cannot switch to breakout room",
+    "moving_to_main": "Moving back to main room...",
+    "main_room": "main room",
+    "return_to_main_error": "Error returning to main room",
+    "screenshare_of": "Screen of",
+    "loading_chat_history": "Loading chat history...",
+    "recording": {
+      "mic_permission_error": "Cannot start recording. Please grant microphone permission.",
+      "ai_paused": "AI transcription assistant paused.",
+      "transcription_paused": "Live translation recording paused.",
+      "ai_activated": "AI transcription assistant activated!",
+      "transcription_activated": "System is automatically recording for live translation.",
+      "ai_start_failed": "Cannot start AI assistant."
+    },
+    "end_breakout_success": "Ended breakout rooms successfully",
+    "end_breakout_failed": "Failed to end breakout rooms",
+    "end_breakout_title": "End Breakout Session",
+    "end_breakout_message": "Are you sure you want to end all breakout rooms and recall everyone to the main room now?"
   }
 }

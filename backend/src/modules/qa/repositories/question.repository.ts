@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { Repository, IsNull } from 'typeorm';
 import { MeetingQuestion } from '../entities/meeting-question.entity';
 
 @Injectable()
@@ -23,9 +23,15 @@ export class QuestionRepository {
     });
   }
 
-  async findByMeetingId(meetingId: string): Promise<MeetingQuestion[]> {
+  async findByMeetingId(
+    meetingId: string,
+    breakoutRoomId?: string,
+  ): Promise<MeetingQuestion[]> {
     return this.repo.find({
-      where: { meetingId },
+      where: {
+        meetingId,
+        breakoutRoomId: breakoutRoomId || IsNull(),
+      },
       relations: [
         'askedByUser',
         'askedByParticipant',

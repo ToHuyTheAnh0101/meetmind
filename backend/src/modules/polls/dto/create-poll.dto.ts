@@ -32,4 +32,8 @@ export class CreatePollDto {
   @ValidateNested({ each: true })
   @Type(() => PollOptionDto)
   options?: PollOptionDto[];
+
+  @IsString()
+  @IsOptional()
+  breakoutRoomId?: string;
 }

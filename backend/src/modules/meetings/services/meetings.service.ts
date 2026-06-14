@@ -268,6 +268,8 @@ export class MeetingsService {
       userEmail,
       skip,
       take,
+      queryDto?.status,
+      queryDto?.search,
     );
 
     return PaginationHelper.createPaginatedResult(
