@@ -242,7 +242,11 @@
         "roomNames": "Breakout Room Names",
         "roomsCount": "Number of Rooms",
         "targetName": "Member Name",
-        "targetEmail": "Member Email"
+        "targetEmail": "Member Email",
+        "options": "Options",
+        "question": "Question",
+        "content": "Content",
+        "autoCompleted": "Auto completed"
       },
       "title": "Meeting Timeline",
       "subtitle": "Chronological activity log for the session",

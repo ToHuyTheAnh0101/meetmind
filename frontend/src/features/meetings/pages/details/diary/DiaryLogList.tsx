@@ -147,6 +147,13 @@ const LOG_CONFIG: Record<string, LogConfig> = {
     labelVi: "Tạo bản tóm tắt AI",
     labelEn: "AI summary generated",
   },
+  meeting_ended: {
+    icon: VideoOff,
+    color: "rose",
+    bgGlow: "rose-400",
+    labelVi: "Kết thúc cuộc họp",
+    labelEn: "Meeting ended",
+  },
 };
 
 const DEFAULT_LOG_CONFIG: LogConfig = {
@@ -367,10 +374,7 @@ export const DiaryLogList: React.FC<DiaryLogListProps> = ({
                               key !== "avatar" &&
                               key !== "picture" &&
                               key !== "timestamp" &&
-                              key !== "targetUserId" &&
-                              key !== "userId" &&
-                              key !== "meetingId" &&
-                              key !== "breakoutRoomId"
+                              (!key.endsWith("Id") || key === "templateId")
                           )
                           .map(([key, value]) => {
                             const prettified = renderMetadataItem(

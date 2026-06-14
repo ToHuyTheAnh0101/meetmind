@@ -27,6 +27,7 @@ export enum LogType {
   AI_ASSISTANT_ACTIVATED = 'ai_assistant_activated',
   AI_ASSISTANT_DEACTIVATED = 'ai_assistant_deactivated',
   AI_SUMMARY_GENERATED = 'ai_summary_generated',
+  MEETING_ENDED = 'meeting_ended',
 }
 
 @Entity('meet_logs')

@@ -66,7 +66,7 @@ export const TemplateFormBasicInfo: React.FC<TemplateFormBasicInfoProps> = ({
             onChange={(e) => setFormName(e.target.value)}
             disabled={isSystem}
             placeholder={t("template.field_template_name_placeholder")}
-            className="h-11 w-full rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold placeholder:text-slate-400 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 outline-none transition-all shadow-sm disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="h-10 w-full rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold placeholder:text-slate-400 focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 outline-none transition-all shadow-sm disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
           />
         </div>
 
@@ -78,7 +78,7 @@ export const TemplateFormBasicInfo: React.FC<TemplateFormBasicInfoProps> = ({
             type="button"
             onClick={() => !isSystem && setIsFormPurposeOpen(!isFormPurposeOpen)}
             disabled={isSystem}
-            className="flex h-11 w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="flex h-10 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             <span className="flex items-center gap-2">
               {formPurpose === "interview" && `🎤 ${t("template.purpose_options.interview")}`}
@@ -152,7 +152,7 @@ export const TemplateFormBasicInfo: React.FC<TemplateFormBasicInfoProps> = ({
             type="button"
             onClick={() => !isSystem && setIsFormStyleOpen(!isFormStyleOpen)}
             disabled={isSystem}
-            className="flex h-11 w-full items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white px-4 text-sm font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="flex h-10 w-full items-center justify-between gap-3 rounded-xl border border-slate-200 bg-white px-3 text-xs font-bold text-slate-600 shadow-sm transition hover:bg-slate-50 disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
           >
             <span className="flex items-center gap-2">
               {formStyle === "detailed" && t("template.style_options.detailed")}
@@ -217,7 +217,7 @@ export const TemplateFormBasicInfo: React.FC<TemplateFormBasicInfoProps> = ({
             disabled={isSystem}
             placeholder={t("template.field_template_desc_placeholder")}
             rows={2}
-            className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold placeholder:text-slate-400 focus:border-cyan-400 outline-none transition resize-none shadow-sm disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
+            className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-semibold placeholder:text-slate-400 focus:border-cyan-400 outline-none transition resize-none shadow-sm disabled:bg-slate-50 disabled:text-slate-500 disabled:cursor-not-allowed"
           />
         </div>
 
@@ -234,7 +234,7 @@ export const TemplateFormBasicInfo: React.FC<TemplateFormBasicInfoProps> = ({
                 : "Guidelines or rules applied to the entire summary (e.g. Focus on action items, keep tone formal...)"
               }
               rows={2}
-              className="w-full rounded-2xl border border-slate-200 bg-white p-4 text-sm font-semibold placeholder:text-slate-400 focus:border-cyan-400 outline-none transition resize-none shadow-sm"
+              className="w-full rounded-xl border border-slate-200 bg-white p-3 text-xs font-semibold placeholder:text-slate-400 focus:border-cyan-400 outline-none transition resize-none shadow-sm"
             />
           </div>
         )}

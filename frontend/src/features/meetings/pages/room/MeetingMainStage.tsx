@@ -338,6 +338,11 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
     recordingStartTimeRef.current = null;
 
     if (isOrganizer) {
+      // Call backend API to deactivate AI Assistant
+      apiClient.put(`/meetings/${meetingId}`, { aiActivated: false }).catch((err) => {
+        console.error("Failed to deactivate AI Assistant on backend", err);
+      });
+
       // Broadcast RECORDING_STOPPED signal
       const payload = JSON.stringify({ type: "RECORDING_STOPPED" });
       try {

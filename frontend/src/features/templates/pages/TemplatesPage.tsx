@@ -24,7 +24,6 @@ import { TemplateCard } from "./TemplateCard";
 import { TemplateListHeader } from "./TemplateListHeader";
 import { TemplateFormBasicInfo } from "./TemplateFormBasicInfo";
 import { TemplateBlockEditor } from "./TemplateBlockEditor";
-import { TemplateActiveBlocks } from "./TemplateActiveBlocks";
 import { TemplateNotionPreview } from "./TemplateNotionPreview";
 
 // --- Predefined Blocks and Utility Helpers ---
@@ -40,7 +39,7 @@ const TemplatesPage: React.FC = () => {
   const queryClient = useQueryClient();
 
   // --- Unified Real-Time Preview Renderer ---
-  const renderCompiledBlock = (_blockType: string | undefined, _label: string, placeholders: string | undefined) => {
+  const renderCompiledBlock = (_blockType: string | undefined, _label: string, placeholders: string | undefined, compact?: boolean) => {
     if (!placeholders || !placeholders.trim()) {
       return (
         <div className="flex items-center gap-2 text-slate-400 font-sans text-[11px] font-medium animate-in fade-in duration-200 py-2.5 bg-slate-50/50 border border-dashed border-slate-200 rounded-xl px-3.5">
@@ -49,7 +48,7 @@ const TemplatesPage: React.FC = () => {
         </div>
       );
     }
-    return <MarkdownRenderer content={placeholders} highlightVariables={true} />;
+    return <MarkdownRenderer content={placeholders} highlightVariables={true} compact={compact} />;
   };
 
   // Page States
@@ -548,69 +547,69 @@ const TemplatesPage: React.FC = () => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 xl:grid-cols-2 gap-8 items-start">
-            {/* Left Column: Form, Block Editor & Active Blocks List */}
-            <div className="xl:col-span-1 space-y-6">
-              <TemplateFormBasicInfo
-                formName={formName}
-                setFormName={setFormName}
-                formPurpose={formPurpose}
-                setFormPurpose={setFormPurpose}
-                formStyle={formStyle}
-                setFormStyle={setFormStyle}
-                formDesc={formDesc}
-                setFormDesc={setFormDesc}
-                formGlobalRules={formGlobalRules}
-                setFormGlobalRules={setFormGlobalRules}
-                isFormPurposeOpen={isFormPurposeOpen}
-                setIsFormPurposeOpen={setIsFormPurposeOpen}
-                isFormStyleOpen={isFormStyleOpen}
-                setIsFormStyleOpen={setIsFormStyleOpen}
-                isVi={isVi}
-                isSystem={!!selectedTemplate?.isSystem}
-              />
+          <div className="space-y-8">
+            {/* Top Row: Full-width Basic Info */}
+            <TemplateFormBasicInfo
+              formName={formName}
+              setFormName={setFormName}
+              formPurpose={formPurpose}
+              setFormPurpose={setFormPurpose}
+              formStyle={formStyle}
+              setFormStyle={setFormStyle}
+              formDesc={formDesc}
+              setFormDesc={setFormDesc}
+              formGlobalRules={formGlobalRules}
+              setFormGlobalRules={setFormGlobalRules}
+              isFormPurposeOpen={isFormPurposeOpen}
+              setIsFormPurposeOpen={setIsFormPurposeOpen}
+              isFormStyleOpen={isFormStyleOpen}
+              setIsFormStyleOpen={setIsFormStyleOpen}
+              isVi={isVi}
+              isSystem={!!selectedTemplate?.isSystem}
+            />
 
-              <TemplateBlockEditor
-                editingSecName={editingSecName}
-                setEditingSecName={setEditingSecName}
-                secBuilderError={secBuilderError}
-                newSecBlockType={newSecBlockType}
-                setNewSecBlockType={setNewSecBlockType}
-                newSecLabel={newSecLabel}
-                setNewSecLabel={setNewSecLabel}
-                newSecPlaceholders={newSecPlaceholders}
-                newSecAiInstructions={newSecAiInstructions}
-                setNewSecAiInstructions={setNewSecAiInstructions}
-                isNewSecBlockTypeOpen={isNewSecBlockTypeOpen}
-                setIsNewSecBlockTypeOpen={setIsNewSecBlockTypeOpen}
-                handleSelectPredefinedBlock={handleSelectPredefinedBlock}
-                handleInsertPlaceholder={handleInsertPlaceholder}
-                handleAddOrUpdateSection={handleAddOrUpdateSection}
-                renderCompiledBlock={renderCompiledBlock}
-                selectedTemplate={selectedTemplate}
-                setNewSecName={setNewSecName}
-                setNewSecDesc={setNewSecDesc}
-                setNewSecPlaceholders={setNewSecPlaceholders}
-              />
+            {/* Bottom Row: Two-Column Editor & Preview */}
+            <div className="grid grid-cols-1 xl:grid-cols-12 gap-8 items-start">
+              {/* Left Column: Block Editor */}
+              <div className="xl:col-span-5 space-y-6">
+                <TemplateBlockEditor
+                  editingSecName={editingSecName}
+                  setEditingSecName={setEditingSecName}
+                  secBuilderError={secBuilderError}
+                  newSecBlockType={newSecBlockType}
+                  setNewSecBlockType={setNewSecBlockType}
+                  newSecLabel={newSecLabel}
+                  setNewSecLabel={setNewSecLabel}
+                  newSecPlaceholders={newSecPlaceholders}
+                  newSecAiInstructions={newSecAiInstructions}
+                  setNewSecAiInstructions={setNewSecAiInstructions}
+                  isNewSecBlockTypeOpen={isNewSecBlockTypeOpen}
+                  setIsNewSecBlockTypeOpen={setIsNewSecBlockTypeOpen}
+                  handleSelectPredefinedBlock={handleSelectPredefinedBlock}
+                  handleInsertPlaceholder={handleInsertPlaceholder}
+                  handleAddOrUpdateSection={handleAddOrUpdateSection}
+                  renderCompiledBlock={renderCompiledBlock}
+                  selectedTemplate={selectedTemplate}
+                  setNewSecName={setNewSecName}
+                  setNewSecDesc={setNewSecDesc}
+                  setNewSecPlaceholders={setNewSecPlaceholders}
+                />
+              </div>
 
-              <TemplateActiveBlocks
-                formSections={formSections}
-                selectedTemplate={selectedTemplate}
-                editingSecName={editingSecName}
-                handleStartEditSection={handleStartEditSection}
-                handleDeleteSection={handleDeleteSection}
-                moveSection={moveSection}
-              />
-            </div>
-
-            {/* Right Column: Notion-style Realtime Preview */}
-            <div className="xl:col-span-1">
-              <TemplateNotionPreview
-                formName={formName}
-                formPurpose={formPurpose}
-                formSections={formSections}
-                renderCompiledBlock={renderCompiledBlock}
-              />
+              {/* Right Column: Notion-style Realtime Preview with Outline Sidebar */}
+              <div className="xl:col-span-7 space-y-6">
+                <TemplateNotionPreview
+                  formName={formName}
+                  formPurpose={formPurpose}
+                  formSections={formSections}
+                  renderCompiledBlock={renderCompiledBlock}
+                  selectedTemplate={selectedTemplate}
+                  editingSecName={editingSecName}
+                  handleStartEditSection={handleStartEditSection}
+                  handleDeleteSection={handleDeleteSection}
+                  moveSection={moveSection}
+                />
+              </div>
             </div>
           </div>
         </motion.div>

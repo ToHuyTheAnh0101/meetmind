@@ -12,6 +12,8 @@ import { ConfigService } from '@nestjs/config';
 import { Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
+import { EntityManager } from 'typeorm';
+import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
 import {
   Meeting,
   MeetingStatus,
@@ -63,6 +65,7 @@ export class MeetingsService {
     private chatHistoryRepository: ChatHistoryRepository,
     private screenCaptureRepository: ScreenCaptureRepository,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
+    private readonly entityManager: EntityManager,
   ) {}
 
   async create(dto: CreateMeetingDto, userId: string): Promise<Meeting> {
@@ -198,6 +201,21 @@ export class MeetingsService {
       );
     }
 
+    // Log MEETING_ENDED event
+    try {
+      const newEvent = this.entityManager.create(MeetLog, {
+        meetingId: id,
+        type: LogType.MEETING_ENDED,
+        triggeredByUserId: userId,
+        metadata: {
+          timestamp: now.toISOString(),
+        },
+      });
+      await this.entityManager.save(MeetLog, newEvent);
+    } catch (err) {
+      this.logger.error('Failed to log MEETING_ENDED event:', err);
+    }
+
     // Cleanup raw recording chunks
     this.cleanupRecordings(id);
 
@@ -220,6 +238,25 @@ export class MeetingsService {
     } catch (err) {
       this.logger.warn(
         `Could not delete LiveKit room ${meeting.livekitRoomName}`,
+        err,
+      );
+    }
+
+    // Log MEETING_ENDED event (autoComplete)
+    try {
+      const newEvent = this.entityManager.create(MeetLog, {
+        meetingId: id,
+        type: LogType.MEETING_ENDED,
+        triggeredByUserId: meeting.organizerId,
+        metadata: {
+          timestamp: new Date().toISOString(),
+          autoCompleted: true,
+        },
+      });
+      await this.entityManager.save(MeetLog, newEvent);
+    } catch (err) {
+      this.logger.error(
+        'Failed to log MEETING_ENDED event (autoComplete):',
         err,
       );
     }
@@ -348,6 +385,7 @@ export class MeetingsService {
       throw new ForbiddenException('Only organizer can update the meeting');
     }
 
+    const oldAiActivated = meeting.aiActivated;
     const { password, ...updateData } = dto;
 
     if (password !== undefined) {
@@ -360,6 +398,27 @@ export class MeetingsService {
     });
 
     const updatedMeeting = await this.meetingsRepository.save(meeting);
+
+    if (dto.aiActivated !== undefined && dto.aiActivated !== oldAiActivated) {
+      try {
+        const newEvent = this.entityManager.create(MeetLog, {
+          meetingId: id,
+          type: dto.aiActivated
+            ? LogType.AI_ASSISTANT_ACTIVATED
+            : LogType.AI_ASSISTANT_DEACTIVATED,
+          triggeredByUserId: userId,
+          metadata: {
+            timestamp: new Date().toISOString(),
+          },
+        });
+        await this.entityManager.save(MeetLog, newEvent);
+      } catch (err) {
+        this.logger.error(
+          `Failed to log AI assistant activation/deactivation event:`,
+          err,
+        );
+      }
+    }
 
     // Cập nhật lại lịch nhắc nhở nếu có thay đổi liên quan
     if (

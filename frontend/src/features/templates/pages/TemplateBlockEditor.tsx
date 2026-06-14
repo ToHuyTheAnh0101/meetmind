@@ -21,7 +21,7 @@ interface TemplateBlockEditorProps {
   handleSelectPredefinedBlock: (block: any) => void;
   handleInsertPlaceholder: (placeholder: string) => void;
   handleAddOrUpdateSection: () => void;
-  renderCompiledBlock: (blockType: string | undefined, label: string, placeholders: string | undefined) => React.ReactNode;
+  renderCompiledBlock: (blockType: string | undefined, label: string, placeholders: string | undefined, compact?: boolean) => React.ReactNode;
   selectedTemplate: any;
   setNewSecName: (val: string) => void;
   setNewSecDesc: (val: string) => void;
@@ -74,24 +74,6 @@ export const TemplateBlockEditor: React.FC<TemplateBlockEditorProps> = ({
             </p>
           </div>
         </div>
-
-        {editingSecName && (
-          <button
-            type="button"
-            onClick={() => {
-              setEditingSecName(null);
-              setNewSecName("");
-              setNewSecLabel("");
-              setNewSecDesc("");
-              setNewSecBlockType("custom");
-              setNewSecAiInstructions("");
-              setNewSecPlaceholders("");
-            }}
-            className="text-xs font-bold text-slate-400 hover:text-slate-600 transition"
-          >
-            {t("template.btn_cancel_edit")}
-          </button>
-        )}
       </div>
 
       {secBuilderError && (
@@ -265,13 +247,31 @@ export const TemplateBlockEditor: React.FC<TemplateBlockEditorProps> = ({
                 <span>Bản xem trước khối sẽ xuất hiện tại đây khi bạn nhập dữ liệu...</span>
               </div>
             ) : (
-              renderCompiledBlock(newSecBlockType, newSecLabel, newSecPlaceholders)
+              renderCompiledBlock(newSecBlockType, newSecLabel, newSecPlaceholders, true)
             )}
           </div>
         </div>
       </div>
 
-      <div className="flex justify-end pt-2">
+      <div className="flex justify-end gap-3 pt-2">
+        {editingSecName && (
+          <button
+            type="button"
+            onClick={() => {
+              setEditingSecName(null);
+              setNewSecName("");
+              setNewSecLabel("");
+              setNewSecDesc("");
+              setNewSecBlockType("custom");
+              setNewSecAiInstructions("");
+              setNewSecPlaceholders("");
+            }}
+            className="flex h-10 items-center gap-2 rounded-xl border border-slate-200 bg-white px-5 text-xs font-black text-slate-500 hover:bg-slate-50 hover:text-slate-800 active:scale-95 shadow-sm transition-all"
+          >
+            {t("template.btn_cancel_edit")}
+          </button>
+        )}
+
         <button
           type="button"
           onClick={handleAddOrUpdateSection}

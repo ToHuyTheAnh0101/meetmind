@@ -5,11 +5,13 @@ import { useTranslation } from "react-i18next";
 interface MarkdownRendererProps {
   content: string;
   highlightVariables?: boolean;
+  compact?: boolean;
 }
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
   content,
   highlightVariables = false,
+  compact = false,
 }) => {
   const { t } = useTranslation();
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
@@ -221,7 +223,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     return (
       <div
         key={`code-${codeIdx}`}
-        className="my-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 text-slate-100 font-mono text-[12px] shadow-lg animate-in fade-in duration-300"
+        className={`my-4 overflow-hidden rounded-2xl border border-slate-200 bg-slate-900 text-slate-100 font-mono ${compact ? "text-[11px]" : "text-[12px]"} shadow-lg animate-in fade-in duration-300`}
       >
         <div className="flex items-center justify-between bg-slate-800/80 px-4 py-2 text-[10px] font-black text-slate-400 uppercase tracking-wider select-none border-b border-slate-700/50">
           <span>{language || "code"}</span>
@@ -260,7 +262,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
         key={`table-${tableIdx}`}
         className="my-4 overflow-x-auto rounded-2xl border border-slate-100 bg-white/70 p-0.5 shadow-md animate-in fade-in duration-300"
       >
-        <table className="min-w-full divide-y divide-slate-100 text-left text-[12px] font-sans">
+        <table className={`min-w-full divide-y divide-slate-100 text-left ${compact ? "text-[11px]" : "text-[12px]"} font-sans`}>
           <thead className="bg-slate-50/80 text-slate-500 font-black">
             <tr>
               {headers.map((h, i) => (
@@ -400,12 +402,12 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       const headingContent = headerMatch[2];
       const sizeClass =
         level === 1
-          ? "text-xl font-extrabold text-slate-900 mt-6 mb-3"
+          ? compact ? "text-sm font-extrabold text-slate-900 mt-3 mb-1.5" : "text-xl font-extrabold text-slate-900 mt-6 mb-3"
           : level === 2
-            ? "text-lg font-extrabold text-slate-800 mt-5 mb-2.5"
+            ? compact ? "text-xs font-extrabold text-slate-800 mt-2.5 mb-1.5" : "text-lg font-extrabold text-slate-800 mt-5 mb-2.5"
             : level === 3
-              ? "text-base font-black text-slate-900 mt-4 mb-2 flex items-center gap-2"
-              : "text-sm font-black text-slate-700 mt-3 mb-1.5";
+              ? compact ? "text-xs font-black text-slate-900 mt-2 mb-1 flex items-center gap-2" : "text-base font-black text-slate-900 mt-4 mb-2 flex items-center gap-2"
+              : compact ? "text-[11px] font-black text-slate-700 mt-1.5 mb-1" : "text-sm font-black text-slate-700 mt-3 mb-1.5";
 
       elements.push(
         <div key={i} className={`${sizeClass} font-sans`}>
@@ -428,7 +430,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       elements.push(
         <div
           key={i}
-          className={`flex items-center gap-2.5 text-sm font-semibold text-slate-700 ${plClass} py-0.5 animate-in slide-in-from-left-1 duration-150`}
+          className={`flex items-center gap-2.5 ${compact ? "text-xs" : "text-sm"} font-semibold text-slate-700 ${plClass} py-0.5 animate-in slide-in-from-left-1 duration-150`}
         >
           <span
             className={`h-4 w-4 rounded border flex items-center justify-center shrink-0 transition-all ${
@@ -465,7 +467,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       elements.push(
         <div
           key={i}
-          className={`flex items-start text-sm font-semibold text-slate-700 ${plClass} py-0.5 animate-in slide-in-from-left-1 duration-150`}
+          className={`flex items-start ${compact ? "text-xs" : "text-sm"} font-semibold text-slate-700 ${plClass} py-0.5 animate-in slide-in-from-left-1 duration-150`}
         >
           <span className="leading-relaxed font-sans">
             {formatInlineStyles(listContent)}
@@ -484,7 +486,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       elements.push(
         <div
           key={i}
-          className={`flex items-start gap-2 text-sm font-semibold text-slate-700 ${plClass} py-0.5 animate-in slide-in-from-left-1 duration-150`}
+          className={`flex items-start gap-2 ${compact ? "text-xs" : "text-sm"} font-semibold text-slate-700 ${plClass} py-0.5 animate-in slide-in-from-left-1 duration-150`}
         >
           <span className="text-cyan-500 font-black shrink-0 text-xs mt-0.5">
             {number}.
@@ -501,7 +503,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     elements.push(
       <p
         key={i}
-        className="text-sm text-slate-600 pl-4 leading-relaxed font-medium font-sans"
+        className={`${compact ? "text-xs" : "text-sm"} text-slate-600 pl-4 leading-relaxed font-medium font-sans`}
       >
         {formatInlineStyles(line)}
       </p>,

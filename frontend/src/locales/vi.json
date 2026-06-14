@@ -242,7 +242,11 @@
         "roomNames": "Các phòng thảo luận",
         "roomsCount": "Số lượng phòng",
         "targetName": "Tên thành viên",
-        "targetEmail": "Email thành viên"
+        "targetEmail": "Email thành viên",
+        "options": "Các lựa chọn",
+        "question": "Câu hỏi",
+        "content": "Nội dung",
+        "autoCompleted": "Tự động kết thúc"
       },
       "title": "Nhật Ký Cuộc Họp",
       "subtitle": "Dòng thời gian hoạt động trong phiên",
