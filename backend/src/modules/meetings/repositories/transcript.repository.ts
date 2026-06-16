@@ -4,10 +4,13 @@ import { TranscriptChunk } from '../entities';
 
 // Cosine distance threshold: 0 = identical, 1 = completely different
 // Chunks with distance >= this value are considered irrelevant
-const SIMILARITY_DISTANCE_THRESHOLD = 0.55;
-const DEFAULT_RAG_CHUNK_LIMIT = 8;
+// 0.60: nới rộng hơn 0.55 để bắt được chunk liên quan bị miss, nhưng vẫn lọc noise tốt
+const SIMILARITY_DISTANCE_THRESHOLD = 0.6;
+// 15 chunks: chunk 15s chỉ ~30 từ, cần nhiều hơn để cover đủ 1 topic thảo luận (~3-4 phút)
+const DEFAULT_RAG_CHUNK_LIMIT = 15;
 // Fallback: lấy N chunks gần nhất về thời gian khi không có kết quả vector search
-const FALLBACK_RECENT_CHUNKS = 25;
+// 35 chunks: họp >1 tiếng thì 25 chunk cuối chỉ cover ~6 phút, tăng lên để an toàn hơn
+const FALLBACK_RECENT_CHUNKS = 35;
 
 @Injectable()
 export class TranscriptRepository extends Repository<TranscriptChunk> {
