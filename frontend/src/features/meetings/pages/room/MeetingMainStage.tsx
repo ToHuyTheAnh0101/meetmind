@@ -20,11 +20,11 @@ import {
   ChevronUp,
   LogOut,
   Users as UsersIcon,
-  Mic,
   MicOff,
   Radio,
   Monitor,
   MonitorOff,
+  Sparkles,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioRecording } from "./useAudioRecording";
@@ -34,11 +34,13 @@ import { useScreenCapture } from "./useScreenCapture";
 interface MeetingMainStageProps {
   meetingId: string;
   isSidebarOpen: boolean;
-  activeTab: "chat" | "roster" | "lobby" | "settings" | "polls";
+  activeTab: "chat" | "roster" | "lobby" | "settings" | "polls" | "qa" | "permissions" | "breakout" | "attachments";
   hasUnreadPolls?: boolean;
+  hasUnreadQA?: boolean;
+  hasWaitingLobby?: boolean;
   isOrganizer: boolean;
   onToggleSidebar: (
-    tab: "chat" | "roster" | "lobby" | "settings" | "polls",
+    tab: "chat" | "roster" | "lobby" | "settings" | "polls" | "qa" | "permissions" | "breakout" | "attachments",
   ) => void;
   onEndSession: () => void;
   onLeaveSession?: () => void;
@@ -73,14 +75,14 @@ const ParticipantAvatarOverlay = ({
   if (p?.isCameraEnabled) return null;
 
   const avatarSizeClasses = isCompact
-    ? "h-12 w-12 md:h-14 md:w-14"
-    : "h-28 w-28 md:h-36 md:w-36";
+    ? "h-10 w-10 sm:h-12 sm:w-12 md:h-14 md:w-14"
+    : "h-20 w-20 sm:h-28 sm:w-28 lg:h-36 lg:w-36";
 
-  const iconSizeClasses = isCompact ? "h-6 w-6" : "h-12 w-12";
+  const iconSizeClasses = isCompact ? "h-5 w-5" : "h-10 w-10 lg:h-12 lg:w-12";
 
   return (
     <div className="absolute inset-0 z-[100] flex flex-col items-center justify-center bg-[#050505]">
-      <div className={isCompact ? "relative mb-1.5" : "relative mb-4"}>
+      <div className={isCompact ? "relative mb-1" : "relative mb-2 lg:mb-4"}>
         <div className="absolute inset-0 bg-cyan-500/20 blur-[60px] rounded-full scale-150 animate-pulse" />
         {avatarUrl ? (
           <img
@@ -97,8 +99,8 @@ const ParticipantAvatarOverlay = ({
         )}
       </div>
       {!isCompact && (
-        <div className="relative z-10 rounded-full bg-black/60 border border-white/30 backdrop-blur-xl shadow-2xl transition-all mt-3 px-6 py-2">
-          <span className="text-sm font-bold text-white tracking-tight">
+        <div className="relative z-10 rounded-full bg-black/60 border border-white/30 backdrop-blur-xl shadow-2xl transition-all mt-2 lg:mt-3 px-4 py-1.5 lg:px-6 lg:py-2 hidden sm:block">
+          <span className="text-xs lg:text-sm font-bold text-white tracking-tight">
             <ParticipantName />
           </span>
         </div>
@@ -123,7 +125,7 @@ const ParticipantStatusOverlay = ({
     return (
       <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-0.5 max-w-[calc(100%-16px)] whitespace-nowrap">
         {!isScreenShare && isMuted && (
-          <MicOff className="h-3.5 w-3.5 text-rose-500 shrink-0" />
+          <MicOff className="h-3 w-3 text-rose-500 shrink-0" />
         )}
         {isScreenShare ? (
           <div className="flex items-center gap-1 text-emerald-400">
@@ -145,21 +147,21 @@ const ParticipantStatusOverlay = ({
 
   return (
     <div
-      className={`absolute z-[110] flex items-center gap-2 rounded-full bg-black/60 backdrop-blur-2xl border border-white/20 shadow-2xl transition-all bottom-6 left-6 px-4 py-2`}
+      className={`absolute z-[110] flex items-center gap-2 rounded-full bg-black/60 backdrop-blur-2xl border border-white/20 shadow-2xl transition-all bottom-3 left-3 px-3 py-1.5 lg:bottom-6 lg:left-6 lg:px-4 lg:py-2`}
     >
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1.5 lg:gap-2">
         {!isScreenShare && isMuted && (
-          <MicOff className="h-4 w-4 text-rose-500 shrink-0" />
+          <MicOff className="h-3.5 w-3.5 lg:h-4 lg:w-4 text-rose-500 shrink-0" />
         )}
         {isScreenShare ? (
           <div className="flex items-center gap-1.5 text-emerald-400">
             <Monitor className="h-3.5 w-3.5 animate-pulse" />
-            <span className="text-xs font-bold tracking-wider">
+            <span className="text-[11px] lg:text-xs font-bold tracking-wider">
               {t("meeting.screenshare_of", "Màn hình của")} <ParticipantName />
             </span>
           </div>
         ) : (
-          <span className="text-xs font-bold text-white truncate max-w-[120px]">
+          <span className="text-[11px] lg:text-xs font-bold text-white truncate max-w-[100px] lg:max-w-[120px]">
             <ParticipantName />
           </span>
         )}
@@ -171,13 +173,23 @@ const ParticipantStatusOverlay = ({
 const CustomConnectionIndicator = () => {
   const { quality } = useConnectionQualityIndicator();
   return (
-    <div className="flex items-end gap-1 h-3.5 opacity-90">
-      {[1, 2, 3].map((i) => (
-        <div
-          key={i}
-          className={`w-1 rounded-full transition-all ${i === 1 ? "h-1.5" : i === 2 ? "h-2.5" : "h-3.5"} ${quality === ConnectionQuality.Excellent ? "bg-emerald-500" : quality === ConnectionQuality.Good ? "bg-amber-500" : "bg-rose-500"}`}
-        />
-      ))}
+    <div className="flex items-center justify-center px-2 py-1 lg:px-2 lg:py-1.5 rounded-xl bg-black/65 backdrop-blur-md border border-white/10 shadow-xl">
+      <div className="flex items-end gap-1 h-3 opacity-90">
+        {[1, 2, 3].map((i) => (
+          <div
+            key={i}
+            className={`w-[3px] rounded-full transition-all ${
+              i === 1 ? "h-1.5" : i === 2 ? "h-2.5" : "h-3.5"
+            } ${
+              quality === ConnectionQuality.Excellent
+                ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]"
+                : quality === ConnectionQuality.Good
+                ? "bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.4)]"
+                : "bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.4)]"
+            }`}
+          />
+        ))}
+      </div>
     </div>
   );
 };
@@ -216,7 +228,9 @@ const CustomParticipantTile = ({
         isCompact={isCompact}
       />
       <div
-        className={`absolute z-[30] transition-all ${isCompact ? "top-3 left-3" : "top-8 left-8"}`}
+        className={`absolute z-[110] transition-all ${
+          isCompact ? "top-2.5 left-2.5" : "top-3 left-3 lg:top-6 lg:left-6"
+        }`}
       >
         <CustomConnectionIndicator />
       </div>
@@ -232,7 +246,12 @@ const CustomParticipantTile = ({
 
 const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   meetingId,
+  isSidebarOpen: _isSidebarOpen,
+  hasUnreadPolls,
+  hasUnreadQA,
+  hasWaitingLobby,
   isOrganizer,
+  onToggleSidebar,
   onEndSession,
   onReturnToMain,
   isInBreakout,
@@ -384,61 +403,74 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
         )}
       </AnimatePresence>
 
-      <div className="h-20 px-8 flex items-center justify-between border-b border-white/5 relative z-20 bg-black/40 backdrop-blur-md">
-        <div className="flex items-center gap-4">
-          <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)]" />
-          <span className="text-lg font-medium text-white/90">
+      <div className="h-16 lg:h-20 px-4 lg:px-8 flex items-center justify-between border-b border-white/5 relative z-20 bg-black/40 backdrop-blur-md">
+        <div className="flex items-center gap-2 lg:gap-4">
+          <div className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse shadow-[0_0_15px_rgba(16,185,129,0.5)] shrink-0" />
+          <span className="text-sm lg:text-lg font-medium text-white/90 truncate max-w-[100px] sm:max-w-none">
             {t("meeting.live_session")}: {meetingId?.slice(0, 8)}
           </span>
           {isRecording && (
-            <div className="flex items-center gap-2 px-3.5 py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
-              <div className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse" />
-              <span className="text-xs font-bold text-cyan-400 tracking-wider animate-pulse">
+            <div className="flex items-center gap-1.5 px-2.5 py-1 lg:px-3.5 lg:py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
+              <div className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
+              <span className="text-[10px] lg:text-xs font-bold text-cyan-400 tracking-wider animate-pulse hidden sm:inline">
                 Trợ lý AI đang ghi chép...
               </span>
             </div>
           )}
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 lg:gap-3">
+          <button
+            onClick={() => onToggleSidebar("chat")}
+            className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 lg:hidden flex items-center justify-center relative active:scale-95 transition-all"
+            title="Mở menu"
+          >
+            <UsersIcon className="h-4 w-4" />
+            {(hasUnreadPolls || hasUnreadQA || hasWaitingLobby) && (
+              <span className="absolute -top-1 -right-1 h-2.5 w-2.5 bg-rose-500 rounded-full border-2 border-[#020202] animate-pulse" />
+            )}
+          </button>
           {isOrganizer && (
             <>
               {!isInBreakout && (
                 <button
                   onClick={isRecording ? stopRecording : startRecording}
-                  className={`px-5 py-3 rounded-2xl flex items-center gap-2.5 font-semibold text-sm transition-all tracking-tight active:scale-95 border ${
+                  className={`p-2.5 lg:px-5 lg:py-3 rounded-xl lg:rounded-2xl flex items-center gap-2 font-semibold text-xs lg:text-sm transition-all tracking-tight active:scale-95 border ${
                     isRecording
                       ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
                       : "bg-white/5 border-white/10 hover:bg-white/10 text-white/80"
                   }`}
+                  title={isRecording ? "Dừng trợ lý ghi chép" : "Trợ lý ghi chép AI"}
                 >
                   {isRecording ? (
                     <>
                       <Radio className="h-4 w-4 animate-pulse text-cyan-400" />
-                      <span>Dừng trợ lý ghi chép</span>
+                      <span className="hidden md:inline">Dừng trợ lý ghi chép</span>
                     </>
                   ) : (
                     <>
-                      <Mic className="h-4 w-4 text-white/60" />
-                      <span>Trợ lý ghi chép AI</span>
+                      <Sparkles className="h-4 w-4 text-cyan-400" />
+                      <span className="hidden md:inline">Trợ lý ghi chép AI</span>
                     </>
                   )}
                 </button>
               )}
               <button
                 onClick={() => setShowEndConfirmation(true)}
-                className="px-6 py-3 rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-sm transition-all shadow-lg shadow-rose-500/20 active:scale-95"
+                className="px-3 py-2.5 lg:px-6 lg:py-3 rounded-xl lg:rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs lg:text-sm transition-all shadow-lg shadow-rose-500/20 active:scale-95"
               >
-                {t("meeting.end_session")}
+                <span className="hidden sm:inline">{t("meeting.end_session")}</span>
+                <span className="inline sm:hidden">{t("common.end", "Kết thúc")}</span>
               </button>
             </>
           )}
           {isInBreakout && onReturnToMain && (
             <button
               onClick={onReturnToMain}
-              className="px-6 py-3 rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-sm transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2 active:scale-95"
+              className="px-3 py-2.5 lg:px-6 lg:py-3 rounded-xl lg:rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs lg:text-sm transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2 active:scale-95"
             >
-              <span>{t("meeting.leave_breakout", "Rời phòng thảo luận")}</span>
-              <LogOut className="h-4 w-4" />
+              <span className="hidden sm:inline">{t("meeting.leave_breakout", "Rời phòng thảo luận")}</span>
+              <span className="inline sm:hidden">{t("common.leave", "Rời phòng")}</span>
+              <LogOut className="h-4 w-4 shrink-0" />
             </button>
           )}
         </div>
@@ -463,12 +495,12 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
         </div>
       )}
 
-      <div className="flex-1 relative overflow-hidden flex items-center justify-center p-6">
-        <div className="w-full h-full mx-auto">
+      <div className="flex-1 relative overflow-hidden flex items-center justify-center p-4 pb-24 lg:p-6 lg:pb-6">
+        <div className="w-full h-full mx-auto transition-all duration-300">
           {activeScreenShareTrack ? (
             <div className="w-full h-full flex flex-col lg:flex-row gap-6 items-stretch">
               {/* Main Focused Screen Share */}
-              <div className="flex-1 min-w-0 h-full relative rounded-2xl overflow-hidden flex items-center justify-center bg-[#0a0a0b] border-2 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.15)]">
+              <div className="flex-1 min-w-0 min-h-0 relative rounded-2xl overflow-hidden flex items-center justify-center bg-[#0a0a0b] border-2 border-emerald-500/50 shadow-[0_0_30px_rgba(16,185,129,0.15)]">
                 <CustomParticipantTile
                   trackRef={activeScreenShareTrack}
                   hideStatusOverlay={true}
@@ -545,7 +577,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
 
               {/* Camera Tiles Strip */}
               {cameraTracks.length > 0 && (
-                <div className="w-full lg:w-48 shrink-0 flex flex-col items-center justify-center gap-3">
+                <div className="w-full lg:w-60 xl:w-64 2xl:w-72 h-20 sm:h-28 lg:h-auto shrink-0 flex flex-row lg:flex-col items-center justify-center gap-3">
                   {/* Up Chevron Button */}
                   {isLargeScreen && totalCameraPages > 1 && (
                     <button
@@ -558,12 +590,12 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                   )}
 
                   {/* Camera list grid */}
-                  <div className="w-full flex flex-row lg:flex-col gap-3 overflow-auto lg:overflow-hidden pr-1 items-center lg:items-stretch justify-start">
+                  <div className="w-full h-full flex flex-row lg:flex-col gap-3 overflow-x-auto overflow-y-hidden lg:overflow-x-hidden lg:overflow-y-auto pr-1 items-center lg:items-stretch justify-start custom-scrollbar">
                     {displayedCameraTracks.map((track) => (
                       <CustomParticipantTile
                         key={`${track.participant.identity}-${track.source}`}
                         trackRef={track}
-                        className="w-48 lg:w-full aspect-video shrink-0"
+                        className="h-full aspect-video shrink-0 lg:w-full lg:h-auto"
                         isCompact={true}
                       />
                     ))}
@@ -606,18 +638,30 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
               )}
             </div>
           ) : (
-            <GridLayout
-              tracks={tracks}
-              className="w-full h-full place-content-center gap-6"
-            >
-              <CustomParticipantTile />
-            </GridLayout>
+            isLargeScreen ? (
+              <GridLayout
+                tracks={tracks}
+                className="w-full h-full place-content-center gap-6"
+              >
+                <CustomParticipantTile />
+              </GridLayout>
+            ) : (
+              <div className="w-full flex flex-col justify-center items-center gap-4 py-2 overflow-y-auto max-h-full custom-scrollbar">
+                {tracks.map((track) => (
+                  <CustomParticipantTile
+                    key={`${track.participant.identity}-${track.source}`}
+                    trackRef={track}
+                    className="w-full max-w-sm sm:max-w-md shrink-0"
+                  />
+                ))}
+              </div>
+            )
           )}
         </div>
       </div>
 
       <div
-        className={`absolute bottom-8 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 p-2 rounded-[2rem] bg-[#0f0f12]/95 backdrop-blur-3xl border border-white/20 shadow-2xl transition-all duration-300`}
+        className={`absolute bottom-4 lg:bottom-8 left-1/2 -translate-x-1/2 z-[100] flex items-center gap-3 p-2 rounded-[2rem] bg-[#0f0f12]/95 backdrop-blur-3xl border border-white/20 shadow-2xl transition-all duration-300`}
       >
         {isControlsExpanded && (
           <div className="flex items-center gap-2">

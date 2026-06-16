@@ -10,7 +10,8 @@ import {
   MessageCircle,
   Shield,
   Grid2X2,
-  Paperclip
+  Paperclip,
+  X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '@/lib/apiClient';
@@ -128,26 +129,26 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   }
 
   return (
-    <div className="h-full flex relative z-40">
+    <div className={`fixed right-0 top-0 bottom-0 h-full w-full lg:w-auto flex z-50 lg:relative lg:right-auto lg:top-auto lg:bottom-auto lg:z-40 ${!isOpen ? 'hidden lg:flex' : ''}`}>
       <AnimatePresence mode="wait">
         {isOpen && (
           <motion.div 
-            initial={{ x: 400, opacity: 0 }}
+            initial={{ x: '100%', opacity: 0 }}
             animate={{ x: 0, opacity: 1 }}
-            exit={{ x: 400, opacity: 0 }}
+            exit={{ x: '100%', opacity: 0 }}
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-            className="w-[320px] xl:w-[380px] 2xl:w-[420px] h-full bg-slate-950/95 backdrop-blur-2xl border-l border-white/10 flex flex-col overflow-hidden"
+            className="w-full lg:w-[320px] xl:w-[380px] 2xl:w-[420px] h-full bg-slate-950 lg:bg-slate-950/95 lg:backdrop-blur-2xl lg:border-l border-white/10 flex flex-col overflow-hidden"
           >
             {/* Tab Header */}
-            <div className="py-3 border-b border-white/5 bg-white/5 backdrop-blur-md grid place-items-center relative">
-              <h3 className="text-lg text-white font-premium-ink tracking-tight text-center w-full">
+            <div className="py-4 px-6 border-b border-white/5 bg-white/5 backdrop-blur-md flex items-center justify-between relative shrink-0">
+              <h3 className="text-lg text-white font-premium-ink tracking-tight">
                 {tabs.find(t => t.id === activeTab)?.label || t('meeting.workspace')}
               </h3>
               <button 
                 onClick={onClose}
-                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-500 hover:text-white transition-colors lg:hidden"
+                className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 flex items-center justify-center lg:hidden"
               >
-                <ChevronRight className="h-5 w-5 rotate-180" />
+                <X className="h-4 w-4" />
               </button>
             </div>
 
@@ -290,12 +291,42 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                 </div>
               )}
             </div>
+
+            {/* Horizontal Nav Rail for Mobile */}
+            <div className="flex lg:hidden w-full h-[76px] border-t border-white/10 items-center justify-start px-4 gap-3 bg-slate-950 overflow-x-auto custom-scrollbar-horizontal shrink-0 pb-safe">
+              {tabs.map((tab) => {
+                const Icon = tab.icon;
+                const isActive = activeTab === tab.id;
+                return (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id as any)}
+                    className={`relative flex flex-col items-center justify-center h-12 px-3.5 shrink-0 rounded-xl transition-all duration-300 ${isActive ? 'bg-white/10 text-white border border-white/20' : 'text-slate-500 hover:text-slate-300'}`}
+                  >
+                    <Icon className={`h-5 w-5 ${isActive ? tab.color : ''} transition-colors`} />
+                    <span className="text-[10px] mt-1 font-bold tracking-tight">{tab.label}</span>
+                    
+                    {tab.id === 'polls' && hasUnreadPolls && activeTab !== 'polls' && (
+                      <span className="absolute top-1 right-2.5 h-2 w-2 bg-rose-500 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.6)] animate-pulse" />
+                    )}
+                    
+                    {tab.id === 'qa' && hasUnreadQA && activeTab !== 'qa' && (
+                      <span className="absolute top-1 right-2.5 h-2 w-2 bg-lime-500 rounded-full shadow-[0_0_8px_rgba(132,204,22,0.6)] animate-pulse" />
+                    )}
+
+                    {tab.id === 'lobby' && hasWaitingLobby && activeTab !== 'lobby' && (
+                      <span className="absolute top-1 right-2.5 h-2 w-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" />
+                    )}
+                  </button>
+                );
+              })}
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Permanent Vertical Nav Rail */}
-      <div className="w-[64px] h-full border-l border-white/10 flex flex-col items-center py-6 gap-5 bg-slate-900/80 backdrop-blur-3xl shadow-[10px_0_30px_rgba(0,0,0,0.5)]">
+      <div className="hidden lg:flex w-[64px] h-full border-l border-white/10 flex-col items-center py-6 gap-5 bg-slate-900/80 backdrop-blur-3xl shadow-[10px_0_30px_rgba(0,0,0,0.5)]">
          <button 
             onClick={() => {
               if (isOpen) {
@@ -358,6 +389,16 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
           letter-spacing: 0.02em !important;
           font-weight: 600 !important;
           text-align: center !important;
+        }
+        .custom-scrollbar-horizontal::-webkit-scrollbar {
+          height: 4px;
+        }
+        .custom-scrollbar-horizontal::-webkit-scrollbar-track {
+          background: transparent;
+        }
+        .custom-scrollbar-horizontal::-webkit-scrollbar-thumb {
+          background: rgba(255, 255, 255, 0.15);
+          border-radius: 9999px;
         }
       ` }} />
     </div>

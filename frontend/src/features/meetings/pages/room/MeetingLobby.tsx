@@ -270,7 +270,7 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
   const selectedBg = VIRTUAL_BACKGROUNDS.find(bg => bg.id === activeBgr);
 
   return (
-    <div className="relative min-h-screen flex flex-col bg-[#050505] overflow-hidden font-vietnam selection:bg-cyan-500/30">
+    <div className="relative min-h-screen flex flex-col bg-[#050505] overflow-y-auto lg:overflow-hidden font-vietnam selection:bg-cyan-500/30">
       {/* Dynamic Animated Mesh Background */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-[-10%] left-[-5%] h-[600px] w-[600px] rounded-full bg-cyan-600/10 blur-[120px] animate-mesh" />
@@ -295,7 +295,7 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
         </div>
       </header>
       
-      <main className="relative z-10 flex-1 flex items-center justify-center p-2 lg:p-4 overflow-hidden">
+      <main className="relative z-10 flex-1 flex items-center justify-center p-2 lg:p-4 overflow-y-auto lg:overflow-hidden">
         <div className="w-full max-w-[85rem] grid lg:grid-cols-[1fr,360px] xl:grid-cols-[1fr,400px] gap-6 xl:gap-8 items-center origin-center lg:scale-[0.9] xl:scale-100 transition-transform">
           
           {/* Left: Professional Monitor Preview */}

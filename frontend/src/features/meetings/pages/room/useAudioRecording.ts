@@ -175,11 +175,14 @@ export function useAudioRecording({
     recordingStartTimeRef.current = null;
 
     if (isOrganizer) {
-      apiClient
-        .put(`/meetings/${meetingId}`, { aiActivated: false })
-        .catch((err) => {
-          console.error("Failed to deactivate AI Assistant on backend", err);
-        });
+      // Delay backend deactivation to ensure the final chunk uploads successfully
+      setTimeout(() => {
+        apiClient
+          .put(`/meetings/${meetingId}`, { aiActivated: false })
+          .catch((err) => {
+            console.error("Failed to deactivate AI Assistant on backend", err);
+          });
+      }, 1500);
 
       const payload = JSON.stringify({ type: "RECORDING_STOPPED" });
       try {

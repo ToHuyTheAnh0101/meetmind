@@ -278,7 +278,9 @@ const MeetingRoomPage: React.FC = () => {
         | "settings"
         | "polls"
         | "permissions"
-        | "qa",
+        | "qa"
+        | "breakout"
+        | "attachments",
     ) => {
       setIsSidebarOpen((prevOpen) => {
         if (prevOpen && activeTab === tab) return false;
@@ -737,7 +739,7 @@ const MeetingRoomPage: React.FC = () => {
           setError(errMsg);
         }}
         data-lk-theme="default"
-        className="w-full h-full flex overflow-hidden lg:flex-row flex-col"
+        className="w-full h-full flex overflow-hidden relative lg:flex-row flex-row"
       >
         <RoomAudioRenderer />
         <DataHandler
@@ -751,7 +753,7 @@ const MeetingRoomPage: React.FC = () => {
         <LayoutContextProvider>
           <motion.div
             layout
-            className="flex-1 h-full min-w-0 overflow-hidden flex flex-col relative"
+            className="flex-1 h-full min-w-0 overflow-hidden flex flex-col relative z-10"
           >
             <MeetingMainStage
               meetingId={id || ""}
@@ -759,6 +761,8 @@ const MeetingRoomPage: React.FC = () => {
               isOrganizer={isOrganizer}
               activeTab={activeTab as any}
               hasUnreadPolls={hasUnreadPolls}
+              hasUnreadQA={hasUnreadQA}
+              hasWaitingLobby={hasWaitingLobby}
               onToggleSidebar={handleToggleSidebar}
               onEndSession={handleEndSession}
               onLeaveSession={handleLeaveSession}

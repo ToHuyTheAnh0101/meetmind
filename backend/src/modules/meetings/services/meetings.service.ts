@@ -897,7 +897,7 @@ export class MeetingsService {
     this.activeTranscriptions.add(transcriptionKey);
 
     this.aiService
-      .transcribeAudio(buffer, mimetype)
+      .transcribeAudio(buffer, mimetype, meeting.title, meeting.description)
       .then(async (transcriptText) => {
         if (!transcriptText || !transcriptText.trim()) {
           this.logger.log(

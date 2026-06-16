@@ -332,6 +332,8 @@ export class AiService {
   async transcribeAudio(
     audioBuffer: Buffer,
     mimeType: string,
+    meetingTitle?: string,
+    meetingDescription?: string,
   ): Promise<string> {
     const whisperUrl =
       this.configService.get<string>('GROQ_API_URL') ||
@@ -354,10 +356,27 @@ export class AiService {
         this.configService.get<string>('WHISPER_MODEL') ||
         'whisper-large-v3';
 
+      let promptText = 'Alo, dạ, ok, vâng.';
+      if (meetingTitle) {
+        const cleanTitle = meetingTitle.replace(/[\\"]/g, '');
+        promptText += ` Chúng ta thảo luận về chủ đề "${cleanTitle}".`;
+      }
+      if (meetingDescription) {
+        const cleanDesc = meetingDescription
+          .replace(/[\\"]/g, '')
+          .slice(0, 100);
+        promptText += ` Nội dung liên quan đến: ${cleanDesc}.`;
+      } else if (!meetingTitle) {
+        promptText +=
+          ' Chúng ta thảo luận về tiến độ công việc, lập trình dự án, kiểm tra code và ý kiến đóng góp.';
+      }
+
       formData.append('file', fileBlob, 'audio.webm');
       formData.append('model', whisperModel);
       formData.append('language', 'vi');
       formData.append('temperature', '0.0');
+      formData.append('prompt', promptText);
+      formData.append('response_format', 'verbose_json');
 
       const headers: Record<string, string> = {
         'Content-Type': 'multipart/form-data',
@@ -370,12 +389,35 @@ export class AiService {
         headers['Authorization'] = `Bearer ${whisperApiKey}`;
       }
 
-      const response = await axios.post<{ text?: string }>(
+      interface WhisperVerboseResponse {
+        text?: string;
+        segments?: {
+          no_speech_prob?: number;
+        }[];
+      }
+
+      const response = await axios.post<WhisperVerboseResponse>(
         `${whisperUrl}/v1/audio/transcriptions`,
         formData,
         { headers },
       );
-      return response.data.text?.trim() || '';
+      const rawText = response.data.text?.trim() || '';
+
+      if (response.data.segments && response.data.segments.length > 0) {
+        const avgNoSpeech =
+          response.data.segments.reduce(
+            (acc, seg) => acc + (seg.no_speech_prob ?? 0),
+            0,
+          ) / response.data.segments.length;
+        if (avgNoSpeech > 0.8) {
+          this.logger.log(
+            `[Whisper Silence Guard] Discarding transcription due to high no_speech_prob: ${avgNoSpeech.toFixed(2)}`,
+          );
+          return '';
+        }
+      }
+
+      return this.cleanWhisperHallucinations(rawText, meetingTitle);
     } catch (error) {
       this.logger.error('Error transcribing audio:', error);
       throw new Error('Failed to transcribe audio');
@@ -389,11 +431,18 @@ export class AiService {
       speaker: string;
       startTime: number;
     }[],
+    meetingTitle?: string,
+    meetingDescription?: string,
   ): Promise<TranscriptionSegment[]> {
     const results: TranscriptionSegment[] = [];
     for (const track of tracks) {
       try {
-        const text = await this.transcribeAudio(track.buffer, track.mimeType);
+        const text = await this.transcribeAudio(
+          track.buffer,
+          track.mimeType,
+          meetingTitle,
+          meetingDescription,
+        );
         if (text && text.trim()) {
           results.push({
             speaker: track.speaker,
@@ -527,5 +576,85 @@ export class AiService {
       // Fallback an toàn: coi như ảnh có giá trị để không mất dữ liệu
       return null;
     }
+  }
+
+  private cleanWhisperHallucinations(
+    text: string,
+    meetingTitle?: string,
+  ): string {
+    if (!text) return '';
+
+    // Common Whisper hallucinations in Vietnamese for silent segments
+    const blacklistedPhrases = [
+      /cảm ơn các bạn đã theo dõi/gi,
+      /hẹn gặp lại các bạn trong các video tiếp theo/gi,
+      /hẹn gặp lại các bạn trong những video tiếp theo/gi,
+      /hẹn gặp lại các bạn/gi,
+      /cảm ơn các bạn đã xem/gi,
+      /cảm ơn các bạn/gi,
+      /chào tạm biệt/gi,
+      /hãy đăng ký kênh/gi,
+      /ủng hộ kênh/gi,
+      /chúc các bạn một ngày/gi,
+      /nếu các bạn thấy video này/gi,
+      /hãy subscribe/gi,
+      /sub kênh/gi,
+      /like và share/gi,
+      /like và chia sẻ/gi,
+      /xin chào và hẹn gặp lại/gi,
+      /chào các bạn/gi,
+      /hẹn gặp lại/gi,
+      /cảm ơn bạn đã theo dõi/gi,
+      /cảm ơn mọi người/gi,
+    ];
+
+    let cleaned = text;
+    for (const pattern of blacklistedPhrases) {
+      cleaned = cleaned.replace(pattern, '');
+    }
+
+    // Clean up trailing/leading spaces and punctuations
+    cleaned = cleaned
+      .replace(/^\s*[,.;?!:\-–—\s]+\s*/g, '')
+      .replace(/\s*[,.;?!:\-–—\s]+\s*$/g, '')
+      .trim();
+
+    const lowerText = cleaned.toLowerCase();
+
+    // Discard prompt echoes in case of silence
+    if (
+      lowerText === 'chúng ta thảo luận về chủ đề' ||
+      lowerText === 'chúng ta thảo luận về' ||
+      lowerText === 'alo dạ ok vâng' ||
+      lowerText === 'tiến độ công việc' ||
+      lowerText === 'lập trình dự án' ||
+      lowerText === 'kiểm tra code' ||
+      lowerText === 'ý kiến đóng góp'
+    ) {
+      return '';
+    }
+
+    if (meetingTitle) {
+      const lowerTitle = meetingTitle.toLowerCase().trim();
+      if (lowerText === lowerTitle) {
+        return '';
+      }
+    }
+
+    // If the cleaned text is just a common artifact word like 'cô', 'alo', 'dạ', 'vâng'
+    // but the original text was excessively long (hallucination clutter), clean it completely
+    if (
+      lowerText === 'cô' ||
+      lowerText === 'alo' ||
+      lowerText === 'dạ' ||
+      lowerText === 'vâng' ||
+      lowerText === 'ạ'
+    ) {
+      if (text.length > 50) {
+        return '';
+      }
+    }
+
+    return cleaned;
   }
 }

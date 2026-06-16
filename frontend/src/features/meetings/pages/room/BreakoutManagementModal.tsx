@@ -60,6 +60,7 @@ const BreakoutManagementModal: React.FC<Props> = ({
   const [unassigned, setUnassigned] = useState<Participant[]>([]);
   const [isStarting, setIsStarting] = useState(false);
   const [hasInitialized, setHasInitialized] = useState(false);
+  const [activeMobileTab, setActiveMobileTab] = useState<'unassigned' | 'rooms'>('unassigned');
 
   // Khởi tạo và đồng bộ danh sách người tham gia
   useEffect(() => {
@@ -180,53 +181,71 @@ const BreakoutManagementModal: React.FC<Props> = ({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
       <motion.div 
         initial={{ opacity: 0, scale: 0.95, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="relative w-full max-w-5xl h-[85vh] bg-[#0f1115] border border-white/10 rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden"
+        className="relative w-full h-full lg:h-[85vh] lg:max-w-5xl bg-[#0f1115] lg:border border-white/10 lg:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden"
       >
         {/* Header */}
-        <div className="p-8 border-b border-white/5 flex items-center justify-between">
+        <div className="p-4 lg:p-8 border-b border-white/5 flex items-center justify-between shrink-0">
           <div>
-            <h2 className="text-2xl font-black text-white flex items-center gap-3">
-              <Grid2X2 className="text-teal-400" />
+            <h2 className="text-lg lg:text-2xl font-black text-white flex items-center gap-2 lg:gap-3">
+              <Grid2X2 className="text-teal-400 h-5 w-5 lg:h-6 lg:w-6" />
               {t('meeting.breakout_rooms_title', 'Chia phòng họp nhỏ')}
             </h2>
-            <p className="text-slate-400 text-sm mt-1">{t('meeting.breakout_rooms_subtitle', 'Quản lý và phân bổ người tham gia vào các nhóm thảo luận')}</p>
+            <p className="text-slate-400 text-xs lg:text-sm mt-1">{t('meeting.breakout_rooms_subtitle', 'Quản lý và phân bổ người tham gia vào các nhóm thảo luận')}</p>
           </div>
-          <button onClick={onClose} className="p-3 hover:bg-white/5 rounded-2xl transition-colors">
-            <X className="text-slate-400" />
+          <button onClick={onClose} className="p-2 lg:p-3 hover:bg-white/5 rounded-2xl transition-colors">
+            <X className="text-slate-400 h-5 w-5 lg:h-6 lg:w-6" />
           </button>
         </div>
 
         {/* Toolbar */}
-        <div className="px-8 py-4 bg-white/5 border-b border-white/5 flex items-center gap-4">
+        <div className="px-4 py-3 lg:px-8 lg:py-4 bg-white/5 border-b border-white/5 flex flex-wrap items-center gap-3 lg:gap-4 shrink-0">
           <button 
             onClick={handleAutoAssign}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-sm font-bold text-white transition-all"
+            className="flex items-center gap-1.5 lg:gap-2 px-3 py-1.5 lg:px-4 lg:py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs lg:text-sm font-bold text-white transition-all active:scale-95"
           >
-            <Shuffle size={16} className="text-teal-400" />
+            <Shuffle size={14} className="text-teal-400" />
             {t('meeting.auto_assign', 'Chia tự động')}
           </button>
           <button 
             onClick={addRoom}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-sm font-bold text-white transition-all"
+            className="flex items-center gap-1.5 lg:gap-2 px-3 py-1.5 lg:px-4 lg:py-2 rounded-xl bg-white/5 hover:bg-white/10 text-xs lg:text-sm font-bold text-white transition-all active:scale-95"
           >
-            <Plus size={16} className="text-sky-400" />
+            <Plus size={14} className="text-sky-400" />
             {t('meeting.add_room', 'Thêm phòng')}
           </button>
-          <div className="ml-auto flex items-center gap-3 text-sm text-slate-400">
-            <Users size={16} />
+          <div className="ml-auto flex items-center gap-2 lg:gap-3 text-xs lg:text-sm text-slate-400">
+            <Users size={14} />
             <span className="font-bold text-slate-300">{t('meeting.unassigned_count', '{{count}} người chưa gán', { count: unassigned.length })}</span>
           </div>
         </div>
 
+        {/* Mobile Tab Selector */}
+        <div className="flex lg:hidden border-b border-white/5 bg-[#12141a] shrink-0">
+          <button 
+            type="button"
+            onClick={() => setActiveMobileTab('unassigned')}
+            className={`flex-1 py-3.5 text-sm font-bold border-b-2 transition-all ${activeMobileTab === 'unassigned' ? 'border-teal-500 text-teal-400' : 'border-transparent text-slate-400'}`}
+          >
+            {t('meeting.unassigned', 'Chưa gán')} ({unassigned.length})
+          </button>
+          <button 
+            type="button"
+            onClick={() => setActiveMobileTab('rooms')}
+            className={`flex-1 py-3.5 text-sm font-bold border-b-2 transition-all ${activeMobileTab === 'rooms' ? 'border-teal-500 text-teal-400' : 'border-transparent text-slate-400'}`}
+          >
+            {t('meeting.rooms', 'Phòng họp')} ({rooms.length})
+          </button>
+        </div>
+
         {/* Content */}
-        <div className="flex-1 overflow-hidden flex">
+        <div className="flex-1 overflow-hidden flex flex-col lg:flex-row">
           {/* Unassigned List */}
-          <div className="w-1/3 border-r border-white/5 p-6 overflow-y-auto custom-scrollbar">
-            <h3 className="text-sm font-bold text-slate-500 mb-4 tracking-wider">{t('meeting.unassigned', 'Danh sách chờ')}</h3>
+          <div className={`w-full lg:w-1/3 border-r border-white/5 p-4 lg:p-6 overflow-y-auto custom-scrollbar flex flex-col ${activeMobileTab === 'unassigned' ? 'flex' : 'hidden lg:flex'}`}>
+            <h3 className="hidden lg:block text-sm font-bold text-slate-500 mb-4 tracking-wider">{t('meeting.unassigned', 'Danh sách chờ')}</h3>
             <div className="space-y-2">
               <AnimatePresence>
                 {unassigned.map(p => (
@@ -262,18 +281,19 @@ const BreakoutManagementModal: React.FC<Props> = ({
                           );
                         })()}
                       </div>
-                      <span className="text-sm font-medium text-slate-200 truncate">
+                      <span className="text-sm font-medium text-slate-200 truncate max-w-[120px] sm:max-w-none">
                         {p.displayName || 
                          (p.firstName ? `${p.firstName} ${p.lastName || ''}` : 
                          (p.user?.firstName ? `${p.user.firstName} ${p.user.lastName || ''}` : 
                          t('common.user', 'Người dùng')))}
                       </span>
                     </div>
-                    <div className="relative group/menu">
+
+                    {/* Desktop Assign Dropdown */}
+                    <div className="hidden lg:block relative group/menu">
                       <button className="p-2 opacity-0 group-hover:opacity-100 hover:bg-white/10 rounded-lg transition-all">
                         <UserPlus size={14} className="text-teal-400" />
                       </button>
-                      {/* Dropdown to assign */}
                       <div className="absolute right-0 top-full pt-1 hidden group-hover/menu:block z-50">
                         <div className="bg-[#1a1d23] border border-white/10 rounded-xl shadow-xl p-2 min-w-[120px]">
                         {rooms.map(r => (
@@ -288,6 +308,27 @@ const BreakoutManagementModal: React.FC<Props> = ({
                         </div>
                       </div>
                     </div>
+
+                    {/* Mobile Assign Dropdown */}
+                    <div className="block lg:hidden relative">
+                      <select
+                        onChange={(e) => {
+                          if (e.target.value) {
+                            assignToRoom(p, e.target.value);
+                            e.target.value = "";
+                          }
+                        }}
+                        className="bg-teal-500/10 text-teal-400 border border-teal-500/20 rounded-xl px-2.5 py-1.5 text-xs font-bold outline-none cursor-pointer focus:ring-1 focus:ring-teal-500"
+                        defaultValue=""
+                      >
+                        <option value="" disabled className="bg-[#0f1115] text-slate-500">{t('common.assign', 'Gán...')}</option>
+                        {rooms.map(r => (
+                          <option key={r.id} value={r.id} className="bg-[#0f1115] text-white">
+                            {r.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </motion.div>
                 ))}
               </AnimatePresence>
@@ -295,8 +336,8 @@ const BreakoutManagementModal: React.FC<Props> = ({
           </div>
 
           {/* Rooms Grid */}
-          <div className="flex-1 p-6 overflow-y-auto custom-scrollbar bg-black/20">
-            <div className="grid grid-cols-2 gap-4">
+          <div className={`flex-1 p-4 lg:p-6 overflow-y-auto custom-scrollbar bg-black/20 ${activeMobileTab === 'rooms' ? 'block' : 'hidden lg:block'}`}>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <AnimatePresence>
                 {rooms.map(room => (
                   <motion.div 
@@ -360,7 +401,7 @@ const BreakoutManagementModal: React.FC<Props> = ({
                           </div>
                           <button 
                             onClick={() => unassignFromRoom(p, room.id)}
-                            className="p-1 opacity-0 group-hover:opacity-100 hover:bg-white/5 rounded text-slate-500"
+                            className="p-1 opacity-100 lg:opacity-0 lg:group-hover:opacity-100 hover:bg-white/5 rounded text-slate-500 transition-colors"
                           >
                             <X size={12} />
                           </button>
@@ -380,25 +421,25 @@ const BreakoutManagementModal: React.FC<Props> = ({
         </div>
 
         {/* Footer */}
-        <div className="p-8 border-t border-white/5 flex items-center justify-end bg-white/5">
-          <div className="flex items-center gap-4">
+        <div className="p-4 lg:p-8 border-t border-white/5 flex items-center justify-end bg-white/5 shrink-0">
+          <div className="flex items-center gap-3 w-full lg:w-auto justify-between lg:justify-end">
             <button 
               onClick={onClose}
-              className="px-8 py-3.5 rounded-2xl text-sm font-bold text-slate-400 hover:text-white transition-colors"
+              className="flex-1 lg:flex-none text-center px-4 py-2.5 lg:px-8 lg:py-3.5 rounded-xl lg:rounded-2xl text-xs lg:text-sm font-bold text-slate-400 hover:text-white bg-white/5 lg:bg-transparent border border-white/5 lg:border-transparent transition-colors"
             >
               {t('common.cancel', 'Hủy bỏ')}
             </button>
             <button 
               onClick={handleStartBreakout}
               disabled={isStarting || rooms.every(r => r.participants.length === 0)}
-              className="flex items-center gap-3 px-10 py-3.5 rounded-2xl bg-teal-500 hover:bg-teal-400 disabled:opacity-50 disabled:hover:bg-teal-500 text-white text-sm font-black transition-all shadow-xl shadow-teal-500/20"
+              className="flex-1 lg:flex-none flex items-center justify-center gap-2 lg:gap-3 px-4 py-2.5 lg:px-10 lg:py-3.5 rounded-xl lg:rounded-2xl bg-teal-500 hover:bg-teal-400 disabled:opacity-50 disabled:hover:bg-teal-500 text-white text-xs lg:text-sm font-black transition-all shadow-xl shadow-teal-500/20"
             >
               {isStarting ? (
-                <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                <div className="w-4 h-4 lg:w-5 lg:h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />
               ) : (
-                <Play size={18} fill="currentColor" />
+                <Play size={14} className="lg:w-[18px] lg:h-[18px]" fill="currentColor" />
               )}
-              {t('meeting.start_breakout', 'Bắt đầu chia phòng')}
+              <span className="truncate">{t('meeting.start_breakout', 'Bắt đầu chia phòng')}</span>
             </button>
           </div>
         </div>
