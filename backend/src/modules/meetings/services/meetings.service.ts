@@ -22,6 +22,7 @@ import {
   MeetingPermission,
   ChatMessageType,
   ScreenCapture,
+  TranscriptChunk,
 } from '../entities';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
 import { UsersService } from '../../users/users.service';
@@ -586,56 +587,37 @@ export class MeetingsService {
         .join('\n');
     }
 
-    // 4. Gọi Gemini API để trả lời câu hỏi dựa trên ngữ cảnh và lịch sử chat
-    const answer = await this.aiService.answerQuestion(question, contextText);
+    // 4. Tìm ảnh màn hình liên quan bằng hybrid retrieval (temporal + semantic)
+    // Chỉ lấy ảnh có summary (đã phân tích, không phải ảnh rác)
+    const relevantCaptures = await this.findRelevantCaptures(
+      meetingId,
+      relevantChunks,
+      questionEmbedding,
+    );
 
-    // 4.5. Tìm các screen capture liên quan trong khoảng thời gian của các relevantChunks
-    const imageInfoList: Array<{ url: string; timestamp: number }> = [];
-    if (relevantChunks.length > 0) {
-      const timeRanges = relevantChunks
-        .filter((c) => c.startTime !== undefined && c.startTime !== null)
-        .map((c) => ({
-          start: Math.max(0, c.startTime! - 5),
-          end: (c.endTime || c.startTime!) + 15,
-        }));
-
-      if (timeRanges.length > 0) {
-        try {
-          const query = this.screenCaptureRepository
-            .createQueryBuilder('capture')
-            .where('capture.meetingId = :meetingId', { meetingId });
-
-          const rangeConditions = timeRanges.map((range, index) => {
-            return `(capture.timestamp BETWEEN :start${index} AND :end${index})`;
-          });
-          query.andWhere(`(${rangeConditions.join(' OR ')})`);
-
-          timeRanges.forEach((range, index) => {
-            query.setParameter(`start${index}`, range.start);
-            query.setParameter(`end${index}`, range.end);
-          });
-
-          const captures = await query
-            .orderBy('capture.timestamp', 'ASC')
-            .getMany();
-          const uniqueUrls = new Set<string>();
-          for (const cap of captures) {
-            if (!uniqueUrls.has(cap.imageUrl)) {
-              uniqueUrls.add(cap.imageUrl);
-              imageInfoList.push({
-                url: cap.imageUrl,
-                timestamp: cap.timestamp,
-              });
-            }
-          }
-        } catch (captureErr) {
-          this.logger.error(
-            'Failed to search related screen captures for RAG:',
-            captureErr,
-          );
-        }
-      }
+    // 4.5. Đưa visual context từ summary của ảnh vào prompt để AI hiểu nội dung slide
+    let enrichedContext = contextText;
+    if (relevantCaptures.length > 0) {
+      const visualContext = relevantCaptures
+        .map(
+          (cap) =>
+            `[Slide lúc ${Math.round(cap.timestamp)}s]: ${cap.summary}`,
+        )
+        .join('\n');
+      enrichedContext = `${contextText}\n\n[Nội dung màn hình chia sẻ]:\n${visualContext}`;
     }
+
+    // 5. Gọi LLM để trả lời câu hỏi với context được bổ sung visual context
+    const answer = await this.aiService.answerQuestion(
+      question,
+      enrichedContext,
+    );
+
+    // 5.5. Gắn ảnh slide vào cuối câu trả lời
+    const imageInfoList = relevantCaptures.map((cap) => ({
+      url: cap.imageUrl,
+      timestamp: cap.timestamp,
+    }));
 
     let finalAnswer = answer;
     if (imageInfoList.length > 0) {
@@ -752,58 +734,19 @@ export class MeetingsService {
             },
             complete: () => {
               void (async () => {
-                // Fetch matching screen captures
+                // Tìm ảnh màn hình liên quan bằng hybrid retrieval
+                const relevantCaptures = await this.findRelevantCaptures(
+                  meetingId,
+                  relevantChunks,
+                  questionEmbedding,
+                );
+
+                const imageInfoList = relevantCaptures.map((cap) => ({
+                  url: cap.imageUrl,
+                  timestamp: cap.timestamp,
+                }));
+
                 let markdownAppendix = '';
-                const imageInfoList: Array<{ url: string; timestamp: number }> =
-                  [];
-                if (relevantChunks.length > 0) {
-                  const timeRanges = relevantChunks
-                    .filter(
-                      (c) => c.startTime !== undefined && c.startTime !== null,
-                    )
-                    .map((c) => ({
-                      start: Math.max(0, c.startTime! - 5),
-                      end: (c.endTime || c.startTime!) + 15,
-                    }));
-
-                  if (timeRanges.length > 0) {
-                    const query = this.screenCaptureRepository
-                      .createQueryBuilder('capture')
-                      .where('capture.meetingId = :meetingId', { meetingId });
-
-                    const rangeConditions = timeRanges.map((range, index) => {
-                      return `(capture.timestamp BETWEEN :start${index} AND :end${index})`;
-                    });
-                    query.andWhere(`(${rangeConditions.join(' OR ')})`);
-
-                    timeRanges.forEach((range, index) => {
-                      query.setParameter(`start${index}`, range.start);
-                      query.setParameter(`end${index}`, range.end);
-                    });
-
-                    try {
-                      const captures = await query
-                        .orderBy('capture.timestamp', 'ASC')
-                        .getMany();
-                      const uniqueUrls = new Set<string>();
-                      for (const cap of captures) {
-                        if (!uniqueUrls.has(cap.imageUrl)) {
-                          uniqueUrls.add(cap.imageUrl);
-                          imageInfoList.push({
-                            url: cap.imageUrl,
-                            timestamp: cap.timestamp,
-                          });
-                        }
-                      }
-                    } catch (captureErr) {
-                      this.logger.error(
-                        'Failed to search related screen captures for RAG (stream completion):',
-                        captureErr,
-                      );
-                    }
-                  }
-                }
-
                 if (imageInfoList.length > 0) {
                   markdownAppendix =
                     '\n\n**Hình ảnh slide được nhắc đến:**\n' +
@@ -1046,6 +989,7 @@ export class MeetingsService {
     const ext = mimetype.includes('png') ? 'png' : 'jpg';
 
     let relativeUrl = '';
+    let filePath = '';
     try {
       const dirPath = path.join(
         process.cwd(),
@@ -1058,7 +1002,7 @@ export class MeetingsService {
       }
 
       const fileName = `capture_${Date.now()}.${ext}`;
-      const filePath = path.join(dirPath, fileName);
+      filePath = path.join(dirPath, fileName);
       fs.writeFileSync(filePath, buffer);
 
       const backendUrl =
@@ -1071,13 +1015,169 @@ export class MeetingsService {
       throw new BadRequestException('Failed to save screen capture file');
     }
 
+    // Lưu record tạm vào DB (chưa có summary/embedding)
     const capture = this.screenCaptureRepository.create({
       meetingId,
       imageUrl: relativeUrl,
       timestamp,
+      summary: null,
+      embedding: null,
+    });
+    const savedCapture = await this.screenCaptureRepository.save(capture);
+
+    // Kích hoạt background job phân tích ảnh bằng Gemini Vision
+    // Không await để phản hồi client ngay lập tức (< 50ms)
+    this.analyzeAndEnrichCapture(savedCapture.id, buffer, mimetype).catch(
+      (err) =>
+        this.logger.error(
+          `[BG Image Analysis] Failed for capture ${savedCapture.id}:`,
+          err,
+        ),
+    );
+
+    return savedCapture;
+  }
+
+  /**
+   * Background job: Phân tích ảnh chụp màn hình bằng Gemini Vision.
+   * Nếu ảnh có ý nghĩa (summary != null), tạo embedding và cập nhật DB.
+   * Nếu là ảnh rác (summary == null), chỉ ghi log — giữ lại file để tham khảo.
+   */
+  private async analyzeAndEnrichCapture(
+    captureId: string,
+    imageBuffer: Buffer,
+    mimeType: string,
+  ): Promise<void> {
+    this.logger.log(
+      `[BG Image Analysis] Analyzing capture ${captureId} with Gemini Vision...`,
+    );
+
+    // 1. Gọi Gemini Vision để lấy summary
+    const summary = await this.aiService.analyzeImage(imageBuffer, mimeType);
+
+    if (!summary) {
+      this.logger.log(
+        `[BG Image Analysis] Capture ${captureId} identified as trash/empty screen. Skipping embedding.`,
+      );
+      return;
+    }
+
+    this.logger.log(
+      `[BG Image Analysis] Capture ${captureId} is meaningful. Summary: "${summary.slice(0, 80)}..."`,
+    );
+
+    // 2. Tạo vector embedding từ summary
+    let embedding: number[] | null = null;
+    try {
+      const rawEmbedding = await this.aiService.embed(summary);
+      embedding =
+        rawEmbedding && rawEmbedding.length === 1024 ? rawEmbedding : null;
+    } catch (embedErr) {
+      this.logger.error(
+        `[BG Image Analysis] Failed to create embedding for capture ${captureId}:`,
+        embedErr,
+      );
+    }
+
+    // 3. Cập nhật record trong DB với summary và embedding
+    await this.screenCaptureRepository.update(captureId, {
+      summary,
+      embedding,
     });
 
-    return await this.screenCaptureRepository.save(capture);
+    this.logger.log(
+      `[BG Image Analysis] Enriched capture ${captureId} with summary and embedding.`,
+    );
+  }
+
+  /**
+   * Hybrid retrieval cho screen captures trong RAG:
+   * 1. Temporal: tìm ảnh trong khoảng thời gian của các transcript chunks liên quan.
+   * 2. Semantic: tìm ảnh gần nhất theo vector embedding của câu hỏi.
+   * Chỉ trả về ảnh có summary (!= null), tối đa MAX_IMAGE_RESULTS ảnh.
+   */
+  private async findRelevantCaptures(
+    meetingId: string,
+    relevantChunks: TranscriptChunk[],
+    questionEmbedding: number[],
+    maxResults = 3,
+  ): Promise<ScreenCapture[]> {
+    const MAX_IMAGE_RESULTS = maxResults;
+    const seenIds = new Set<string>();
+    const results: ScreenCapture[] = [];
+
+    // 1. Temporal: tìm ảnh trong khoảng timestamp của các chunks liên quan
+    if (relevantChunks.length > 0) {
+      const timeRanges = relevantChunks
+        .filter((c) => c.startTime !== undefined && c.startTime !== null)
+        .map((c) => ({
+          start: Math.max(0, c.startTime! - 5),
+          end: (c.endTime ?? c.startTime!) + 15,
+        }));
+
+      if (timeRanges.length > 0) {
+        try {
+          const query = this.screenCaptureRepository
+            .createQueryBuilder('capture')
+            .where('capture.meetingId = :meetingId', { meetingId })
+            // Chỉ lấy ảnh đã được Gemini phân tích và có ý nghĩa
+            .andWhere('capture.summary IS NOT NULL');
+
+          const rangeConditions = timeRanges.map(
+            (_, i) => `(capture.timestamp BETWEEN :start${i} AND :end${i})`,
+          );
+          query.andWhere(`(${rangeConditions.join(' OR ')})`);
+          timeRanges.forEach((r, i) => {
+            query.setParameter(`start${i}`, r.start);
+            query.setParameter(`end${i}`, r.end);
+          });
+
+          const temporalCaptures = await query
+            .orderBy('capture.timestamp', 'ASC')
+            .getMany();
+
+          for (const cap of temporalCaptures) {
+            if (!seenIds.has(cap.id) && results.length < MAX_IMAGE_RESULTS) {
+              seenIds.add(cap.id);
+              results.push(cap);
+            }
+          }
+        } catch (err) {
+          this.logger.error(
+            '[RAG] Failed temporal screen capture search:',
+            err,
+          );
+        }
+      }
+    }
+
+    // 2. Semantic: tìm ảnh gần nhất theo vector embedding của câu hỏi
+    if (results.length < MAX_IMAGE_RESULTS && questionEmbedding.length > 0) {
+      try {
+        const semanticCaptures =
+          await this.screenCaptureRepository.findRelevantByEmbedding(
+            meetingId,
+            questionEmbedding,
+            MAX_IMAGE_RESULTS,
+          );
+
+        for (const cap of semanticCaptures) {
+          if (!seenIds.has(cap.id) && results.length < MAX_IMAGE_RESULTS) {
+            seenIds.add(cap.id);
+            results.push(cap);
+          }
+        }
+      } catch (err) {
+        this.logger.error(
+          '[RAG] Failed semantic screen capture search:',
+          err,
+        );
+      }
+    }
+
+    // Sắp xếp kết quả theo thời gian tăng dần để hiển thị theo trình tự cuộc họ p
+    results.sort((a, b) => a.timestamp - b.timestamp);
+    return results;
   }
 
   async getShares(meetingId: string): Promise<{

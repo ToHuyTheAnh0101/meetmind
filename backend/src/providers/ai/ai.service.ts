@@ -9,6 +9,7 @@ import {
   compileSummaryTemplatePrompt,
   PromptTemplateInput,
   CLEAN_TRANSCRIPT_PROMPT,
+  ANALYZE_IMAGE_PROMPT,
 } from './prompts';
 import { OllamaEmbeddingService } from './embedding.service';
 
@@ -454,6 +455,73 @@ export class AiService {
         error,
       );
       return text;
+    }
+  }
+
+  /**
+   * Phân tích hình ảnh màn hình chia sẻ bằng Gemini Vision (multimodal).
+   * Trả về chuỗi summary mô tả nội dung màn hình,
+   * hoặc null nếu Gemini xác định đây là ảnh rác (desktop trống, camera, v.v.)
+   *
+   * @param imageBuffer - Buffer của file ảnh (JPEG/PNG)
+   * @param mimeType - MIME type của ảnh ('image/jpeg' hoặc 'image/png')
+   * @returns summary string nếu ảnh có giá trị thông tin, null nếu là ảnh rác
+   */
+  async analyzeImage(
+    imageBuffer: Buffer,
+    mimeType: string,
+  ): Promise<string | null> {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (!apiKey) {
+      this.logger.warn(
+        'GEMINI_API_KEY is not configured. Skipping image analysis.',
+      );
+      return null;
+    }
+
+    const base64Image = imageBuffer.toString('base64');
+    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+
+    try {
+      const response = await axios.post<GeminiResponse>(
+        url,
+        {
+          contents: [
+            {
+              parts: [
+                { text: ANALYZE_IMAGE_PROMPT },
+                {
+                  inline_data: {
+                    mime_type: mimeType,
+                    data: base64Image,
+                  },
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.1,
+            maxOutputTokens: 256,
+          },
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 20000,
+        },
+      );
+
+      const rawText =
+        response.data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+
+      if (!rawText || rawText.toLowerCase() === 'null') {
+        return null;
+      }
+
+      return rawText;
+    } catch (error) {
+      this.logger.error('Failed to analyze image using Gemini Vision:', error);
+      // Fallback an toàn: coi như ảnh có giá trị để không mất dữ liệu
+      return null;
     }
   }
 }

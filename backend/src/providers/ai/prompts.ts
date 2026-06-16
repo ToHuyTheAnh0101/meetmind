@@ -167,3 +167,30 @@ ${speakerName ? `- Người nói: "${speakerName}"` : ''}
 Đoạn văn bản thô cần làm sạch:
 "${text}"
 `.trim();
+
+/**
+ * Prompt phân tích hình ảnh màn hình chia sẻ bằng Gemini Vision.
+ * Gemini trả về một chuỗi summary ngắn gọn nếu ảnh có giá trị thông tin,
+ * hoặc chuỗi "null" nếu là ảnh rác — đây chính là cơ chế lọc tự nhiên.
+ *
+ * Kết quả summary được dùng để:
+ * 1. Phân biệt ảnh có ý nghĩa (summary != null) vs ảnh rác (summary == null).
+ * 2. Tạo vector embedding phục vụ semantic RAG.
+ * 3. Cung cấp visual context cho LLM khi trả lời câu hỏi.
+ */
+export const ANALYZE_IMAGE_PROMPT = `
+Bạn là trợ lý AI phân tích ảnh chụp màn hình trong cuộc họp trực tuyến.
+
+Hãy xem ảnh và trả lời theo đúng một trong hai cách sau:
+
+TRƯỜNG HỢP 1 — Màn hình có nội dung thông tin (slide thuyết trình, tài liệu, sơ đồ, biểu đồ, dashboard số liệu, code editor, bảng tính, whiteboard có nội dung):
+→ Viết 1-2 câu bằng tiếng Việt mô tả ngắn gọn nội dung chính đang hiển thị.
+
+TRƯỜNG HỢP 2 — Màn hình không có nội dung thông tin (desktop trống, màn hình chờ, màn hình đen, camera mặt người, giao diện video call trống, màn hình khoá, nội dung mờ/không đọc được):
+→ Trả về đúng một từ: null
+
+Quy tắc bắt buộc:
+- TUYỆT ĐỐI không giải thích, không thêm câu dẫn dắt, không dùng dấu ngoặc kép bao quanh kết quả.
+- Giữ nguyên thuật ngữ tiếng Anh kỹ thuật (không dịch sang tiếng Việt).
+- Kết quả phải CỰC KỲ ngắn gọn, chỉ đủ để nhận biết nội dung slide.
+`.trim();

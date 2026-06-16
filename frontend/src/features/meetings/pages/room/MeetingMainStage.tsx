@@ -30,6 +30,91 @@ import { motion, AnimatePresence } from "framer-motion";
 import apiClient from "@/lib/apiClient";
 import { showSuccessToast, showErrorToast } from "@/lib/toastUtils";
 
+// Helper functions for Block-SSIM change detection
+function getGrayscale(rgbaData: Uint8ClampedArray): Float32Array {
+  const len = rgbaData.length / 4;
+  const grayscale = new Float32Array(len);
+  for (let i = 0; i < len; i++) {
+    const r = rgbaData[i * 4];
+    const g = rgbaData[i * 4 + 1];
+    const b = rgbaData[i * 4 + 2];
+    grayscale[i] = 0.299 * r + 0.587 * g + 0.114 * b;
+  }
+  return grayscale;
+}
+
+function calculateBlockSSIM(
+  img1: Float32Array,
+  img2: Float32Array,
+  width: number,
+  height: number,
+  blockSize: number = 8
+): { ssim: number; changedBlocksRatio: number } {
+  const numBlocksX = Math.floor(width / blockSize);
+  const numBlocksY = Math.floor(height / blockSize);
+  const totalBlocks = numBlocksX * numBlocksY;
+
+  const C1 = 6.5025;
+  const C2 = 58.5225;
+
+  let ssimSum = 0;
+  let changedBlocksCount = 0;
+  const N = blockSize * blockSize;
+
+  for (let by = 0; by < numBlocksY; by++) {
+    for (let bx = 0; bx < numBlocksX; bx++) {
+      const xPixels = new Float32Array(N);
+      const yPixels = new Float32Array(N);
+      let idx = 0;
+
+      for (let y = 0; y < blockSize; y++) {
+        const pixelY = by * blockSize + y;
+        for (let x = 0; x < blockSize; x++) {
+          const pixelX = bx * blockSize + x;
+          const globalIdx = pixelY * width + pixelX;
+          xPixels[idx] = img1[globalIdx];
+          yPixels[idx] = img2[globalIdx];
+          idx++;
+        }
+      }
+
+      let sumX = 0, sumY = 0;
+      for (let i = 0; i < N; i++) {
+        sumX += xPixels[i];
+        sumY += yPixels[i];
+      }
+      const muX = sumX / N;
+      const muY = sumY / N;
+
+      let varX = 0, varY = 0, covXY = 0;
+      for (let i = 0; i < N; i++) {
+        const diffX = xPixels[i] - muX;
+        const diffY = yPixels[i] - muY;
+        varX += diffX * diffX;
+        varY += diffY * diffY;
+        covXY += diffX * diffY;
+      }
+      const sigmaX2 = varX / (N - 1 || 1);
+      const sigmaY2 = varY / (N - 1 || 1);
+      const sigmaXY = covXY / (N - 1 || 1);
+
+      const numerator = (2 * muX * muY + C1) * (2 * sigmaXY + C2);
+      const denominator = (muX * muX + muY * muY + C1) * (sigmaX2 + sigmaY2 + C2);
+      const blockSSIM = numerator / (denominator || 1);
+
+      ssimSum += blockSSIM;
+      if (blockSSIM < 0.95) {
+        changedBlocksCount++;
+      }
+    }
+  }
+
+  return {
+    ssim: ssimSum / totalBlocks,
+    changedBlocksRatio: changedBlocksCount / totalBlocks,
+  };
+}
+
 interface MeetingMainStageProps {
   meetingId: string;
   isSidebarOpen: boolean;
@@ -278,7 +363,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   const streamRef = useRef<MediaStream | null>(null);
   const chunkIndexRef = useRef(0);
   const hiddenVideoRef = useRef<HTMLVideoElement>(null);
-  const prevPixelsRef = useRef<Uint8ClampedArray | null>(null);
+  const prevPixelsRef = useRef<Float32Array | null>(null);
   const recordingStartTimeRef = useRef<number | null>(null);
 
   // New refs to manage dynamic recording segments
@@ -578,27 +663,32 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
 
         checkCtx.drawImage(videoEl, 0, 0, 64, 64);
         const imgData = checkCtx.getImageData(0, 0, 64, 64).data;
+        const currentGray = getGrayscale(imgData);
 
         let hasChanged = false;
         if (!prevPixelsRef.current) {
           hasChanged = true;
         } else {
-          let diff = 0;
-          for (let i = 0; i < imgData.length; i += 4) {
-            diff +=
-              Math.abs(imgData[i] - prevPixelsRef.current[i]) +
-              Math.abs(imgData[i + 1] - prevPixelsRef.current[i + 1]) +
-              Math.abs(imgData[i + 2] - prevPixelsRef.current[i + 2]);
-          }
-          const avgDiff = diff / (64 * 64 * 3);
-          // Threshold is set to 8 (out of 255), meaning about 3.1% average color difference
-          if (avgDiff > 8) {
+          const { ssim, changedBlocksRatio } = calculateBlockSSIM(
+            prevPixelsRef.current,
+            currentGray,
+            64,
+            64,
+            8
+          );
+          // Nếu tỷ lệ các khối thay đổi đáng kể (> 20%), quyết định chụp
+          if (changedBlocksRatio > 0.20) {
             hasChanged = true;
+            console.log("[Block-SSIM] Slide change detected:", {
+              ssim,
+              changedBlocksRatio,
+            });
           }
         }
 
         if (hasChanged) {
-          prevPixelsRef.current = imgData;
+          // Cập nhật Khung neo (Anchor Frame) bằng ảnh hiện tại
+          prevPixelsRef.current = currentGray;
 
           // 2. Draw high resolution frame for upload (Native video resolution or 1920x1080, Jpeg 92% quality)
           const width = videoEl.videoWidth || 1920;
@@ -653,7 +743,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
       } catch (err) {
         console.error("Error capturing screen share frame:", err);
       }
-    }, 15000); // Check every 15 seconds
+    }, 30000); // Kiểm tra mỗi 30 giây — giảm tải Gemini API
 
     return () => {
       clearInterval(intervalId);
