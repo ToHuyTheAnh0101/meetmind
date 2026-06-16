@@ -31,8 +31,10 @@ const AuthCallbackPage: React.FC = () => {
         // Validate token with backend
         await apiClient.get('/auth/verify')
 
-        // On success, navigate to dashboard
-        navigate('/', { replace: true })
+        // On success, retrieve redirectPath and navigate
+        const redirectPath = sessionStorage.getItem('redirectPath') || '/'
+        sessionStorage.removeItem('redirectPath')
+        navigate(redirectPath, { replace: true })
       } catch (err) {
         clearToken()
         setError('Authentication failed. Please try again.')

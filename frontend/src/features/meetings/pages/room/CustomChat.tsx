@@ -185,7 +185,7 @@ const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout, breako
             const initials = msg.from?.identity?.charAt(0).toUpperCase() || '?';
 
             return (
-              <div key={msg.id || idx} className={`flex gap-3 ${isSelf ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div key={msg.id || idx} className={`flex gap-3 w-full ${isSelf ? 'flex-row-reverse' : 'flex-row'}`}>
                 <div
                   className={`h-9 w-9 rounded-xl flex items-center justify-center text-[10px] font-bold shrink-0 overflow-hidden ${
                     isSelf
@@ -199,15 +199,15 @@ const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout, breako
                     initials
                   )}
                 </div>
-                <div className={`max-w-[85%] flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}>
-                  <div className="flex items-center gap-3 mb-2 px-1">
-                    <span className="text-sm font-bold text-white">
+                <div className={`max-w-[85%] min-w-0 flex flex-col ${isSelf ? 'items-end' : 'items-start'}`}>
+                  <div className="flex items-center gap-3 mb-2 px-1 w-full">
+                    <span className="text-sm font-bold text-white truncate">
                       {msg.from?.name || msg.from?.identity}
                     </span>
-                    <span className="text-[10px] font-medium text-slate-500">{formatTime(msg.timestamp)}</span>
+                    <span className="text-[10px] font-medium text-slate-500 shrink-0">{formatTime(msg.timestamp)}</span>
                   </div>
                   <div
-                    className={`px-4 py-3 rounded-[1.25rem] text-[14px] leading-relaxed shadow-sm ${
+                    className={`px-4 py-3 rounded-[1.25rem] text-[14px] leading-relaxed shadow-sm break-words max-w-full ${
                       isSelf
                         ? 'bg-cyan-600 text-white'
                         : 'bg-white/5 border border-white/5 text-slate-200'

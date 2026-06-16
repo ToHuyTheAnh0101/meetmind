@@ -424,7 +424,9 @@ export class AiService {
       return text;
     }
 
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const model =
+      this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash-lite';
+    const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
     const prompt = CLEAN_TRANSCRIPT_PROMPT(text, meetingTitle, speakerName);
 
     try {
@@ -480,7 +482,9 @@ export class AiService {
     }
 
     const base64Image = imageBuffer.toString('base64');
-    const url = `https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
+    const model =
+      this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash-lite';
+    const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
 
     try {
       const response = await axios.post<GeminiResponse>(

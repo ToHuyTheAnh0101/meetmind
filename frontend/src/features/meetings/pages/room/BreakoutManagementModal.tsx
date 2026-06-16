@@ -59,55 +59,63 @@ const BreakoutManagementModal: React.FC<Props> = ({
   ]);
   const [unassigned, setUnassigned] = useState<Participant[]>([]);
   const [isStarting, setIsStarting] = useState(false);
+  const [hasInitialized, setHasInitialized] = useState(false);
 
   // Khởi tạo và đồng bộ danh sách người tham gia
   useEffect(() => {
-    if (isOpen) {
-      const fetchCurrentState = async () => {
-        try {
-          const resp = await apiClient.get(`/meetings/${meetingId}/breakout-rooms`);
-          const activeParticipants = participants.filter(p => !p.isOrganizer);
-
-          if (resp.data && resp.data.length > 0) {
-            // Ánh xạ từ dữ liệu backend sang state local
-            const mappedRooms = resp.data.map((r: any) => ({
-              id: r.id,
-              name: r.name,
-              participants: r.participants.map((p: any) => {
-                // Tìm thông tin participant từ danh sách props để đảm bảo đồng bộ
-                const originalP = participants.find(op => op.userId === p.userId);
-                return originalP || {
-                  id: p.id,
-                  userId: p.userId,
-                  firstName: p.user?.firstName,
-                  lastName: p.user?.lastName,
-                  picture: p.user?.picture,
-                  user: p.user
-                };
-              })
-            }));
-            setRooms(mappedRooms);
-
-            // Tính toán danh sách chưa gán
-            const assignedUserIds = new Set(resp.data.flatMap((r: any) => r.participants.map((p: any) => p.userId)));
-            setUnassigned(activeParticipants.filter(p => !assignedUserIds.has(p.userId)));
-          } else {
-            // Không có phòng nào, reset về mặc định
-            setUnassigned(activeParticipants);
-            setRooms([
-              { id: '1', name: t('meeting.room_n', 'Phòng {{n}}', { n: 1 }), participants: [] },
-              { id: '2', name: t('meeting.room_n', 'Phòng {{n}}', { n: 2 }), participants: [] },
-            ]);
-          }
-        } catch (err) {
-          console.error("Failed to fetch breakout state", err);
-          // Fallback nếu lỗi
-          setUnassigned(participants.filter(p => !p.isOrganizer));
-        }
-      };
-      fetchCurrentState();
+    if (!isOpen) {
+      setHasInitialized(false);
+      return;
     }
-  }, [isOpen, meetingId, participants, t]);
+
+    if (hasInitialized) return;
+
+    const fetchCurrentState = async () => {
+      try {
+        const resp = await apiClient.get(`/meetings/${meetingId}/breakout-rooms`);
+        const activeParticipants = participants.filter(p => !p.isOrganizer);
+
+        if (resp.data && resp.data.length > 0) {
+          // Ánh xạ từ dữ liệu backend sang state local
+          const mappedRooms = resp.data.map((r: any) => ({
+            id: r.id,
+            name: r.name,
+            participants: r.participants.map((p: any) => {
+              // Tìm thông tin participant từ danh sách props để đảm bảo đồng bộ
+              const originalP = participants.find(op => op.userId === p.userId);
+              return originalP || {
+                id: p.id,
+                userId: p.userId,
+                firstName: p.user?.firstName,
+                lastName: p.user?.lastName,
+                picture: p.user?.picture,
+                user: p.user
+              };
+            })
+          }));
+          setRooms(mappedRooms);
+
+          // Tính toán danh sách chưa gán
+          const assignedUserIds = new Set(resp.data.flatMap((r: any) => r.participants.map((p: any) => p.userId)));
+          setUnassigned(activeParticipants.filter(p => !assignedUserIds.has(p.userId)));
+        } else {
+          // Không có phòng nào, reset về mặc định
+          setUnassigned(activeParticipants);
+          setRooms([
+            { id: '1', name: t('meeting.room_n', 'Phòng {{n}}', { n: 1 }), participants: [] },
+            { id: '2', name: t('meeting.room_n', 'Phòng {{n}}', { n: 2 }), participants: [] },
+          ]);
+        }
+        setHasInitialized(true);
+      } catch (err) {
+        console.error("Failed to fetch breakout state", err);
+        // Fallback nếu lỗi
+        setUnassigned(participants.filter(p => !p.isOrganizer));
+        setHasInitialized(true);
+      }
+    };
+    fetchCurrentState();
+  }, [isOpen, meetingId, participants, t, hasInitialized]);
 
   const addRoom = () => {
     const maxId = rooms.reduce((max, r) => Math.max(max, parseInt(r.id) || 0), 0);
@@ -161,21 +169,7 @@ const BreakoutManagementModal: React.FC<Props> = ({
   const handleStartBreakout = async () => {
     setIsStarting(true);
     try {
-      const setupData = {
-        rooms: rooms.map(r => ({
-          name: r.name,
-          assignments: r.participants.map(p => ({ userId: p.userId || p.id }))
-        }))
-      };
-
-      // 1. Setup rooms in backend
-      await apiClient.post(`/meetings/${meetingId}/breakout-rooms/setup`, setupData);
-      
-      // 2. Start breakout
-      const res = await apiClient.post(`/meetings/${meetingId}/breakout-rooms/start`);
-      
-      onStart(res.data);
-      onClose();
+      await onStart(rooms);
     } catch (err) {
       console.error("Failed to start breakout", err);
     } finally {

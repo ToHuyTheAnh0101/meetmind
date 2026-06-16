@@ -14,6 +14,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ children }) => {
   }
 
   if (status === 'unauthenticated') {
+    const targetPath = window.location.pathname + window.location.search
+    if (targetPath && !targetPath.startsWith('/login')) {
+      sessionStorage.setItem('redirectPath', targetPath)
+    }
     return <Navigate to="/login" replace />
   }
 
