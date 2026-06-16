@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Trash2, AlertCircle } from "lucide-react";
+import { Loader2, Trash2, AlertCircle, Settings, Shield, Sparkles, History } from "lucide-react";
 import {
   useQuery,
   useMutation,
@@ -166,6 +166,13 @@ const MeetingDetailsPage: React.FC = () => {
   }, [meeting, user]);
 
   const canEdit = !!(isOrganizer || isCoHost);
+
+  const tabConfig = [
+    { id: "general" as const, label: t("meeting.permissions.tab_general"), icon: Settings },
+    ...(isOrganizer ? [{ id: "permissions" as const, label: t("meeting.permissions.tab_permissions"), icon: Shield }] : []),
+    { id: "summary" as const, label: t("meeting.permissions.tab_summary"), icon: Sparkles },
+    { id: "diary" as const, label: t("meeting.permissions.tab_diary"), icon: History },
+  ];
 
   // 2. Fetch Paginated Participants (Infinite Scroll)
   const {
@@ -423,83 +430,52 @@ const MeetingDetailsPage: React.FC = () => {
         )}
       </AnimatePresence>
 
-      <div className="flex flex-col gap-6">
+      {/* Page header: Back button + tabs always on same row */}
+      <div className="flex items-center gap-3">
+        {/* Back button — only for existing meetings */}
         {!isNew && (
-          <div className="flex p-1 rounded-2xl bg-slate-100/50 border border-slate-300 w-fit backdrop-blur-sm">
-            <button
-              onClick={() => setActiveTab("general")}
-              className={`relative px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
-                activeTab === "general"
-                  ? "text-indigo-600"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {activeTab === "general" && (
-                <motion.div
-                  layoutId="tab-bg"
-                  className="absolute inset-0 bg-white shadow-sm border border-slate-300 rounded-xl"
-                />
-              )}
-              <span className="relative z-10">
-                {t("meeting.permissions.tab_general")}
-              </span>
-            </button>
-            {isOrganizer && (
-              <button
-                onClick={() => setActiveTab("permissions")}
-                className={`relative px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
-                  activeTab === "permissions"
-                    ? "text-indigo-600"
-                    : "text-slate-500 hover:text-slate-700"
-                }`}
-              >
-                {activeTab === "permissions" && (
-                  <motion.div
-                    layoutId="tab-bg"
-                    className="absolute inset-0 bg-white shadow-sm border border-slate-300 rounded-xl"
-                  />
-                )}
-                <span className="relative z-10">
-                  {t("meeting.permissions.tab_permissions")}
-                </span>
-              </button>
-            )}
-            <button
-              onClick={() => setActiveTab("summary")}
-              className={`relative px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
-                activeTab === "summary"
-                  ? "text-indigo-600"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {activeTab === "summary" && (
-                <motion.div
-                  layoutId="tab-bg"
-                  className="absolute inset-0 bg-white shadow-sm border border-slate-300 rounded-xl"
-                />
-              )}
-              <span className="relative z-10">
-                {t("meeting.permissions.tab_summary")}
-              </span>
-            </button>
-            <button
-              onClick={() => setActiveTab("diary")}
-              className={`relative px-6 py-2.5 rounded-xl text-sm font-bold transition-all duration-300 ${
-                activeTab === "diary"
-                  ? "text-indigo-600"
-                  : "text-slate-500 hover:text-slate-700"
-              }`}
-            >
-              {activeTab === "diary" && (
-                <motion.div
-                  layoutId="tab-bg"
-                  className="absolute inset-0 bg-white shadow-sm border border-slate-300 rounded-xl"
-                />
-              )}
-              <span className="relative z-10">
-                {t("meeting.permissions.tab_diary")}
-              </span>
-            </button>
+          <button
+            onClick={() => navigate("/meetings")}
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 hover:text-slate-900 transition-all hover:bg-slate-50 active:scale-95 shadow-sm"
+          >
+            <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="m12 19-7-7 7-7"/><path d="M19 12H5"/></svg>
+          </button>
+        )}
+
+        {/* Tab bar — only show for existing meetings */}
+        {!isNew && (
+          <div className="flex-1 min-w-0 overflow-x-auto scrollbar-none">
+            <div className="flex p-1 rounded-2xl bg-slate-100/50 border border-slate-300 backdrop-blur-sm w-full sm:w-fit">
+              <div className="flex w-full sm:w-auto gap-1">
+                {tabConfig.map((tab) => {
+                  const Icon = tab.icon;
+                  const isActive = activeTab === tab.id;
+                  return (
+                    <button
+                      key={tab.id}
+                      onClick={() => setActiveTab(tab.id)}
+                      title={tab.label}
+                      className={`relative flex items-center justify-center gap-2 px-3 py-2.5 sm:px-6 rounded-xl text-sm font-bold transition-all duration-300 flex-1 sm:flex-initial whitespace-nowrap min-w-0 ${
+                        isActive
+                          ? "text-indigo-600"
+                          : "text-slate-500 hover:text-slate-700"
+                      }`}
+                    >
+                      {isActive && (
+                        <motion.div
+                          layoutId="tab-bg"
+                          className="absolute inset-0 bg-white shadow-sm border border-slate-300 rounded-xl"
+                        />
+                      )}
+                      <Icon className="h-4 w-4 flex-shrink-0 relative z-10" />
+                      <span className="relative z-10 hidden sm:inline truncate">
+                        {tab.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           </div>
         )}
       </div>
@@ -514,7 +490,25 @@ const MeetingDetailsPage: React.FC = () => {
             className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start"
           >
             {/* LEFT: UNIFIED CONFIGURATION FORM */}
-            <div className="lg:col-span-8 space-y-8">
+            <div className="lg:col-span-8">
+              <div className="block lg:hidden mb-8">
+                <MeetingControlCenter
+                  id={id}
+                  isNew={isNew}
+                  canEdit={canEdit && !isCompleted}
+                  isInstant={isInstant}
+                  isDirty={isDirty}
+                  theme={theme}
+                  mutation={mutation}
+                  formData={formData}
+                  copied={copied}
+                  handleCopyLink={handleCopyLink}
+                  setShowDeleteConfirm={setShowDeleteConfirm}
+                  isCompleted={isCompleted}
+                  canDelete={!!isOrganizer && !isNew}
+                />
+              </div>
+
               <MeetingGeneralForm
                 meetingId={id}
                 formData={formData}
@@ -535,22 +529,24 @@ const MeetingDetailsPage: React.FC = () => {
             </div>
 
             {/* RIGHT: PERSISTENT ACTION SIDEBAR */}
-            <div className="lg:col-span-4 space-y-6 lg:sticky lg:top-8">
-              <MeetingControlCenter
-                id={id}
-                isNew={isNew}
-                canEdit={canEdit && !isCompleted}
-                isInstant={isInstant}
-                isDirty={isDirty}
-                theme={theme}
-                mutation={mutation}
-                formData={formData}
-                copied={copied}
-                handleCopyLink={handleCopyLink}
-                setShowDeleteConfirm={setShowDeleteConfirm}
-                isCompleted={isCompleted}
-                canDelete={!!isOrganizer && !isNew}
-              />
+            <div className="lg:col-span-4 lg:sticky lg:top-8">
+              <div className="hidden lg:block mb-6">
+                <MeetingControlCenter
+                  id={id}
+                  isNew={isNew}
+                  canEdit={canEdit && !isCompleted}
+                  isInstant={isInstant}
+                  isDirty={isDirty}
+                  theme={theme}
+                  mutation={mutation}
+                  formData={formData}
+                  copied={copied}
+                  handleCopyLink={handleCopyLink}
+                  setShowDeleteConfirm={setShowDeleteConfirm}
+                  isCompleted={isCompleted}
+                  canDelete={!!isOrganizer && !isNew}
+                />
+              </div>
 
               <MeetingTeamPresence
                 searchTerm={searchTerm}

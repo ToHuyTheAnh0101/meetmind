@@ -270,7 +270,7 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
   const selectedBg = VIRTUAL_BACKGROUNDS.find(bg => bg.id === activeBgr);
 
   return (
-    <div className="relative min-h-screen flex flex-col bg-[#050505] overflow-y-auto lg:overflow-hidden font-vietnam selection:bg-cyan-500/30">
+    <div className="relative min-h-screen flex flex-col bg-[#050505] overflow-y-auto overflow-x-hidden lg:overflow-hidden font-vietnam selection:bg-cyan-500/30">
       {/* Dynamic Animated Mesh Background */}
       <div className="absolute inset-0 z-0">
         <div className="absolute top-[-10%] left-[-5%] h-[600px] w-[600px] rounded-full bg-cyan-600/10 blur-[120px] animate-mesh" />
@@ -278,10 +278,10 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-full w-full bg-[radial-gradient(circle_at_center,transparent_0%,#050505_80%)]" />
       </div>
       
-      <header className="relative z-10 p-3 lg:p-4 flex items-center justify-between">
+      <header className="relative z-10 p-3 lg:p-4 flex items-center justify-between shrink-0">
         <button 
           onClick={onExit}
-          className="flex items-center gap-3 text-white/50 hover:text-white transition-all group"
+          className="flex items-center gap-3 text-white/60 hover:text-white transition-all group active:scale-95"
         >
           <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 group-hover:bg-white/10 transition-all">
             <ArrowLeft className="h-5 w-5" />
@@ -289,22 +289,22 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
           <span className="text-sm font-bold tracking-wide">{t('meeting.exit_hub')}</span>
         </button>
 
-        <div className="flex items-center gap-3 px-5 py-2.5 rounded-2xl bg-white/5 border border-white/10 backdrop-blur-md">
-           <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-           <span className="text-xs font-bold text-slate-300 tracking-wide">Hệ thống sẵn sàng</span>
+        <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-md">
+           <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.5)]" />
+           <span className="text-xs font-bold text-emerald-400 tracking-wide">Hệ thống sẵn sàng</span>
         </div>
       </header>
       
-      <main className="relative z-10 flex-1 flex items-center justify-center p-2 lg:p-4 overflow-y-auto lg:overflow-hidden">
+      <main className="relative z-10 flex-1 flex items-center justify-center p-2 lg:p-4 overflow-y-auto overflow-x-hidden lg:overflow-hidden">
         <div className="w-full max-w-[85rem] grid lg:grid-cols-[1fr,360px] xl:grid-cols-[1fr,400px] gap-6 xl:gap-8 items-center origin-center lg:scale-[0.9] xl:scale-100 transition-transform">
           
           {/* Left: Professional Monitor Preview */}
           <div className="flex flex-col gap-6 self-center">
              <div className="relative group w-full">
                 {/* Mirror Border Effect */}
-                <div className="absolute -inset-1 bg-gradient-to-tr from-cyan-500/20 via-white/5 to-indigo-500/20 rounded-[2.5rem] blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
+                <div className="absolute -inset-1 bg-gradient-to-tr from-cyan-500/20 via-white/5 to-indigo-500/20 rounded-[2rem] blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
                 
-                <div className="relative aspect-video rounded-[3rem] overflow-hidden border border-white/20 bg-[#0a0a0b] shadow-2xl">
+                <div className="relative aspect-video rounded-[1.8rem] lg:rounded-[2.2rem] overflow-hidden border border-white/20 bg-[#0a0a0b] shadow-2xl">
                    {isCamOn && localVideoTrack ? (
                      <div className="relative w-full h-full">
                        {/* Camera Feed */}
@@ -339,36 +339,36 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
 
                   {/* Top Right: Selected Virtual Background Badge */}
                   {isCamOn && selectedBg && selectedBg.id !== 'none' && (
-                    <div className="absolute top-6 right-6 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600/90 text-white text-[10px] font-black tracking-wide border border-cyan-400 shadow-lg backdrop-blur-md">
+                    <div className="absolute top-4 right-4 lg:top-6 lg:right-6 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600/90 text-white text-[10px] font-black tracking-wide border border-cyan-400 shadow-lg backdrop-blur-md">
                       <Sparkles size={10} />
                       <span>NỀN ẢO: {selectedBg.label.toUpperCase()}</span>
                     </div>
                   )}
 
                   {/* Overlays */}
-                  <div className="absolute top-6 left-6 flex items-center gap-2 p-2 rounded-xl bg-black/40 backdrop-blur-xl border border-white/10">
+                  <div className="absolute top-4 left-4 lg:top-6 lg:left-6 flex items-center gap-2 p-2 rounded-xl bg-black/40 backdrop-blur-xl border border-white/10">
                      <AudioVisualizer isActive={isMicOn} />
                      <div className="w-px h-4 bg-white/10" />
                      <span className="text-[10px] font-black text-white/60 tracking-wide">{isMicOn ? 'Mic Live' : 'Muted'}</span>
                   </div>
 
-                  <div className="absolute bottom-0 left-1/2 -translate-x-1/2 flex items-center gap-3 p-2.5 rounded-2xl bg-black/60 backdrop-blur-2xl border border-white/20 shadow-2xl">
+                  <div className="absolute bottom-4 lg:bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 p-2 lg:p-2.5 rounded-2xl bg-[#0f0f12]/95 backdrop-blur-2xl border border-white/10 shadow-2xl">
                     <button 
                       onClick={() => setIsMicOn(!isMicOn)} 
-                      className={`h-11 w-11 rounded-xl flex items-center justify-center transition-all ${isMicOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-rose-500 text-white hover:bg-rose-600 shadow-lg shadow-rose-500/20'}`}
+                      className={`h-11 w-11 rounded-xl flex items-center justify-center transition-all active:scale-95 ${isMicOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-rose-500 text-white hover:bg-rose-600 shadow-lg shadow-rose-500/20'}`}
                     >
                       {isMicOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
                     </button>
                     <button 
                       onClick={() => setIsCamOn(!isCamOn)} 
-                      className={`h-11 w-11 rounded-xl flex items-center justify-center transition-all ${isCamOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-rose-500 text-white hover:bg-rose-600 shadow-lg shadow-rose-500/20'}`}
+                      className={`h-11 w-11 rounded-xl flex items-center justify-center transition-all active:scale-95 ${isCamOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-rose-500 text-white hover:bg-rose-600 shadow-lg shadow-rose-500/20'}`}
                     >
                       {isCamOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
                     </button>
                     <div className="w-px h-6 bg-white/10 mx-1" />
                     <button 
                       onClick={() => setShowSettings(!showSettings)}
-                      className={`h-11 w-11 rounded-xl flex items-center justify-center transition-all ${showSettings ? 'bg-cyan-500 text-white' : 'bg-white/5 text-white hover:bg-white/10'}`}
+                      className={`h-11 w-11 rounded-xl flex items-center justify-center transition-all active:scale-95 ${showSettings ? 'bg-cyan-500 text-white' : 'bg-white/5 text-white hover:bg-white/10'}`}
                     >
                       <Settings className="h-5 w-5" />
                     </button>
@@ -478,14 +478,14 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                         })}
                       </div>
                     </div>
-                 </motion.div>
-               )}
-             </AnimatePresence>
-          </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
 
-          {/* Right: Meeting Passport Card */}
-          <div className="flex flex-col gap-4">
-             <div className="glass-card p-5 lg:p-6 rounded-[2rem] relative overflow-hidden">
+            {/* Right: Meeting Passport Card */}
+            <div className="flex flex-col gap-4">
+             <div className="glass-card p-5 lg:p-6 rounded-[2rem] relative overflow-hidden bg-slate-950/80 border border-white/10 shadow-2xl backdrop-blur-2xl">
                 <div className="absolute top-0 right-0 p-6 opacity-5">
                    <Monitor className="h-24 w-24" />
                 </div>
@@ -512,7 +512,7 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                               return (
                                 <div key={p.id || idx} className="h-10 w-10 rounded-full border-2 border-[#0a0a0b] bg-slate-800 flex items-center justify-center text-[10px] font-bold text-white overflow-hidden" title={displayName}>
                                    <img src={imgUrl} alt={displayName} className="h-full w-full object-cover" />
-                                </div>
+                                 </div>
                               );
                             })}
                             {activeParticipants.length > 3 && (
@@ -526,16 +526,16 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
 
                    <div className="space-y-4">
                       <div className="space-y-2">
-                        <label className="text-sm font-bold text-slate-400 ml-1">{t('meeting.display_name')}</label>
+                        <label className="text-xs font-bold text-slate-400 ml-1 tracking-wider uppercase">{t('meeting.display_name')}</label>
                         <input 
                           value={username} 
                           onChange={e => setUsername(e.target.value)} 
                           readOnly={!allowDisplayNameEdit}
-                          className={`w-full glass-input rounded-xl py-3 px-5 text-base text-white font-semibold placeholder:text-white/10 transition-all ${!allowDisplayNameEdit ? 'opacity-70 cursor-not-allowed bg-white/5 border-white/5' : ''}`} 
+                          className={`w-full glass-input rounded-xl py-3 px-5 text-base text-white font-semibold placeholder:text-white/10 transition-all focus:ring-2 focus:ring-cyan-500/20 focus:border-cyan-500 ${!allowDisplayNameEdit ? 'opacity-70 cursor-not-allowed bg-white/5 border-white/5' : ''}`} 
                           placeholder={allowDisplayNameEdit ? "Nhập tên của bạn..." : "Tên đã được cố định"} 
                         />
                         {!allowDisplayNameEdit && (
-                          <p className="text-sm font-bold text-slate-500 mt-3 px-2 italic">
+                          <p className="text-xs font-bold text-slate-500 mt-2 px-2 italic">
                             Chủ phòng đã khóa tính năng đổi tên cho cuộc họp này.
                           </p>
                         )}
@@ -569,11 +569,11 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                       <button 
                         onClick={() => onJoin({ username, videoEnabled: isCamOn, audioEnabled: isMicOn, videoDeviceId: selectedVideoId, audioDeviceId: selectedAudioId })}
                         disabled={!username || isLoading}
-                        className="group relative w-full mt-4"
+                        className="group relative w-full mt-4 active:scale-[0.98] transition-transform"
                       >
-                         <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-indigo-600 rounded-2xl blur opacity-25 group-hover:opacity-50 transition duration-1000 group-hover:duration-200" />
-                         <div className="relative flex h-14 w-full items-center justify-center rounded-xl bg-white font-black text-slate-950 transition-all hover:bg-slate-50 active:scale-95 disabled:opacity-50">
-                            {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : t('meeting.enter_space')}
+                         <div className="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-indigo-600 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-1000 group-hover:duration-200" />
+                         <div className="relative flex h-14 w-full items-center justify-center rounded-xl bg-gradient-to-r from-cyan-500 to-indigo-500 hover:from-cyan-400 hover:to-indigo-400 font-black text-white transition-all disabled:opacity-50 shadow-lg shadow-cyan-500/10">
+                            {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-white" /> : t('meeting.enter_space')}
                           </div>
                       </button>
                    </div>

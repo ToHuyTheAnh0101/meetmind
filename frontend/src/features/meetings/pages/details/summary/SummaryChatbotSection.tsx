@@ -27,7 +27,7 @@ export const SummaryChatbotSection: React.FC<SummaryChatbotSectionProps> = ({
 }) => {
   const { t, i18n } = useTranslation();
   const isVi = i18n.language === "vi";
-  const chatEndRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
 
   const [chatInput, setChatInput] = useState("");
   const [isAiGenerating, setIsAiGenerating] = useState(false);
@@ -71,9 +71,14 @@ export const SummaryChatbotSection: React.FC<SummaryChatbotSectionProps> = ({
     }
   }, [chatHistory, isVi]);
 
-  // Scroll to bottom of chat when new message arrives
+  // Scroll to bottom of chat container when new messages arrive without scrolling parent page viewport
   useEffect(() => {
-    chatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (chatContainerRef.current) {
+      chatContainerRef.current.scrollTo({
+        top: chatContainerRef.current.scrollHeight,
+        behavior: "smooth",
+      });
+    }
   }, [messages, isAiGenerating]);
 
   const handleSendMessage = async (text: string) => {
@@ -199,7 +204,10 @@ export const SummaryChatbotSection: React.FC<SummaryChatbotSectionProps> = ({
       )}
 
       {/* Messages Area */}
-      <div className="flex-1 overflow-y-auto pr-2 mb-4 space-y-4 custom-scrollbar">
+      <div
+        ref={chatContainerRef}
+        className="flex-1 overflow-y-auto pr-2 mb-4 space-y-4 custom-scrollbar"
+      >
         {messages.map((msg) => (
           <div
             key={msg.id}
@@ -267,8 +275,6 @@ export const SummaryChatbotSection: React.FC<SummaryChatbotSectionProps> = ({
             </div>
           </div>
         )}
-
-        <div ref={chatEndRef} />
       </div>
 
       {/* Input Panel */}

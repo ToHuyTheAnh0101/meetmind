@@ -103,7 +103,7 @@ const MeetingRoomPage: React.FC = () => {
     useState<LocalVideoTrack | null>(null);
   const [isWaitingInLobby, setIsWaitingInLobby] = useState(false);
 
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 1024 : true);
   const [activeTab, setActiveTab] = useState<
     | "chat"
     | "roster"

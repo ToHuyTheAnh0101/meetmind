@@ -224,7 +224,7 @@ const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout, breako
       </div>
 
       {/* Input Area */}
-      <div className="px-6 pb-12 bg-transparent">
+      <div className="px-6 pb-4 lg:pb-6 bg-transparent">
         <div className="relative flex items-center gap-2 bg-white/5 border border-white/10 rounded-2xl p-2.5 focus-within:border-cyan-500/40 focus-within:bg-white/[0.08] transition-all">
           <textarea
             ref={textareaRef}

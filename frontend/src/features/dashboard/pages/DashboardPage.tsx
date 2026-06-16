@@ -235,34 +235,33 @@ const DashboardPage: React.FC = () => {
           <div className="absolute -right-8 -top-8 h-48 w-48 rounded-full bg-cyan-400/10 blur-3xl" />
           <div className="absolute -left-8 -bottom-8 h-48 w-48 rounded-full bg-indigo-400/10 blur-3xl" />
 
-          <div className="relative flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
-            <div className="max-w-xl">
-              <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+          {/* Mobile: title left + action right on same row. lg: spread further */}
+          <div className="relative flex items-start justify-between gap-3 lg:items-center">
+            <div className="min-w-0 flex-1">
+              <h1 className="text-xl font-black tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
                 <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-indigo-600">
                   {t('dashboard.overview')}
                 </span>
               </h1>
-              <p className="mt-1.5 text-sm font-medium text-slate-500 sm:text-base">
-                {t('dashboard.welcome_back', { name: user?.firstName || t('common.guest_user') })}. {' '}
-                <span className="hidden sm:inline">
-                  {t('dashboard.today_is', { 
-                    date: new Date().toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', {
-                      weekday: 'long',
-                      day: 'numeric',
-                      month: 'long'
-                    })
-                  })}
-                </span>
+              <p className="hidden sm:block mt-1.5 text-sm font-medium text-slate-500">
+                {t('dashboard.welcome_back', { name: user?.firstName || t('common.guest_user') })}.{' '}
+                {t('dashboard.today_is', { 
+                  date: new Date().toLocaleDateString(i18n.language === 'vi' ? 'vi-VN' : 'en-US', {
+                    weekday: 'long',
+                    day: 'numeric',
+                    month: 'long'
+                  })
+                })}
               </p>
             </div>
 
-            <div className="flex items-center gap-3">
+            <div className="flex shrink-0 items-center gap-2">
               <button 
                 onClick={() => navigate('/meetings/new')}
-                className="flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-br from-cyan-600 to-indigo-600 px-6 text-sm font-black text-white shadow-xl shadow-indigo-100 transition hover:scale-[1.05] active:scale-95 group"
+                className="flex h-10 sm:h-12 items-center gap-1.5 sm:gap-2 rounded-2xl bg-gradient-to-br from-cyan-600 to-indigo-600 px-3 sm:px-6 text-xs sm:text-sm font-black text-white shadow-xl shadow-indigo-100 transition hover:scale-[1.05] active:scale-95 group"
               >
-                <Plus className="h-5 w-5 transition-transform group-hover:rotate-90" />
-                <span>{t('dashboard.new_meeting')}</span>
+                <Plus className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:rotate-90" />
+                <span className="hidden xs:inline sm:inline">{t('dashboard.new_meeting')}</span>
               </button>
             </div>
           </div>

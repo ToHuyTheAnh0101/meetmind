@@ -114,6 +114,16 @@ export const MeetingControlCenter: React.FC<MeetingControlCenterProps> = ({
           </button>
         )}
 
+        {/* Cancel button — only for new meeting creation */}
+        {isNew && (
+          <button
+            onClick={() => navigate("/meetings")}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white py-3 text-sm font-bold text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-slate-700 active:scale-95"
+          >
+            {t("common.cancel")}
+          </button>
+        )}
+
         {!isNew && (
           <div className="pt-6 mt-4 border-t border-slate-100 space-y-4">
             <div className="flex items-center gap-3 bg-slate-50/50 border border-slate-200 rounded-2xl p-3 pl-4">

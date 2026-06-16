@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { Sparkles, Layers, ChevronUp, ChevronDown, Edit3, X } from "lucide-react";
 import { TemplateSectionDef, SummaryTemplatePurpose } from "@/types/api";
@@ -33,6 +33,7 @@ export const TemplateNotionPreview: React.FC<TemplateNotionPreviewProps> = ({
   moveSection,
 }) => {
   const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState<"structure" | "document">("structure");
 
   return (
     <div>
@@ -58,10 +59,38 @@ export const TemplateNotionPreview: React.FC<TemplateNotionPreviewProps> = ({
           </div>
         </div>
 
+        {/* Mobile Tabs Switch */}
+        <div className="flex border-b border-slate-100 bg-slate-50 p-1 md:hidden">
+          <button
+            type="button"
+            onClick={() => setActiveTab("structure")}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all text-center ${
+              activeTab === "structure"
+                ? "bg-white text-indigo-600 shadow-sm border border-slate-200"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {t("template.active_blocks_title")} ({formSections.length})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab("document")}
+            className={`flex-1 py-2 rounded-lg text-xs font-bold transition-all text-center ${
+              activeTab === "document"
+                ? "bg-white text-indigo-600 shadow-sm border border-slate-200"
+                : "text-slate-500 hover:text-slate-700"
+            }`}
+          >
+            {t("template.preview_title")}
+          </button>
+        </div>
+
         {/* Side-by-side Layout: Sidebar structure vs Preview Document */}
         <div className="flex flex-col md:flex-row flex-1 overflow-hidden min-h-[480px]">
           {/* Left Sidebar: Outline / Structure */}
-          <div className="w-full md:w-64 border-r border-slate-100 bg-slate-50/50 flex flex-col overflow-hidden">
+          <div className={`w-full md:w-64 border-r border-slate-100 bg-slate-50/50 flex flex-col overflow-hidden ${
+            activeTab === "structure" ? "flex" : "hidden md:flex"
+          }`}>
             <div className="p-4 border-b border-slate-100 bg-slate-50 flex items-center gap-2">
               <Layers className="h-4 w-4 text-cyan-600" />
               <span className="text-xs font-black text-slate-700 tracking-wide">
@@ -145,7 +174,9 @@ export const TemplateNotionPreview: React.FC<TemplateNotionPreviewProps> = ({
           </div>
 
           {/* Notion Document Body Container */}
-          <div className="p-6 overflow-y-auto space-y-6 flex-1 bg-white font-serif min-h-[450px]">
+          <div className={`p-6 overflow-y-auto space-y-6 flex-1 bg-white font-serif min-h-[450px] ${
+            activeTab === "document" ? "block" : "hidden md:block"
+          }`}>
             {/* Notion Page Metadata Mockup */}
             <div className="border-b border-slate-100 pb-5 font-sans space-y-4">
               <h1 className="text-xl sm:text-2xl font-bold text-slate-900 font-sans tracking-tight">

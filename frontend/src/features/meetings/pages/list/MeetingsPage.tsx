@@ -30,48 +30,50 @@ const MeetingsPage: React.FC = () => {
         <div className="absolute -right-8 -top-8 h-48 w-48 rounded-full bg-cyan-400/10 blur-3xl" />
         <div className="absolute -left-8 -bottom-8 h-48 w-48 rounded-full bg-indigo-400/10 blur-3xl" />
 
-        <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
-          <div className="max-w-xl">
-            <h1 className="text-3xl font-black tracking-tight text-slate-900 sm:text-4xl">
+        {/* Mobile: title left + actions right on same row. lg: spread further apart */}
+        <div className="relative flex items-start justify-between gap-3 lg:items-center">
+          <div className="min-w-0 flex-1">
+            <h1 className="text-2xl font-black tracking-tight text-slate-900 sm:text-3xl lg:text-4xl">
               {t("dashboard.list_title_prefix")}{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-600 to-indigo-600">
                 {t("dashboard.list_title_highlight")}
               </span>
             </h1>
-            <p className="mt-1.5 text-sm font-medium text-slate-500 sm:text-base">
+            <p className="hidden sm:block mt-1.5 text-sm font-medium text-slate-500">
               {t("dashboard.list_subtitle")}
             </p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-3">
+          <div className="flex shrink-0 items-center gap-2 sm:gap-3">
             <button
               onClick={() => setIsSearchVisible(!isSearchVisible)}
-              className={`flex h-12 w-12 items-center justify-center rounded-2xl border transition-all duration-300 ${
+              className={`flex h-10 w-10 sm:h-12 sm:w-12 items-center justify-center rounded-2xl border transition-all duration-300 ${
                 isSearchVisible
                   ? "bg-cyan-600 border-cyan-600 text-white shadow-lg shadow-cyan-100"
                   : "border-slate-200 bg-white text-slate-600 shadow-sm hover:border-cyan-200 hover:text-cyan-600"
               }`}
             >
-              <Search className="h-5 w-5" />
+              <Search className="h-4 w-4 sm:h-5 sm:w-5" />
             </button>
 
             <button
               onClick={() => setIsFiltersVisible(!isFiltersVisible)}
-              className={`flex h-12 items-center gap-2 rounded-2xl border px-5 text-sm font-black transition-all duration-300 ${
+              className={`flex h-10 sm:h-12 items-center gap-1.5 sm:gap-2 rounded-2xl border px-3 sm:px-5 text-xs sm:text-sm font-black transition-all duration-300 ${
                 isFiltersVisible
                   ? "bg-indigo-600 border-indigo-600 text-white shadow-lg shadow-indigo-100"
                   : "border-slate-200 bg-white text-slate-600 shadow-sm hover:border-indigo-200 hover:text-indigo-600"
               }`}
             >
-              <Filter className="h-4 w-4" /> {t("meeting.filters")}
+              <Filter className="h-4 w-4" />
+              <span className="hidden xs:inline sm:inline">{t("meeting.filters")}</span>
             </button>
 
             <button
               onClick={() => navigate("/meetings/new")}
-              className="flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-br from-cyan-600 to-indigo-600 px-6 text-sm font-black text-white shadow-xl shadow-indigo-100 transition hover:scale-[1.05] active:scale-95 group"
+              className="flex h-10 sm:h-12 items-center gap-1.5 sm:gap-2 rounded-2xl bg-gradient-to-br from-cyan-600 to-indigo-600 px-3 sm:px-6 text-xs sm:text-sm font-black text-white shadow-xl shadow-indigo-100 transition hover:scale-[1.05] active:scale-95 group"
             >
-              <Plus className="h-5 w-5 transition-transform group-hover:rotate-90" />
-              <span>{t("dashboard.new_meeting")}</span>
+              <Plus className="h-4 w-4 sm:h-5 sm:w-5 transition-transform group-hover:rotate-90" />
+              <span className="hidden xs:inline sm:inline">{t("dashboard.new_meeting")}</span>
             </button>
           </div>
         </div>

@@ -155,7 +155,7 @@ const ProfilePage: React.FC = () => {
         {/* Left Grid: Avatar & Core Account Card */}
         <motion.div
           initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.1 }}
           className="md:col-span-1 flex flex-col gap-6"
         >
@@ -211,7 +211,7 @@ const ProfilePage: React.FC = () => {
         {/* Right Grid: Stats & Background Selector */}
         <motion.div
           initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, y: 0 }}
+          animate={{ opacity: 1, x: 0 }}
           transition={{ delay: 0.15 }}
           className="md:col-span-2 flex flex-col gap-6"
         >

@@ -499,16 +499,20 @@ const TemplatesPage: React.FC = () => {
           className="space-y-6 w-full max-w-[1600px] mx-auto px-4"
         >
           {/* Form Header */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-5">
-            <div className="flex items-center gap-4">
+          {/* Mobile: row 1 = back + actions, row 2 = title. sm+: single horizontal row */}
+          <div className="border-b border-slate-100 pb-5">
+            {/* Top control row (always horizontal) */}
+            <div className="flex items-center justify-between gap-3">
               <button
                 onClick={() => setView("list")}
-                className="flex h-11 w-11 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 hover:text-slate-900 transition-all hover:bg-slate-50 active:scale-95 shadow-sm"
+                className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-500 hover:text-slate-900 transition-all hover:bg-slate-50 active:scale-95 shadow-sm"
               >
                 <ArrowLeft className="h-5 w-5" />
               </button>
-              <div>
-                <h2 className="text-2xl font-black text-slate-900 tracking-tight">
+
+              {/* Title visible on sm+ inside the row */}
+              <div className="hidden sm:block flex-1 min-w-0">
+                <h2 className="text-2xl font-black text-slate-900 tracking-tight truncate">
                   {formMode === "new"
                     ? t("template.template_designer_title")
                     : t("template.template_designer_edit_title")}
@@ -517,33 +521,45 @@ const TemplatesPage: React.FC = () => {
                   {t("template.template_designer_subtitle")}
                 </p>
               </div>
+
+              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                {formMode === "edit" && selectedTemplate && !selectedTemplate.isSystem && (
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteTemplate(selectedTemplate.id)}
+                    className="flex h-10 sm:h-12 items-center gap-1.5 sm:gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 sm:px-5 text-sm font-black text-rose-600 hover:bg-rose-100/50 hover:text-rose-700 transition active:scale-95 shadow-sm"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                    <span className="hidden xs:inline">Xóa mẫu</span>
+                  </button>
+                )}
+
+                {selectedTemplate?.isSystem ? (
+                  <div className="flex h-10 sm:h-12 items-center gap-2 rounded-2xl bg-amber-500/10 border border-amber-500/20 px-3 sm:px-5 text-xs sm:text-sm font-black text-amber-600 select-none shadow-sm">
+                    <span>Chỉ xem</span>
+                  </div>
+                ) : (
+                  <button
+                    onClick={handleSaveTemplate}
+                    className="flex h-10 sm:h-12 items-center gap-1.5 sm:gap-2 rounded-2xl bg-gradient-to-r from-cyan-600 to-indigo-600 px-4 sm:px-6 text-sm font-black text-white shadow-xl shadow-cyan-100 hover:scale-[1.03] active:scale-95 transition-all"
+                  >
+                    <Check className="h-4 w-4 sm:h-5 sm:w-5" />
+                    <span>{t("template.save")}</span>
+                  </button>
+                )}
+              </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              {formMode === "edit" && selectedTemplate && !selectedTemplate.isSystem && (
-                <button
-                  type="button"
-                  onClick={() => handleDeleteTemplate(selectedTemplate.id)}
-                  className="flex h-12 items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-5 text-sm font-black text-rose-600 hover:bg-rose-100/50 hover:text-rose-700 transition active:scale-95 shadow-sm"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  <span>Xóa mẫu</span>
-                </button>
-              )}
-
-              {selectedTemplate?.isSystem ? (
-                <div className="flex h-12 items-center gap-2 rounded-2xl bg-amber-500/10 border border-amber-500/20 px-5 text-sm font-black text-amber-600 select-none shadow-sm">
-                  <span>Mẫu hệ thống (Chỉ xem)</span>
-                </div>
-              ) : (
-                <button
-                  onClick={handleSaveTemplate}
-                  className="flex h-12 items-center gap-2 rounded-2xl bg-gradient-to-r from-cyan-600 to-indigo-600 px-6 text-sm font-black text-white shadow-xl shadow-cyan-100 hover:scale-[1.03] active:scale-95 transition-all"
-                >
-                  <Check className="h-5 w-5" />
-                  <span>{t("template.save")}</span>
-                </button>
-              )}
+            {/* Title row visible only on mobile (below the control row) */}
+            <div className="mt-3 sm:hidden">
+              <h2 className="text-xl font-black text-slate-900 tracking-tight leading-tight">
+                {formMode === "new"
+                  ? t("template.template_designer_title")
+                  : t("template.template_designer_edit_title")}
+              </h2>
+              <p className="text-sm font-semibold text-slate-500 mt-0.5">
+                {t("template.template_designer_subtitle")}
+              </p>
             </div>
           </div>
 
