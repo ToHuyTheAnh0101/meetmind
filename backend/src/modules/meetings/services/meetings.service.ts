@@ -38,6 +38,7 @@ import { MailService } from '../../../providers/mail/mail.service';
 import { AiService } from '../../../providers/ai/ai.service.js';
 import { ChatHistoryRepository } from '../repositories/chat-history.repository';
 import { ScreenCaptureRepository } from '../repositories/screen-capture.repository';
+import { CloudinaryService } from '../../../providers/cloudinary/cloudinary.service';
 
 @Injectable()
 export class MeetingsService {
@@ -67,6 +68,7 @@ export class MeetingsService {
     private screenCaptureRepository: ScreenCaptureRepository,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly entityManager: EntityManager,
+    private cloudinaryService: CloudinaryService,
   ) {}
 
   async create(dto: CreateMeetingDto, userId: string): Promise<Meeting> {
@@ -600,8 +602,7 @@ export class MeetingsService {
     if (relevantCaptures.length > 0) {
       const visualContext = relevantCaptures
         .map(
-          (cap) =>
-            `[Slide lúc ${Math.round(cap.timestamp)}s]: ${cap.summary}`,
+          (cap) => `[Slide lúc ${Math.round(cap.timestamp)}s]: ${cap.summary}`,
         )
         .join('\n');
       enrichedContext = `${contextText}\n\n[Nội dung màn hình chia sẻ]:\n${visualContext}`;
@@ -988,37 +989,57 @@ export class MeetingsService {
     const mimetype = typeof f.mimetype === 'string' ? f.mimetype : 'image/jpeg';
     const ext = mimetype.includes('png') ? 'png' : 'jpg';
 
-    let relativeUrl = '';
-    let filePath = '';
-    try {
-      const dirPath = path.join(
-        process.cwd(),
-        'uploads',
-        'captures',
-        meetingId,
-      );
-      if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true });
+    let imageUrl = '';
+
+    if (this.cloudinaryService.hasCredentials()) {
+      try {
+        const publicId = `capture_${Date.now()}`;
+        const folder = `meetmind/meetings/${meetingId}/captures`;
+        imageUrl = await this.cloudinaryService.uploadImage(
+          buffer,
+          folder,
+          publicId,
+        );
+        this.logger.log(`Uploaded screen capture to Cloudinary: ${imageUrl}`);
+      } catch (err) {
+        this.logger.error(
+          'Failed to upload to Cloudinary, falling back to local storage:',
+          err,
+        );
       }
+    }
 
-      const fileName = `capture_${Date.now()}.${ext}`;
-      filePath = path.join(dirPath, fileName);
-      fs.writeFileSync(filePath, buffer);
+    if (!imageUrl) {
+      try {
+        const dirPath = path.join(
+          process.cwd(),
+          'uploads',
+          'captures',
+          meetingId,
+        );
+        if (!fs.existsSync(dirPath)) {
+          fs.mkdirSync(dirPath, { recursive: true });
+        }
 
-      const backendUrl =
-        this.configService.get<string>('BACKEND_URL') ||
-        'http://localhost:3000';
-      relativeUrl = `${backendUrl}/meetings/${meetingId}/screen-captures/${fileName}`;
-      this.logger.log(`Saved screen capture to: ${filePath}`);
-    } catch (err) {
-      this.logger.error(`Failed to save screen capture:`, err);
-      throw new BadRequestException('Failed to save screen capture file');
+        const fileName = `capture_${Date.now()}.${ext}`;
+        const filePath = path.join(dirPath, fileName);
+        fs.writeFileSync(filePath, buffer);
+
+        const backendUrl =
+          this.configService.get<string>('BACKEND_URL') ||
+          'http://localhost:3000';
+        imageUrl = `${backendUrl}/meetings/${meetingId}/screen-captures/${fileName}`;
+        this.logger.log(`Saved screen capture locally to: ${filePath}`);
+      } catch (err) {
+        this.logger.error(`Failed to save screen capture locally:`, err);
+        throw new BadRequestException('Failed to save screen capture file');
+      }
     }
 
     // Lưu record tạm vào DB (chưa có summary/embedding)
     const capture = this.screenCaptureRepository.create({
       meetingId,
-      imageUrl: relativeUrl,
+      imageUrl,
       timestamp,
       summary: null,
       embedding: null,
@@ -1168,10 +1189,7 @@ export class MeetingsService {
           }
         }
       } catch (err) {
-        this.logger.error(
-          '[RAG] Failed semantic screen capture search:',
-          err,
-        );
+        this.logger.error('[RAG] Failed semantic screen capture search:', err);
       }
     }
 

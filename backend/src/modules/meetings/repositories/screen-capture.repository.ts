@@ -51,4 +51,3 @@ export class ScreenCaptureRepository extends Repository<ScreenCapture> {
       .getMany();
   }
 }
-

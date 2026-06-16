@@ -34,6 +34,7 @@ import { MeetingsWebhookService } from './services/meetings-webhook.service';
 import { LiveKitModule } from '../../providers/livekit/livekit.module';
 import { UsersModule } from '../users/users.module';
 import { AiModule } from '../../providers/ai/ai.module';
+import { CloudinaryModule } from '../../providers/cloudinary/cloudinary.module';
 
 @Module({
   imports: [
@@ -52,6 +53,7 @@ import { AiModule } from '../../providers/ai/ai.module';
     LiveKitModule,
     UsersModule,
     AiModule,
+    CloudinaryModule,
   ],
   providers: [
     // Repositories
