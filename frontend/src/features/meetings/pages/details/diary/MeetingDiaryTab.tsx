@@ -91,6 +91,7 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({ meetingId }) =
     ai_assistant_activated: { vi: "Bật trợ lý AI ghi âm", en: "AI assistant activated" },
     ai_assistant_deactivated: { vi: "Tắt trợ lý AI ghi âm", en: "AI assistant deactivated" },
     ai_summary_generated: { vi: "Tạo bản tóm tắt AI", en: "AI summary generated" },
+    meeting_ended: { vi: "Kết thúc cuộc họp", en: "Meeting ended" },
   };
 
   // Filter logs based on search term

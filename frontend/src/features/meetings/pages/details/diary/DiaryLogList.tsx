@@ -264,7 +264,30 @@ function getColorClasses(color: string) {
 
 const renderMetadataItem = (key: string, value: unknown, t: any, templates: any[]) => {
   const displayKey = t(`meeting.diary.metadata.${key}`, key);
-  let displayValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+  let displayValue = "";
+
+  if (key === "permissions") {
+    const permArray = Array.isArray(value) ? value : [value];
+    displayValue = permArray
+      .map((perm) => t(`meeting.permissions.list.${perm}.label`, String(perm)))
+      .join(", ");
+  } else if (key === "options") {
+    const optArray = Array.isArray(value) ? value : [value];
+    displayValue = optArray.map((opt) => String(opt)).join(", ");
+  } else if (key === "action") {
+    const actionVal = String(value);
+    if (actionVal === "grant") {
+      displayValue = t("meeting.diary.metadata.grant", "Grant");
+    } else if (actionVal === "revoke") {
+      displayValue = t("meeting.diary.metadata.revoke", "Revoke");
+    } else {
+      displayValue = actionVal;
+    }
+  } else if (typeof value === "boolean") {
+    displayValue = value ? t("meeting.diary.metadata.true", "Yes") : t("meeting.diary.metadata.false", "No");
+  } else {
+    displayValue = typeof value === "object" ? JSON.stringify(value) : String(value);
+  }
 
   if (key === "templateId") {
     if (displayValue === "default") {
@@ -374,6 +397,7 @@ export const DiaryLogList: React.FC<DiaryLogListProps> = ({
                               key !== "avatar" &&
                               key !== "picture" &&
                               key !== "timestamp" &&
+                              key !== "userIds" &&
                               (!key.endsWith("Id") || key === "templateId")
                           )
                           .map(([key, value]) => {

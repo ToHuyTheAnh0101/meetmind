@@ -246,7 +246,14 @@
         "options": "Options",
         "question": "Question",
         "content": "Content",
-        "autoCompleted": "Auto completed"
+        "autoCompleted": "Auto completed",
+        "permissions": "Permissions",
+        "action": "Action",
+        "count": "Member count",
+        "grant": "Grant",
+        "revoke": "Revoke",
+        "true": "Yes",
+        "false": "No"
       },
       "title": "Meeting Timeline",
       "subtitle": "Chronological activity log for the session",
@@ -507,6 +514,10 @@
         "download_recording": {
           "label": "Download recording",
           "desc": "Download audio/video files"
+        },
+        "update_permissions": {
+          "label": "Update permissions",
+          "desc": "Allows updating other participants' permissions"
         }
       },
       "bulk_actions": "Bulk Actions",

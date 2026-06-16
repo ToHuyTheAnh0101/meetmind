@@ -246,7 +246,14 @@
         "options": "Các lựa chọn",
         "question": "Câu hỏi",
         "content": "Nội dung",
-        "autoCompleted": "Tự động kết thúc"
+        "autoCompleted": "Tự động kết thúc",
+        "permissions": "Quyền hạn",
+        "action": "Hành động",
+        "count": "Số lượng thành viên",
+        "grant": "Cấp quyền",
+        "revoke": "Thu hồi quyền",
+        "true": "Có",
+        "false": "Không"
       },
       "title": "Nhật Ký Cuộc Họp",
       "subtitle": "Dòng thời gian hoạt động trong phiên",
@@ -510,6 +517,10 @@
         "download_recording": {
           "label": "Tải bản ghi",
           "desc": "Tải về file ghi âm/video"
+        },
+        "update_permissions": {
+          "label": "Thay đổi quyền hạn",
+          "desc": "Cho phép thay đổi quyền hạn của các thành viên khác"
         }
       },
       "bulk_actions": "Thao tác hàng loạt",
