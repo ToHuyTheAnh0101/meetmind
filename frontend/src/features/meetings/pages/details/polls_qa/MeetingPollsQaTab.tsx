@@ -366,7 +366,7 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
                             ? "Đang diễn ra"
                             : "Ongoing"}
                         </span>
-                        <span className="ml-2.5 text-xs text-slate-400 dark:text-slate-500">
+                        <span className="ml-2.5 text-xs text-slate-500 dark:text-slate-400">
                           {poll.type === "multiple"
                             ? isVi
                               ? "Chọn nhiều lựa chọn"
@@ -376,7 +376,7 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
                             : "Single choice"}
                         </span>
                       </div>
-                      <div className="flex items-center text-xs text-slate-400 dark:text-slate-500">
+                      <div className="flex items-center text-xs text-slate-500 dark:text-slate-400">
                         <Clock className="w-3.5 h-3.5 mr-1" />
                         <span>{formatDateTime(poll.createdAt)}</span>
                       </div>
@@ -424,7 +424,7 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
                             {/* Voters Avatar List */}
                             {option.voters && option.voters.length > 0 && (
                               <div className="flex items-center space-x-2 pt-1">
-                                <span className="text-xs text-slate-400 dark:text-slate-500 flex items-center mr-1">
+                                <span className="text-xs text-slate-500 dark:text-slate-400 flex items-center mr-1">
                                   <Users className="w-3 h-3 mr-1" />
                                   {isVi ? "Người bình chọn:" : "Voters:"}
                                 </span>
@@ -464,7 +464,7 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
                     </div>
 
                     {/* Total Votes footer */}
-                    <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-xs text-slate-400 dark:text-slate-500">
+                    <div className="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800/60 flex items-center justify-between text-xs text-slate-500 dark:text-slate-400">
                       <span>
                         {isVi
                           ? `Tổng số lượt bình chọn: ${totalVotes}`
@@ -551,7 +551,7 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
                           <h5 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
                             {q.askedByUser?.name || (isVi ? "Người dùng ẩn danh" : "Anonymous User")}
                           </h5>
-                          <span className="text-[11px] text-slate-400 dark:text-slate-500">
+                          <span className="text-[11px] text-slate-500 dark:text-slate-400">
                             {formatDateTime(q.createdAt)}
                           </span>
                         </div>
@@ -610,7 +610,7 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
                                     (isVi ? "Người dùng ẩn danh" : "Anonymous User")}
                                 </span>
                               </div>
-                              <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                              <span className="text-[10px] text-slate-500 dark:text-slate-400">
                                 {formatDateTime(answer.createdAt)}
                               </span>
                             </div>

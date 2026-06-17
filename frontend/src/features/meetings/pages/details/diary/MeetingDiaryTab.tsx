@@ -186,7 +186,7 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({ meetingId }) =
                 <h3 className="text-xl font-black text-slate-900 leading-tight">
                   {t("meeting.diary.title")}
                 </h3>
-                <p className="text-xs font-bold text-slate-400 mt-0.5">
+                <p className="text-xs font-bold text-slate-500 mt-0.5">
                   {t("meeting.diary.subtitle")}
                 </p>
               </div>
@@ -267,7 +267,7 @@ export const MeetingDiaryTab: React.FC<MeetingDiaryTabProps> = ({ meetingId }) =
 
                   {/* Log Count Footer */}
                   <div className="mt-6 flex items-center justify-center">
-                    <span className="text-[11px] font-bold text-slate-300 tracking-wider">
+                    <span className="text-[11px] font-bold text-slate-500 tracking-wider">
                       {t("meeting.diary.event_count", { count: sortedLogs.length })}
                     </span>
                   </div>

@@ -317,7 +317,7 @@ export const DiaryLogList: React.FC<DiaryLogListProps> = ({
           {/* Date Header */}
           <div className="flex items-center gap-3 mb-5">
             <div className="h-px flex-1 bg-gradient-to-r from-slate-200 to-transparent" />
-            <span className="text-[11px] font-black text-slate-400 tracking-widest uppercase px-3 py-1 rounded-full bg-slate-50 border border-slate-200">
+            <span className="text-[11px] font-black text-slate-500 tracking-widest uppercase px-3 py-1 rounded-full bg-slate-50 border border-slate-200">
               {group.date}
             </span>
             <div className="h-px flex-1 bg-gradient-to-l from-slate-200 to-transparent" />
@@ -381,7 +381,7 @@ export const DiaryLogList: React.FC<DiaryLogListProps> = ({
                       </div>
 
                       {/* Timestamp */}
-                      <span className="text-[11px] font-bold text-slate-400 whitespace-nowrap shrink-0">
+                      <span className="text-[11px] font-bold text-slate-500 whitespace-nowrap shrink-0">
                         {formatTime(log.createdAt)}
                       </span>
                     </div>
@@ -412,7 +412,7 @@ export const DiaryLogList: React.FC<DiaryLogListProps> = ({
                                 key={key}
                                 className="inline-flex items-center gap-1 px-2 py-0.5 rounded-lg bg-white/60 text-[10px] font-bold text-slate-500 border border-slate-100"
                               >
-                                <span className="text-slate-400">
+                                <span className="text-slate-500">
                                   {prettified.key}:
                                 </span>
                                 <span className="text-slate-600">

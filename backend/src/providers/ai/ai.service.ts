@@ -178,39 +178,7 @@ export class AiService {
         this.configService.get<string>('GEMINI_MODEL') ||
         'gemini-2.5-flash-lite';
 
-      const toolDeclarations: import('@google/generative-ai').FunctionDeclaration[] =
-        [
-          {
-            name: 'get_meeting_polls',
-            description:
-              'Lấy danh sách các cuộc biểu quyết (polls) trong cuộc họp bao gồm các câu hỏi, các lựa chọn trả lời và số lượt bình chọn cho mỗi lựa chọn.',
-            parameters: {
-              type: SchemaType.OBJECT,
-              properties: {
-                meetingId: {
-                  type: SchemaType.STRING,
-                  description: 'UUID của cuộc họp.',
-                },
-              },
-              required: ['meetingId'],
-            } as unknown as import('@google/generative-ai').FunctionDeclarationSchema,
-          },
-          {
-            name: 'get_meeting_qa',
-            description:
-              'Lấy danh sách các câu hỏi và câu trả lời trong mục Hỏi đáp (Q&A) của cuộc họp.',
-            parameters: {
-              type: SchemaType.OBJECT,
-              properties: {
-                meetingId: {
-                  type: SchemaType.STRING,
-                  description: 'UUID của cuộc họp.',
-                },
-              },
-              required: ['meetingId'],
-            } as unknown as import('@google/generative-ai').FunctionDeclarationSchema,
-          },
-        ];
+      const toolDeclarations = this.getToolDeclarations();
 
       const model = this.genAI.getGenerativeModel({
         model: modelName,
@@ -232,12 +200,11 @@ export class AiService {
         if (functionCalls && functionCalls.length > 0) {
           const responses: Part[] = [];
           for (const call of functionCalls) {
-            let functionResult: unknown;
-            if (call.name === 'get_meeting_polls') {
-              functionResult = await handlers.getPolls(meetingId);
-            } else if (call.name === 'get_meeting_qa') {
-              functionResult = await handlers.getQa(meetingId);
-            }
+            const functionResult = await this.executeToolCall(
+              call.name,
+              meetingId,
+              handlers,
+            );
             responses.push({
               functionResponse: {
                 name: call.name,
@@ -487,39 +454,7 @@ export class AiService {
             this.configService.get<string>('GEMINI_MODEL') ||
             'gemini-2.5-flash-lite';
 
-          const toolDeclarations: import('@google/generative-ai').FunctionDeclaration[] =
-            [
-              {
-                name: 'get_meeting_polls',
-                description:
-                  'Lấy danh sách các cuộc biểu quyết (polls) trong cuộc họp bao gồm các câu hỏi, các lựa chọn trả lời và số lượt bình chọn cho mỗi lựa chọn.',
-                parameters: {
-                  type: SchemaType.OBJECT,
-                  properties: {
-                    meetingId: {
-                      type: SchemaType.STRING,
-                      description: 'UUID của cuộc họp.',
-                    },
-                  },
-                  required: ['meetingId'],
-                } as unknown as import('@google/generative-ai').FunctionDeclarationSchema,
-              },
-              {
-                name: 'get_meeting_qa',
-                description:
-                  'Lấy danh sách các câu hỏi và câu trả lời trong mục Hỏi đáp (Q&A) của cuộc họp.',
-                parameters: {
-                  type: SchemaType.OBJECT,
-                  properties: {
-                    meetingId: {
-                      type: SchemaType.STRING,
-                      description: 'UUID của cuộc họp.',
-                    },
-                  },
-                  required: ['meetingId'],
-                } as unknown as import('@google/generative-ai').FunctionDeclarationSchema,
-              },
-            ];
+          const toolDeclarations = this.getToolDeclarations();
 
           const model = this.genAI.getGenerativeModel({
             model: modelName,
@@ -579,12 +514,11 @@ export class AiService {
           if (functionCalls.length > 0) {
             const responses: Part[] = [];
             for (const call of functionCalls) {
-              let functionResult: unknown;
-              if (call.name === 'get_meeting_polls') {
-                functionResult = await handlers.getPolls(meetingId);
-              } else if (call.name === 'get_meeting_qa') {
-                functionResult = await handlers.getQa(meetingId);
-              }
+              const functionResult = await this.executeToolCall(
+                call.name,
+                meetingId,
+                handlers,
+              );
               responses.push({
                 functionResponse: {
                   name: call.name,
@@ -620,6 +554,58 @@ export class AiService {
         isCancelled = true;
       };
     });
+  }
+
+  private getToolDeclarations(): import('@google/generative-ai').FunctionDeclaration[] {
+    return [
+      {
+        name: 'get_meeting_polls',
+        description:
+          'Lấy danh sách các cuộc biểu quyết (polls) trong cuộc họp bao gồm các câu hỏi, các lựa chọn trả lời và số lượt bình chọn cho mỗi lựa chọn.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            meetingId: {
+              type: SchemaType.STRING,
+              description: 'UUID của cuộc họp.',
+            },
+          },
+          required: ['meetingId'],
+        } as unknown as import('@google/generative-ai').FunctionDeclarationSchema,
+      },
+      {
+        name: 'get_meeting_qa',
+        description:
+          'Lấy danh sách các câu hỏi và câu trả lời trong mục Hỏi đáp (Q&A) của cuộc họp.',
+        parameters: {
+          type: SchemaType.OBJECT,
+          properties: {
+            meetingId: {
+              type: SchemaType.STRING,
+              description: 'UUID của cuộc họp.',
+            },
+          },
+          required: ['meetingId'],
+        } as unknown as import('@google/generative-ai').FunctionDeclarationSchema,
+      },
+    ];
+  }
+
+  private async executeToolCall(
+    callName: string,
+    meetingId: string,
+    handlers?: {
+      getPolls: (meetingId: string) => Promise<any>;
+      getQa: (meetingId: string) => Promise<any>;
+    },
+  ): Promise<unknown> {
+    if (!handlers) return null;
+    if (callName === 'get_meeting_polls') {
+      return handlers.getPolls(meetingId);
+    } else if (callName === 'get_meeting_qa') {
+      return handlers.getQa(meetingId);
+    }
+    return null;
   }
 
   async generateSummary(title: string, transcript: string): Promise<string> {

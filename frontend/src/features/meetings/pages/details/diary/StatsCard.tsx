@@ -147,7 +147,7 @@ export const StatsCard: React.FC<StatsCardProps> = ({ logs }) => {
       transition={{ delay: 0.2 }}
       className="rounded-[2.5rem] border border-white/80 bg-white/70 p-5 shadow-2xl backdrop-blur-xl"
     >
-      <h4 className="text-xs font-black text-slate-400 tracking-wider mb-4">
+      <h4 className="text-xs font-black text-slate-500 tracking-wider mb-4">
         {t("meeting.diary.stats_title")}
       </h4>
 

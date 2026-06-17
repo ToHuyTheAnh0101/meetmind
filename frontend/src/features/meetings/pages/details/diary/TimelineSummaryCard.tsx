@@ -29,7 +29,7 @@ export const TimelineSummaryCard: React.FC<TimelineSummaryCardProps> = ({
       transition={{ delay: 0.1 }}
       className="rounded-[2.5rem] border border-white/80 bg-white/70 p-6 shadow-2xl backdrop-blur-xl"
     >
-      <h4 className="text-xs font-black text-slate-400 tracking-wider mb-5 flex items-center gap-2">
+      <h4 className="text-xs font-black text-slate-500 tracking-wider mb-5 flex items-center gap-2">
         <Clock className="h-4 w-4 text-indigo-500" />
         {t("meeting.diary.timeline_title", "MỐC THỜI GIAN THỰC TẾ")}
       </h4>
@@ -41,7 +41,7 @@ export const TimelineSummaryCard: React.FC<TimelineSummaryCardProps> = ({
             <CalendarClock className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase">
+            <p className="text-[11px] font-bold text-slate-500 tracking-wide">
               {t("meeting.diary.scheduled_start", "Giờ lên lịch dự kiến")}
             </p>
             <p className="text-sm font-black text-slate-700 mt-0.5">
@@ -56,7 +56,7 @@ export const TimelineSummaryCard: React.FC<TimelineSummaryCardProps> = ({
             <LogIn className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase">
+            <p className="text-[11px] font-bold text-slate-500 tracking-wide">
               {t("meeting.diary.actual_start", "Bắt đầu thực tế")}
             </p>
             <p className="text-sm font-black text-slate-700 mt-0.5">
@@ -77,7 +77,7 @@ export const TimelineSummaryCard: React.FC<TimelineSummaryCardProps> = ({
             <LogOut className="h-4 w-4" />
           </div>
           <div>
-            <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase">
+            <p className="text-[11px] font-bold text-slate-500 tracking-wide">
               {t("meeting.diary.actual_end", "Kết thúc thực tế")}
             </p>
             <p className="text-sm font-black text-slate-700 mt-0.5">
@@ -100,7 +100,7 @@ export const TimelineSummaryCard: React.FC<TimelineSummaryCardProps> = ({
         {/* Total Duration */}
         <div className="mt-2 pt-4 border-t border-slate-100 flex items-center justify-between">
           <div>
-            <p className="text-[11px] font-bold text-slate-400 tracking-wide uppercase">
+            <p className="text-[11px] font-bold text-slate-500 tracking-wide">
               {t("meeting.diary.total_duration", "Tổng thời lượng")}
             </p>
             <p className="text-base font-black text-slate-800 mt-0.5">
