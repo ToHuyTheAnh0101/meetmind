@@ -35,17 +35,28 @@ const toDateKey = (date: Date) => {
 }
 
 const parseMeetingsPayload = (payload: unknown): Meeting[] => {
+  if (!payload) return []
   if (Array.isArray(payload)) {
     return payload as Meeting[]
   }
 
-  if (
-    typeof payload === 'object' &&
-    payload !== null &&
-    'data' in payload &&
-    Array.isArray((payload as { data?: unknown }).data)
-  ) {
-    return (payload as { data: Meeting[] }).data
+  if (typeof payload === 'object') {
+    const obj = payload as Record<string, unknown>
+    if (Array.isArray(obj.items)) {
+      return obj.items as Meeting[]
+    }
+    if (Array.isArray(obj.data)) {
+      return obj.data as Meeting[]
+    }
+    if (obj.data && typeof obj.data === 'object') {
+      const nested = obj.data as Record<string, unknown>
+      if (Array.isArray(nested.items)) {
+        return nested.items as Meeting[]
+      }
+      if (Array.isArray(nested.data)) {
+        return nested.data as Meeting[]
+      }
+    }
   }
 
   return []
@@ -85,7 +96,9 @@ const DashboardPage: React.FC = () => {
   const { data: apiMeetings = [], isLoading, isError } = useQuery({
     queryKey: ['meetings'],
     queryFn: async (): Promise<Meeting[]> => {
-      const response = await apiClient.get('/meetings')
+      const response = await apiClient.get('/meetings', {
+        params: { limit: 100 }
+      })
       return parseMeetingsPayload(response.data)
     },
   })

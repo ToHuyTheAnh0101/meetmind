@@ -18,6 +18,8 @@ import { Track, ConnectionQuality } from "livekit-client";
 import {
   ChevronDown,
   ChevronUp,
+  ChevronLeft,
+  ChevronRight,
   LogOut,
   Users as UsersIcon,
   MicOff,
@@ -30,17 +32,34 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useAudioRecording } from "./useAudioRecording";
 import { useScreenCapture } from "./useScreenCapture";
 
-
 interface MeetingMainStageProps {
   meetingId: string;
   isSidebarOpen: boolean;
-  activeTab: "chat" | "roster" | "lobby" | "settings" | "polls" | "qa" | "permissions" | "breakout" | "attachments";
+  activeTab:
+    | "chat"
+    | "roster"
+    | "lobby"
+    | "settings"
+    | "polls"
+    | "qa"
+    | "permissions"
+    | "breakout"
+    | "attachments";
   hasUnreadPolls?: boolean;
   hasUnreadQA?: boolean;
   hasWaitingLobby?: boolean;
   isOrganizer: boolean;
   onToggleSidebar: (
-    tab: "chat" | "roster" | "lobby" | "settings" | "polls" | "qa" | "permissions" | "breakout" | "attachments",
+    tab:
+      | "chat"
+      | "roster"
+      | "lobby"
+      | "settings"
+      | "polls"
+      | "qa"
+      | "permissions"
+      | "breakout"
+      | "attachments",
   ) => void;
   onEndSession: () => void;
   onLeaveSession?: () => void;
@@ -123,7 +142,7 @@ const ParticipantStatusOverlay = ({
   if (isCompact) {
     const isMuted = !p?.isMicrophoneEnabled;
     return (
-      <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-[110] flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-0.5 max-w-[calc(100%-16px)] whitespace-nowrap">
+      <div className="absolute top-2.5 right-2.5 z-[110] flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-md border border-white/10 px-2.5 py-0.5 max-w-[calc(100%-16px)] whitespace-nowrap">
         {!isScreenShare && isMuted && (
           <MicOff className="h-3 w-3 text-rose-500 shrink-0" />
         )}
@@ -147,7 +166,7 @@ const ParticipantStatusOverlay = ({
 
   return (
     <div
-      className={`absolute z-[110] flex items-center gap-2 rounded-full bg-black/60 backdrop-blur-2xl border border-white/20 shadow-2xl transition-all bottom-3 left-3 px-3 py-1.5 lg:bottom-6 lg:left-6 lg:px-4 lg:py-2`}
+      className={`absolute z-[110] flex items-center gap-2 rounded-full bg-black/60 backdrop-blur-2xl border border-white/20 shadow-2xl transition-all top-3 right-3 lg:top-4 lg:right-4 lg:px-3.5 lg:py-1.5`}
     >
       <div className="flex items-center gap-1.5 lg:gap-2">
         {!isScreenShare && isMuted && (
@@ -184,8 +203,8 @@ const CustomConnectionIndicator = () => {
               quality === ConnectionQuality.Excellent
                 ? "bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.4)]"
                 : quality === ConnectionQuality.Good
-                ? "bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.4)]"
-                : "bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.4)]"
+                  ? "bg-amber-500 shadow-[0_0_6px_rgba(245,158,11,0.4)]"
+                  : "bg-rose-500 shadow-[0_0_6px_rgba(244,63,94,0.4)]"
             }`}
           />
         ))}
@@ -257,12 +276,13 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   isInBreakout,
 }) => {
   const { t } = useTranslation();
-  const { localParticipant, isScreenShareEnabled } =
-    useLocalParticipant();
+  const { localParticipant, isScreenShareEnabled } = useLocalParticipant();
   const screenShareTrack = localParticipant.getTrackPublication(
     Track.Source.ScreenShare,
   );
   const [isControlsExpanded, setIsControlsExpanded] = useState(true);
+
+
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const [cameraPage, setCameraPage] = useState(0);
   const [gridPage, setGridPage] = useState(0);
@@ -334,7 +354,10 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
 
   // Auto-bound screenshare index if number of tracks decreases
   useEffect(() => {
-    if (activeScreenShareIndex >= screenshareTracks.length && screenshareTracks.length > 0) {
+    if (
+      activeScreenShareIndex >= screenshareTracks.length &&
+      screenshareTracks.length > 0
+    ) {
       setActiveScreenShareIndex(screenshareTracks.length - 1);
     }
   }, [screenshareTracks.length, activeScreenShareIndex]);
@@ -358,37 +381,68 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
     ? cameraTracks.slice(cameraPage * pageSize, (cameraPage + 1) * pageSize)
     : cameraTracks;
 
-  // ─── Paginated grid (max 9 per page) ─────────────────────────────────────
-  const GRID_PAGE_SIZE = 9;
-  const totalGridPages = Math.ceil(tracks.length / GRID_PAGE_SIZE);
+  // ─── Paginated grid (max 9 per page, special splitting 4+x for 5-8) ──────
+  const getPaginationInfo = (totalCount: number) => {
+    const isSpecialSplit =
+      totalCount === 5 ||
+      totalCount === 6 ||
+      totalCount === 7 ||
+      totalCount === 8;
+    const pageSize = isSpecialSplit ? 4 : 9;
+    const totalPages = Math.ceil(totalCount / pageSize);
+    return { pageSize, totalPages };
+  };
+
+  const { pageSize: realPageSize, totalPages: totalGridPages } =
+    getPaginationInfo(tracks.length);
   const safeGridPage = Math.min(gridPage, Math.max(0, totalGridPages - 1));
-  const pagedTracks = tracks.slice(safeGridPage * GRID_PAGE_SIZE, (safeGridPage + 1) * GRID_PAGE_SIZE);
+  const pagedTracks = tracks.slice(
+    safeGridPage * realPageSize,
+    (safeGridPage + 1) * realPageSize,
+  );
 
   const gridColsFromCount = (n: number) => {
     if (n === 1) return 1;
     if (n === 2) return 2;
-    if (n === 3) return 3;
+    if (n === 3) return 2;
     if (n === 4) return 2;
+    if (n === 6) return 2;
     if (n <= 6) return 3;
+    if (n === 8) return 3;
     if (n <= 8) return 4;
-    return 3; // 9 → 3×3
-  };
-
-  const gridRowsFromCount = (n: number) => {
-    if (n <= 3) return 1;
-    if (n <= 6) return 2;
-    if (n <= 9) return 3;
+    if (n === 9) return 3;
+    if (n <= 12) return 4;
     return 3;
   };
 
+  const gridRowsFromCount = (n: number) => {
+    if (n <= 2) return 1;
+    if (n === 3) return 2;
+    if (n === 4) return 2;
+    if (n === 6) return 3;
+    if (n <= 6) return 2;
+    if (n === 8) return 3;
+    if (n <= 8) return 2;
+    if (n === 9) return 3;
+    if (n <= 12) return 3;
+    return 3;
+  };
+
+
+
   const gridContent = (
-    <div className="w-full h-full flex flex-col">
+    <div className="w-full h-full relative">
       {/* Grid area */}
-      <div className="flex-1 min-h-0">
-        <GridLayout tracks={pagedTracks} className="meetmind-grid w-full h-full">
+      <div className="w-full h-full">
+        <GridLayout
+          tracks={pagedTracks}
+          className="meetmind-grid w-full h-full"
+        >
           <CustomParticipantTile />
         </GridLayout>
-        <style dangerouslySetInnerHTML={{ __html: `
+        <style
+          dangerouslySetInnerHTML={{
+            __html: `
           .meetmind-grid {
             display: grid !important;
             grid-template-columns: repeat(${gridColsFromCount(pagedTracks.length)}, 1fr) !important;
@@ -409,40 +463,47 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
             height: auto !important;
             max-height: 100% !important;
           }
-        `}} />
+        `,
+          }}
+        />
       </div>
 
-      {/* Pagination bar — only shown when > 9 participants */}
+      {/* Floating Dot indicator with Navigation Arrows at top center */}
       {totalGridPages > 1 && (
-        <div className="shrink-0 flex items-center justify-center gap-4 py-3">
+        <div className="absolute top-[-20px] left-1/2 -translate-x-1/2 z-[120] flex items-center gap-2 px-3 py-1 rounded-full bg-black/70 border border-white/15 backdrop-blur-md shadow-2xl">
+          {/* Left Arrow */}
           <button
-            onClick={() => setGridPage(p => Math.max(0, p - 1))}
+            onClick={() => setGridPage((p) => Math.max(0, p - 1))}
             disabled={safeGridPage === 0}
-            className="flex items-center justify-center w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95"
+            className="flex items-center justify-center w-7 h-7 rounded-full text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-90 cursor-pointer"
           >
-            <ChevronDown className="h-4 w-4 rotate-90" />
+            <ChevronLeft className="h-4 w-4" strokeWidth={2.5} />
           </button>
 
-          <div className="flex items-center gap-2">
+          {/* Page Dots */}
+          <div className="flex items-center gap-1.5 px-1">
             {Array.from({ length: totalGridPages }).map((_, idx) => (
               <button
                 key={idx}
                 onClick={() => setGridPage(idx)}
                 className={`rounded-full transition-all duration-300 ${
                   idx === safeGridPage
-                    ? 'w-5 h-2 bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]'
-                    : 'w-2 h-2 bg-white/20 hover:bg-white/40'
+                    ? "w-4 h-1.5 bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]"
+                    : "w-1.5 h-1.5 bg-white/20 hover:bg-white/40"
                 }`}
               />
             ))}
           </div>
 
+          {/* Right Arrow */}
           <button
-            onClick={() => setGridPage(p => Math.min(totalGridPages - 1, p + 1))}
+            onClick={() =>
+              setGridPage((p) => Math.min(totalGridPages - 1, p + 1))
+            }
             disabled={safeGridPage === totalGridPages - 1}
-            className="flex items-center justify-center w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95"
+            className="flex items-center justify-center w-7 h-7 rounded-full text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-90 cursor-pointer"
           >
-            <ChevronDown className="h-4 w-4 -rotate-90" />
+            <ChevronRight className="h-4 w-4" strokeWidth={2.5} />
           </button>
         </div>
       )}
@@ -501,6 +562,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
           <span className="text-sm lg:text-lg font-medium text-white/90 truncate max-w-[100px] sm:max-w-none">
             {t("meeting.live_session")}: {meetingId?.slice(0, 8)}
           </span>
+
           {isRecording && (
             <div className="flex items-center gap-1.5 px-2.5 py-1 lg:px-3.5 lg:py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
               <div className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
@@ -531,17 +593,23 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                       ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
                       : "bg-white/5 border-white/10 hover:bg-white/10 text-white/80"
                   }`}
-                  title={isRecording ? "Dừng trợ lý ghi chép" : "Trợ lý ghi chép AI"}
+                  title={
+                    isRecording ? "Dừng trợ lý ghi chép" : "Trợ lý ghi chép AI"
+                  }
                 >
                   {isRecording ? (
                     <>
                       <Radio className="h-4 w-4 animate-pulse text-cyan-400" />
-                      <span className="hidden md:inline">Dừng trợ lý ghi chép</span>
+                      <span className="hidden md:inline">
+                        Dừng trợ lý ghi chép
+                      </span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 text-cyan-400" />
-                      <span className="hidden md:inline">Trợ lý ghi chép AI</span>
+                      <span className="hidden md:inline">
+                        Trợ lý ghi chép AI
+                      </span>
                     </>
                   )}
                 </button>
@@ -550,8 +618,12 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                 onClick={() => setShowEndConfirmation(true)}
                 className="px-3 py-2.5 lg:px-6 lg:py-3 rounded-xl lg:rounded-2xl bg-rose-500 hover:bg-rose-600 text-white font-semibold text-xs lg:text-sm transition-all shadow-lg shadow-rose-500/20 active:scale-95"
               >
-                <span className="hidden sm:inline">{t("meeting.end_session")}</span>
-                <span className="inline sm:hidden">{t("common.end", "Kết thúc")}</span>
+                <span className="hidden sm:inline">
+                  {t("meeting.end_session")}
+                </span>
+                <span className="inline sm:hidden">
+                  {t("common.end", "Kết thúc")}
+                </span>
               </button>
             </>
           )}
@@ -560,8 +632,12 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
               onClick={onReturnToMain}
               className="px-3 py-2.5 lg:px-6 lg:py-3 rounded-xl lg:rounded-2xl bg-indigo-600 hover:bg-indigo-500 text-white font-semibold text-xs lg:text-sm transition-all shadow-lg shadow-indigo-600/20 flex items-center gap-2 active:scale-95"
             >
-              <span className="hidden sm:inline">{t("meeting.leave_breakout", "Rời phòng thảo luận")}</span>
-              <span className="inline sm:hidden">{t("common.leave", "Rời phòng")}</span>
+              <span className="hidden sm:inline">
+                {t("meeting.leave_breakout", "Rời phòng thảo luận")}
+              </span>
+              <span className="inline sm:hidden">
+                {t("common.leave", "Rời phòng")}
+              </span>
               <LogOut className="h-4 w-4 shrink-0" />
             </button>
           )}
@@ -600,7 +676,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                 />
 
                 {/* Screenshare Selector Dropdown */}
-                <div 
+                <div
                   ref={shareDropdownRef}
                   className="absolute z-[120] bottom-6 left-6"
                 >
@@ -609,7 +685,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                       {isShareDropdownOpen && (
                         <div className="absolute bottom-full left-0 mb-2 z-[130] w-64 rounded-2xl bg-[#0f0f12]/95 backdrop-blur-3xl border border-white/20 p-2 shadow-2xl flex flex-col gap-1">
                           <div className="px-3 py-1.5 text-[10px] font-bold text-white/40 tracking-wider">
-                            {t('meeting.sharing_screens', 'Người đang chia sẻ')}
+                            {t("meeting.sharing_screens", "Người đang chia sẻ")}
                           </div>
                           {screenshareTracks.map((track, idx) => (
                             <button
@@ -627,7 +703,8 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                               <div className="flex items-center gap-2 truncate">
                                 <Monitor className="h-3.5 w-3.5 shrink-0" />
                                 <span className="truncate">
-                                  {track.participant.name || track.participant.identity}
+                                  {track.participant.name ||
+                                    track.participant.identity}
                                 </span>
                               </div>
                               {idx === activeScreenShareIndex && (
@@ -637,16 +714,19 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                           ))}
                         </div>
                       )}
-                      
+
                       <button
-                        onClick={() => setIsShareDropdownOpen(!isShareDropdownOpen)}
+                        onClick={() =>
+                          setIsShareDropdownOpen(!isShareDropdownOpen)
+                        }
                         className="flex items-center gap-2 rounded-full bg-black/60 backdrop-blur-2xl border border-emerald-500/40 hover:border-emerald-500/80 shadow-2xl transition-all px-4 py-2 hover:bg-black/80"
                       >
                         <div className="flex items-center gap-1.5 text-emerald-400">
                           <Monitor className="h-3.5 w-3.5 animate-pulse" />
                           <span className="text-xs font-bold tracking-wider">
-                            {t('meeting.screenshare_of', 'Màn hình của')}{" "}
-                            {activeScreenShareTrack?.participant.name || activeScreenShareTrack?.participant.identity}
+                            {t("meeting.screenshare_of", "Màn hình của")}{" "}
+                            {activeScreenShareTrack?.participant.name ||
+                              activeScreenShareTrack?.participant.identity}
                           </span>
                         </div>
                         <ChevronDown className="h-3.5 w-3.5 text-emerald-400/80" />
@@ -658,8 +738,9 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                       <div className="flex items-center gap-1.5 text-emerald-400">
                         <Monitor className="h-3.5 w-3.5 animate-pulse" />
                         <span className="text-xs font-bold tracking-wider">
-                          {t('meeting.screenshare_of', 'Màn hình của')}{" "}
-                          {activeScreenShareTrack?.participant.name || activeScreenShareTrack?.participant.identity}
+                          {t("meeting.screenshare_of", "Màn hình của")}{" "}
+                          {activeScreenShareTrack?.participant.name ||
+                            activeScreenShareTrack?.participant.identity}
                         </span>
                       </div>
                     </div>
@@ -729,18 +810,18 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                 </div>
               )}
             </div>
+          ) : isLargeScreen ? (
+            gridContent
           ) : (
-            isLargeScreen ? gridContent : (
-              <div className="w-full flex flex-col justify-center items-center gap-4 py-2 overflow-y-auto max-h-full custom-scrollbar">
-                {tracks.map((track) => (
-                  <CustomParticipantTile
-                    key={`${track.participant.identity}-${track.source}`}
-                    trackRef={track}
-                    className="w-full max-w-sm sm:max-w-md shrink-0"
-                  />
-                ))}
-              </div>
-            )
+            <div className="w-full flex flex-col justify-start items-center gap-4 py-2 overflow-y-auto max-h-full custom-scrollbar">
+              {tracks.map((track) => (
+                <CustomParticipantTile
+                  key={`${track.participant.identity}-${track.source}`}
+                  trackRef={track}
+                  className="w-full max-w-sm sm:max-w-md shrink-0"
+                />
+              ))}
+            </div>
           )}
         </div>
       </div>

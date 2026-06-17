@@ -111,7 +111,9 @@ const CustomParticipantList: React.FC<{ organizerId: string }> = ({ organizerId 
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between mb-4">
-         <span className="text-[13px] font-bold text-slate-500 tracking-[0.05em]">{t('meeting.participants')} — {participants.length}</span>
+         <span className="text-[13px] font-bold text-slate-500 tracking-[0.05em]">
+            {t('meeting.participants')} — {participants.length}
+         </span>
       </div>
       <ParticipantLoop participants={participants}>
         <ParticipantItem organizerId={organizerId} />
