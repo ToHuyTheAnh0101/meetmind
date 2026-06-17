@@ -265,6 +265,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   const [isControlsExpanded, setIsControlsExpanded] = useState(true);
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
   const [cameraPage, setCameraPage] = useState(0);
+  const [gridPage, setGridPage] = useState(0);
   const [activeScreenShareIndex, setActiveScreenShareIndex] = useState(0);
   const [isShareDropdownOpen, setIsShareDropdownOpen] = useState(false);
   const shareDropdownRef = useRef<HTMLDivElement>(null);
@@ -356,6 +357,97 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   const displayedCameraTracks = isLargeScreen
     ? cameraTracks.slice(cameraPage * pageSize, (cameraPage + 1) * pageSize)
     : cameraTracks;
+
+  // ─── Paginated grid (max 9 per page) ─────────────────────────────────────
+  const GRID_PAGE_SIZE = 9;
+  const totalGridPages = Math.ceil(tracks.length / GRID_PAGE_SIZE);
+  const safeGridPage = Math.min(gridPage, Math.max(0, totalGridPages - 1));
+  const pagedTracks = tracks.slice(safeGridPage * GRID_PAGE_SIZE, (safeGridPage + 1) * GRID_PAGE_SIZE);
+
+  const gridColsFromCount = (n: number) => {
+    if (n === 1) return 1;
+    if (n === 2) return 2;
+    if (n === 3) return 3;
+    if (n === 4) return 2;
+    if (n <= 6) return 3;
+    if (n <= 8) return 4;
+    return 3; // 9 → 3×3
+  };
+
+  const gridRowsFromCount = (n: number) => {
+    if (n <= 3) return 1;
+    if (n <= 6) return 2;
+    if (n <= 9) return 3;
+    return 3;
+  };
+
+  const gridContent = (
+    <div className="w-full h-full flex flex-col">
+      {/* Grid area */}
+      <div className="flex-1 min-h-0">
+        <GridLayout tracks={pagedTracks} className="meetmind-grid w-full h-full">
+          <CustomParticipantTile />
+        </GridLayout>
+        <style dangerouslySetInnerHTML={{ __html: `
+          .meetmind-grid {
+            display: grid !important;
+            grid-template-columns: repeat(${gridColsFromCount(pagedTracks.length)}, 1fr) !important;
+            grid-template-rows: repeat(${gridRowsFromCount(pagedTracks.length)}, 1fr) !important;
+            align-content: center !important;
+            justify-content: center !important;
+            justify-items: center !important;
+            align-items: center !important;
+            gap: 12px !important;
+            padding: 12px !important;
+            height: 100% !important;
+            width: 100% !important;
+          }
+          .meetmind-grid > * {
+            aspect-ratio: 16 / 9 !important;
+            min-height: 0 !important;
+            width: 100% !important;
+            height: auto !important;
+            max-height: 100% !important;
+          }
+        `}} />
+      </div>
+
+      {/* Pagination bar — only shown when > 9 participants */}
+      {totalGridPages > 1 && (
+        <div className="shrink-0 flex items-center justify-center gap-4 py-3">
+          <button
+            onClick={() => setGridPage(p => Math.max(0, p - 1))}
+            disabled={safeGridPage === 0}
+            className="flex items-center justify-center w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95"
+          >
+            <ChevronDown className="h-4 w-4 rotate-90" />
+          </button>
+
+          <div className="flex items-center gap-2">
+            {Array.from({ length: totalGridPages }).map((_, idx) => (
+              <button
+                key={idx}
+                onClick={() => setGridPage(idx)}
+                className={`rounded-full transition-all duration-300 ${
+                  idx === safeGridPage
+                    ? 'w-5 h-2 bg-cyan-400 shadow-[0_0_8px_rgba(34,211,238,0.5)]'
+                    : 'w-2 h-2 bg-white/20 hover:bg-white/40'
+                }`}
+              />
+            ))}
+          </div>
+
+          <button
+            onClick={() => setGridPage(p => Math.min(totalGridPages - 1, p + 1))}
+            disabled={safeGridPage === totalGridPages - 1}
+            className="flex items-center justify-center w-8 h-8 rounded-xl bg-white/5 border border-white/10 text-white hover:bg-white/10 disabled:opacity-30 disabled:pointer-events-none transition-all active:scale-95"
+          >
+            <ChevronDown className="h-4 w-4 -rotate-90" />
+          </button>
+        </div>
+      )}
+    </div>
+  );
 
   return (
     <div className="flex-1 flex flex-col relative overflow-hidden max-h-full bg-[#020202]">
@@ -638,14 +730,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
               )}
             </div>
           ) : (
-            isLargeScreen ? (
-              <GridLayout
-                tracks={tracks}
-                className="w-full h-full place-content-center gap-6"
-              >
-                <CustomParticipantTile />
-              </GridLayout>
-            ) : (
+            isLargeScreen ? gridContent : (
               <div className="w-full flex flex-col justify-center items-center gap-4 py-2 overflow-y-auto max-h-full custom-scrollbar">
                 {tracks.map((track) => (
                   <CustomParticipantTile

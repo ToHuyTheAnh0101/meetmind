@@ -8,8 +8,8 @@ export interface EmbeddingVector {
 }
 
 @Injectable()
-export class OllamaEmbeddingService {
-  private readonly logger = new Logger(OllamaEmbeddingService.name);
+export class EmbeddingService {
+  private readonly logger = new Logger(EmbeddingService.name);
   private genAI: GoogleGenerativeAI | null = null;
 
   constructor(private configService: ConfigService) {

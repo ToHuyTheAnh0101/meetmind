@@ -74,6 +74,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
 
   const isOngoing = meetingDetail?.status === "ongoing";
   const aiActivated = meetingDetail?.aiActivated === true;
+  const hasTranscripts = meetingDetail?.hasTranscripts === true;
 
   const currentSummary = summaries?.[0];
   const summary = currentSummary?.summaryText;
@@ -89,7 +90,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
   }, [currentSummary]);
 
   const isAiActivatedButNoTranscripts =
-    aiActivated && !summary && meetingDetail?.status !== "ongoing";
+    aiActivated && !hasTranscripts && !summary && meetingDetail?.status !== "ongoing";
 
   const handleGenerate = () => {
     generateSummaryMutation.mutate({ templateId: selectedTemplateId });
@@ -107,7 +108,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
           {/* Header section */}
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between border-b border-slate-100 pb-6 mb-6 gap-4">
             <div className="flex items-center gap-4">
-              <div className="h-12 w-12 rounded-[1.25rem] bg-cyan-500/10 flex items-center justify-center text-cyan-600 shadow-inner">
+              <div className="h-12 w-12 rounded-[1.25rem] bg-cyan-50/80 flex items-center justify-center text-cyan-600 shadow-inner">
                 <Sparkles className="h-6 w-6" />
               </div>
               <div>
@@ -134,6 +135,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                 isOngoing={isOngoing}
                 isAiActivatedButNoTranscripts={isAiActivatedButNoTranscripts}
                 aiActivated={aiActivated}
+                hasTranscripts={hasTranscripts}
                 summary={summary}
                 isGenerating={isGenerating}
                 selectedTemplateId={selectedTemplateId}

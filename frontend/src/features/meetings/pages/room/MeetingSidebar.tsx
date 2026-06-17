@@ -129,7 +129,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   }
 
   return (
-    <div className={`fixed right-0 top-0 bottom-0 h-full w-full lg:w-auto flex z-50 lg:relative lg:right-auto lg:top-auto lg:bottom-auto lg:z-40 ${!isOpen ? 'hidden lg:flex' : ''}`}>
+    <div className={`fixed right-0 top-0 bottom-0 h-full flex z-50 lg:relative lg:right-auto lg:top-auto lg:bottom-auto lg:z-40 overflow-hidden transition-all duration-300 ${!isOpen ? 'w-0 lg:w-[64px]' : 'w-full lg:w-auto'}`}>
       <AnimatePresence mode="wait">
         {isOpen && (
           <motion.div 
@@ -140,13 +140,13 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
             className="w-full lg:w-[320px] xl:w-[380px] 2xl:w-[420px] h-full bg-slate-950 lg:bg-slate-950/95 lg:backdrop-blur-2xl lg:border-l border-white/10 flex flex-col overflow-hidden"
           >
             {/* Tab Header */}
-            <div className="py-4 px-6 border-b border-white/5 bg-white/5 backdrop-blur-md flex items-center justify-between relative shrink-0">
-              <h3 className="text-lg text-white font-premium-ink tracking-tight">
+            <div className="py-4 px-6 border-b border-white/5 bg-white/5 backdrop-blur-md flex items-center relative shrink-0">
+              <h3 className="flex-1 text-center text-lg text-white font-premium-ink tracking-tight">
                 {tabs.find(t => t.id === activeTab)?.label || t('meeting.workspace')}
               </h3>
               <button 
                 onClick={onClose}
-                className="text-slate-400 hover:text-white transition-colors p-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 flex items-center justify-center lg:hidden"
+                className="absolute right-4 text-slate-400 hover:text-white transition-colors p-1.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 flex items-center justify-center lg:hidden"
               >
                 <X className="h-4 w-4" />
               </button>

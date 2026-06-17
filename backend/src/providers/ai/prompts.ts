@@ -119,6 +119,7 @@ export const ANSWER_QUESTION_PROMPT = (question: string, context: string) => `
         1. TUYỆT ĐỐI TRÁNH ẢO GIÁC HÓA: Chỉ trả lời dựa vào các thông tin thực tế có trong ngữ cảnh cuộc họp được cung cấp ở trên. Tuyệt đối không tự bịa đặt, suy đoán hoặc thêm thắt thông tin nằm ngoài nội dung cuộc họp.
         2. TỪ CHỐI CÂU HỎI NGOÀI LỀ: Nếu câu hỏi hoàn toàn không liên quan đến nội dung cuộc họp, hoặc thông tin được hỏi không hề xuất hiện/không tìm thấy trong ngữ cảnh cuộc họp, hãy lịch sự từ chối trả lời bằng tiếng Việt. Bạn có thể phản hồi khéo léo như: "Nội dung này không được nhắc đến trong cuộc họp" hoặc "Câu hỏi không liên quan đến nội dung cuộc họp", tuyệt đối không tự chế câu trả lời hoặc sử dụng kiến thức bên ngoài cuộc họp để trả lời các vấn đề ngoài lề.
         3. LỌC TRÙNG LẶP DO GỐI ĐẦU 5S: Đoạn transcript có thể chứa các câu nói gối đầu lặp lại 5 giây do kỹ thuật chia nhỏ audio. Hãy chủ động lọc bỏ các câu trùng lặp hoặc câu dở dang bị cắt cụt, ưu tiên chọn phiên bản câu hoàn chỉnh và rõ ràng nhất để trả lời.
+        4. SỬA LỖI ĐỒNG ÂM / DỊCH SAI TRONG TRANSCRIPT: Nếu trong transcript xuất hiện các lỗi từ đồng âm do nhận diện giọng nói (Ví dụ: "áp giác" thay vì "ảo giác", "cơ chế ráp" thay vì "cơ chế RAG", "xe màn hình" thay vì "share màn hình"), hãy hiểu theo đúng ngữ cảnh thực tế của cuộc họp công nghệ thông tin và trả lời bằng từ chính xác nhất.
       `;
 
 export const DEFAULT_SUMMARY_PROMPT = (title: string, transcript: string) => `
@@ -136,6 +137,7 @@ export const DEFAULT_SUMMARY_PROMPT = (title: string, transcript: string) => `
         - Chỉ trích xuất những thông tin có thực tế trong đoạn transcript cuộc họp. Không tự ý suy diễn hoặc bịa đặt thông tin.
         - Nếu bất kỳ mục nào ở trên không được thảo luận hoặc không có thông tin trong cuộc họp, hãy ghi rõ "Không được đề cập trong cuộc họp" thay vì tự chế nội dung.
         - LỌC TRÙNG LẶP DO GỐI ĐẦU 5S: Đoạn transcript được tạo bởi các đoạn audio gối đầu 5 giây nên sẽ có các câu nói lặp lại hoặc bị cắt dở ở ranh giới. Hãy tự động đối chiếu và loại bỏ các phần trùng lặp dở dang này, chỉ chọn lọc và tổng hợp từ phiên bản câu nói đầy đủ, rõ nghĩa nhất.
+        - SỬA LỖI ĐỒNG ÂM TRONG TRANSCRIPT: Nếu trong transcript xuất hiện các lỗi từ đồng âm do nhận diện giọng nói (Ví dụ: "áp giác" thay vì "ảo giác", "cơ chế ráp" thay vì "cơ chế RAG"), hãy tự động hiểu theo đúng ngữ cảnh và dùng từ chính xác trong bản tóm tắt.
         - Trình bày thật ngắn gọn, súc tích, trực quan và dễ đọc.
       `;
 
@@ -149,7 +151,7 @@ Bạn là trợ lý chuyên làm sạch biên bản cuộc họp công nghệ th
 Văn bản đầu vào được dịch từ giọng nói STT nên có thể bị lỗi âm học, thiếu dấu câu hoặc dịch sai các thuật ngữ tiếng Anh thường dùng (Vietglish).
 
 Hãy sửa các lỗi chính tả tiếng Việt, khôi phục các thuật ngữ tiếng Anh gốc hay dùng và định dạng lại văn bản theo các quy tắc sau:
-1. SỬA LỖI ĐỒNG ÂM VIETGLISH: Khôi phục đúng các thuật ngữ tiếng Anh gốc thường dùng trong phát triển phần mềm (Ví dụ: "xe màn hình" -> "share màn hình", "chết code/chép code" -> "check code", "đề lây" -> "delay", "cháy/chó" -> "chat", "cốt" -> "code", "cơ chế ráp" -> "cơ chế RAG").
+1. SỬA LỖI ĐỒNG ÂM VIETGLISH & TIẾNG VIỆT: Khôi phục đúng các thuật ngữ tiếng Anh và tiếng Việt thường dùng trong phát triển phần mềm (Ví dụ: "xe màn hình" -> "share màn hình", "chết code/chép code" -> "check code", "đề lây" -> "delay", "cháy/chó" -> "chat", "cốt" -> "code", "cơ chế ráp" -> "cơ chế RAG", "áp giác" -> "ảo giác").
 2. GIỮ NGUYÊN TIẾNG ANH: Không tự ý dịch các thuật ngữ tiếng Anh sang tiếng Việt (giữ nguyên "share", "check", "code", "deploy", "RAG", "database", "lập trình", "API").
 3. THÊM DẤU CÂU TỰ NHIÊN: Tự động thêm dấu câu (chấm, phẩy, hỏi, cảm thán) và viết hoa đầu câu để đoạn hội thoại rõ ràng, mạch lạc, dễ đọc.
 4. LỌC BỎ TỪ THỪA (FILLER WORDS): Loại bỏ các từ thừa, tiếng ậm ừ lặp đi lặp lại nhiều lần không mang ý nghĩa (như "ừ", "à", "thì", "mà", "là", "nhỉ", "nhé", "đấy") nhưng phải giữ lại ý nghĩa cốt lõi của câu nói.

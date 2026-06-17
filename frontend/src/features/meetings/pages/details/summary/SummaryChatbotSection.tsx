@@ -196,7 +196,7 @@ export const SummaryChatbotSection: React.FC<SummaryChatbotSectionProps> = ({
       </div>
 
       {/* AI not activated warning banner in Q&A */}
-      {!aiActivated && meetingStatus?.status !== "scheduled" && (
+      {!aiActivated && !meetingStatus?.hasTranscripts && meetingStatus?.status !== "scheduled" && (
         <div className="mx-2 mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800 flex items-start gap-2.5 shadow-sm animate-fade-in shrink-0">
           <Bot className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
           <span>{t("meeting.summary_tab.chatbot_no_ai_warning")}</span>

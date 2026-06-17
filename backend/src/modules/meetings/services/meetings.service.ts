@@ -395,6 +395,10 @@ export class MeetingsService {
       updateData['password'] = password;
     }
 
+    if (oldAiActivated === true && updateData.aiActivated === false) {
+      updateData.aiActivated = true;
+    }
+
     Object.assign(meeting, {
       ...updateData,
       startTime: dto.startTime ? new Date(dto.startTime) : meeting.startTime,
@@ -722,10 +726,10 @@ export class MeetingsService {
 
       this.aiService
         .answerQuestionStream(question, contextText)
-        .then((geminiObs) => {
+        .then((streamObs) => {
           let fullAnswer = '';
 
-          subscription = geminiObs.subscribe({
+          subscription = streamObs.subscribe({
             next: (chunk) => {
               fullAnswer += chunk;
               sub.next(chunk);

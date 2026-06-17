@@ -281,30 +281,30 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
       <header className="relative z-10 p-3 lg:p-4 flex items-center justify-between shrink-0">
         <button 
           onClick={onExit}
-          className="flex items-center gap-3 text-white/60 hover:text-white transition-all group active:scale-95"
+          className="flex items-center gap-2 text-white/60 hover:text-white transition-all group active:scale-95"
         >
-          <div className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 group-hover:bg-white/10 transition-all">
-            <ArrowLeft className="h-5 w-5" />
+          <div className="h-9 w-9 flex items-center justify-center rounded-xl bg-white/5 border border-white/10 group-hover:bg-white/10 transition-all">
+            <ArrowLeft className="h-4 w-4" />
           </div>
-          <span className="text-sm font-bold tracking-wide">{t('meeting.exit_hub')}</span>
+          <span className="text-sm font-bold tracking-wide hidden sm:inline">{t('meeting.exit_hub')}</span>
         </button>
 
-        <div className="flex items-center gap-2.5 px-4 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-md">
+        <div className="flex items-center gap-2 px-3 py-1.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 backdrop-blur-md">
            <div className="h-2 w-2 rounded-full bg-emerald-400 animate-pulse shadow-[0_0_10px_rgba(52,211,153,0.5)]" />
            <span className="text-xs font-bold text-emerald-400 tracking-wide">Hệ thống sẵn sàng</span>
         </div>
       </header>
       
-      <main className="relative z-10 flex-1 flex items-center justify-center p-2 lg:p-4 overflow-y-auto overflow-x-hidden lg:overflow-hidden">
-        <div className="w-full max-w-[85rem] grid lg:grid-cols-[1fr,360px] xl:grid-cols-[1fr,400px] gap-6 xl:gap-8 items-center origin-center lg:scale-[0.9] xl:scale-100 transition-transform">
+      <main className="relative z-10 flex-1 flex items-start lg:items-center justify-center px-3 pb-6 pt-2 lg:p-4 overflow-y-auto overflow-x-hidden lg:overflow-hidden">
+        <div className="w-full max-w-[85rem] flex flex-col lg:grid lg:grid-cols-[1fr,360px] xl:grid-cols-[1fr,400px] gap-4 lg:gap-6 xl:gap-8 lg:items-center lg:origin-center lg:scale-[0.9] xl:scale-100 transition-transform">
           
           {/* Left: Professional Monitor Preview */}
-          <div className="flex flex-col gap-6 self-center">
+          <div className="flex flex-col gap-3 lg:gap-6 w-full self-center">
              <div className="relative group w-full">
                 {/* Mirror Border Effect */}
-                <div className="absolute -inset-1 bg-gradient-to-tr from-cyan-500/20 via-white/5 to-indigo-500/20 rounded-[2rem] blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
+                <div className="absolute -inset-1 bg-gradient-to-tr from-cyan-500/20 via-white/5 to-indigo-500/20 rounded-[1.5rem] lg:rounded-[2rem] blur-xl opacity-50 group-hover:opacity-100 transition-opacity duration-700" />
                 
-                <div className="relative aspect-video rounded-[1.8rem] lg:rounded-[2.2rem] overflow-hidden border border-white/20 bg-[#0a0a0b] shadow-2xl">
+                <div className="relative rounded-[1.2rem] lg:rounded-[2.2rem] overflow-hidden border border-white/20 bg-[#0a0a0b] shadow-2xl" style={{ aspectRatio: '16/9' }}>
                    {isCamOn && localVideoTrack ? (
                      <div className="relative w-full h-full">
                        {/* Camera Feed */}
@@ -327,10 +327,10 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
                        <div className="relative">
                           <div className={`absolute inset-0 ${isCamOn ? 'bg-rose-500/20' : 'bg-cyan-500/20'} blur-[60px] rounded-full scale-150 animate-pulse`} />
                           {avatarUrl ? (
-                            <img src={avatarUrl} className="h-40 w-40 rounded-full border-4 border-white/10 relative z-10 object-cover shadow-2xl" alt="" />
+                            <img src={avatarUrl} className="h-20 w-20 sm:h-28 sm:w-28 lg:h-40 lg:w-40 rounded-full border-4 border-white/10 relative z-10 object-cover shadow-2xl" alt="" />
                           ) : (
-                            <div className="h-32 w-32 rounded-full bg-white/5 flex items-center justify-center text-white/10 border-2 border-white/5 relative z-10">
-                               <VideoOff className="h-16 w-16" />
+                            <div className="h-16 w-16 sm:h-24 sm:w-24 lg:h-32 lg:w-32 rounded-full bg-white/5 flex items-center justify-center text-white/10 border-2 border-white/5 relative z-10">
+                               <VideoOff className="h-8 w-8 sm:h-12 sm:w-12 lg:h-16 lg:w-16" />
                             </div>
                           )}
                        </div>
@@ -339,39 +339,43 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
 
                   {/* Top Right: Selected Virtual Background Badge */}
                   {isCamOn && selectedBg && selectedBg.id !== 'none' && (
-                    <div className="absolute top-4 right-4 lg:top-6 lg:right-6 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-cyan-600/90 text-white text-[10px] font-black tracking-wide border border-cyan-400 shadow-lg backdrop-blur-md">
-                      <Sparkles size={10} />
-                      <span>NỀN ẢO: {selectedBg.label.toUpperCase()}</span>
+                    <div className="absolute top-2 right-2 lg:top-6 lg:right-6 flex items-center gap-1 px-2 py-1 lg:px-3 lg:py-1.5 rounded-lg lg:rounded-xl bg-cyan-600/90 text-white text-[9px] lg:text-[10px] font-black tracking-wide border border-cyan-400 shadow-lg backdrop-blur-md">
+                      <Sparkles size={8} />
+                      <span className="hidden sm:inline">NỀN ẢO: {selectedBg.label.toUpperCase()}</span>
+                      <span className="sm:hidden">{selectedBg.label.toUpperCase()}</span>
                     </div>
                   )}
 
-                  {/* Overlays */}
-                  <div className="absolute top-4 left-4 lg:top-6 lg:left-6 flex items-center gap-2 p-2 rounded-xl bg-black/40 backdrop-blur-xl border border-white/10">
+                  {/* Top Left: Mic status overlay */}
+                  <div className="absolute top-2 left-2 lg:top-6 lg:left-6 flex items-center gap-1.5 p-1.5 lg:p-2 rounded-lg lg:rounded-xl bg-black/50 backdrop-blur-xl border border-white/10">
                      <AudioVisualizer isActive={isMicOn} />
                      <div className="w-px h-4 bg-white/10" />
-                     <span className="text-[10px] font-black text-white/60 tracking-wide">{isMicOn ? 'Mic Live' : 'Muted'}</span>
+                     <span className="text-[9px] lg:text-[10px] font-black text-white/60 tracking-wide">{isMicOn ? 'Live' : 'Muted'}</span>
                   </div>
 
-                  <div className="absolute bottom-4 lg:bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-3 p-2 lg:p-2.5 rounded-2xl bg-[#0f0f12]/95 backdrop-blur-2xl border border-white/10 shadow-2xl">
-                    <button 
-                      onClick={() => setIsMicOn(!isMicOn)} 
-                      className={`h-11 w-11 rounded-xl flex items-center justify-center transition-all active:scale-95 ${isMicOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-rose-500 text-white hover:bg-rose-600 shadow-lg shadow-rose-500/20'}`}
-                    >
-                      {isMicOn ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
-                    </button>
-                    <button 
-                      onClick={() => setIsCamOn(!isCamOn)} 
-                      className={`h-11 w-11 rounded-xl flex items-center justify-center transition-all active:scale-95 ${isCamOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-rose-500 text-white hover:bg-rose-600 shadow-lg shadow-rose-500/20'}`}
-                    >
-                      {isCamOn ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
-                    </button>
-                    <div className="w-px h-6 bg-white/10 mx-1" />
-                    <button 
-                      onClick={() => setShowSettings(!showSettings)}
-                      className={`h-11 w-11 rounded-xl flex items-center justify-center transition-all active:scale-95 ${showSettings ? 'bg-cyan-500 text-white' : 'bg-white/5 text-white hover:bg-white/10'}`}
-                    >
-                      <Settings className="h-5 w-5" />
-                    </button>
+                  {/* Bottom Controls - always visible, not overlapping avatar */}
+                  <div className="absolute bottom-0 left-0 right-0 flex items-center justify-center gap-2 p-2 lg:p-2.5 bg-gradient-to-t from-black/80 to-transparent">
+                    <div className="flex items-center gap-2 p-1.5 lg:p-2 rounded-xl lg:rounded-2xl bg-[#0f0f12]/90 backdrop-blur-2xl border border-white/10 shadow-2xl">
+                      <button 
+                        onClick={() => setIsMicOn(!isMicOn)} 
+                        className={`h-9 w-9 lg:h-11 lg:w-11 rounded-lg lg:rounded-xl flex items-center justify-center transition-all active:scale-95 ${isMicOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-rose-500 text-white hover:bg-rose-600 shadow-lg shadow-rose-500/20'}`}
+                      >
+                        {isMicOn ? <Mic className="h-4 w-4 lg:h-5 lg:w-5" /> : <MicOff className="h-4 w-4 lg:h-5 lg:w-5" />}
+                      </button>
+                      <button 
+                        onClick={() => setIsCamOn(!isCamOn)} 
+                        className={`h-9 w-9 lg:h-11 lg:w-11 rounded-lg lg:rounded-xl flex items-center justify-center transition-all active:scale-95 ${isCamOn ? 'bg-white/10 text-white hover:bg-white/20' : 'bg-rose-500 text-white hover:bg-rose-600 shadow-lg shadow-rose-500/20'}`}
+                      >
+                        {isCamOn ? <Video className="h-4 w-4 lg:h-5 lg:w-5" /> : <VideoOff className="h-4 w-4 lg:h-5 lg:w-5" />}
+                      </button>
+                      <div className="w-px h-5 bg-white/10" />
+                      <button 
+                        onClick={() => setShowSettings(!showSettings)}
+                        className={`h-9 w-9 lg:h-11 lg:w-11 rounded-lg lg:rounded-xl flex items-center justify-center transition-all active:scale-95 ${showSettings ? 'bg-cyan-500 text-white' : 'bg-white/5 text-white hover:bg-white/10'}`}
+                      >
+                        <Settings className="h-4 w-4 lg:h-5 lg:w-5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
              </div>
@@ -484,27 +488,27 @@ const MeetingLobby: React.FC<MeetingLobbyProps> = ({
             </div>
 
             {/* Right: Meeting Passport Card */}
-            <div className="flex flex-col gap-4">
-             <div className="glass-card p-5 lg:p-6 rounded-[2rem] relative overflow-hidden bg-slate-950/80 border border-white/10 shadow-2xl backdrop-blur-2xl">
+            <div className="flex flex-col gap-3 lg:gap-4">
+             <div className="glass-card p-4 lg:p-6 rounded-[1.5rem] lg:rounded-[2rem] relative overflow-hidden bg-slate-950/80 border border-white/10 shadow-2xl backdrop-blur-2xl">
                 <div className="absolute top-0 right-0 p-6 opacity-5">
                    <Monitor className="h-24 w-24" />
                 </div>
                 
                 <div className="relative z-10">
-                   <div className="flex items-center gap-3 mb-6">
-                      <div className="h-10 w-10 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400">
-                         <Info className="h-5 w-5" />
+                   <div className="flex items-start gap-3 mb-4 lg:mb-6">
+                      <div className="h-9 w-9 lg:h-10 lg:w-10 shrink-0 rounded-xl bg-cyan-500/10 flex items-center justify-center text-cyan-400">
+                         <Info className="h-4 w-4 lg:h-5 lg:w-5" />
                       </div>
-                      <h2 className="text-2xl font-black text-white tracking-tight">{meetingTitle}</h2>
+                      <h2 className="text-lg sm:text-xl lg:text-2xl font-black text-white tracking-tight leading-tight">{meetingTitle}</h2>
                    </div>
                    
-                   <p className="text-slate-400 text-sm font-medium leading-relaxed mb-6">
-                      {meetingDescription}
+                   <p className="text-slate-400 text-sm font-medium leading-relaxed mb-4 lg:mb-6 line-clamp-3 lg:line-clamp-none">
+                       {meetingDescription}
                    </p>
 
                    {activeParticipants.length > 0 && (
-                      <div className="flex flex-col gap-3 py-5 border-y border-white/5 mb-6">
-                         <span className="text-base font-medium text-slate-300">{t('meeting.already_joined')}</span>
+                      <div className="flex flex-col gap-2 lg:gap-3 py-3 lg:py-5 border-y border-white/5 mb-4 lg:mb-6">
+                         <span className="text-sm lg:text-base font-medium text-slate-300">{t('meeting.already_joined')}</span>
                          <div className="flex -space-x-3">
                             {activeParticipants.slice(0, 3).map((p, idx) => {
                               const displayName = p.displayName || (p.user ? `${p.user.firstName} ${p.user.lastName}` : 'User');

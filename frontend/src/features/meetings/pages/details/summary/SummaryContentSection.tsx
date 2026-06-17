@@ -8,6 +8,7 @@ interface SummaryContentSectionProps {
   isOngoing: boolean;
   isAiActivatedButNoTranscripts: boolean;
   aiActivated: boolean;
+  hasTranscripts: boolean;
   summary: string | undefined;
   isGenerating: boolean;
   selectedTemplateId: string;
@@ -21,6 +22,7 @@ export const SummaryContentSection: React.FC<SummaryContentSectionProps> = ({
   isOngoing,
   isAiActivatedButNoTranscripts,
   aiActivated,
+  hasTranscripts,
   summary,
   isGenerating,
   selectedTemplateId,
@@ -72,7 +74,7 @@ export const SummaryContentSection: React.FC<SummaryContentSectionProps> = ({
     );
   }
 
-  if (!aiActivated && !summary) {
+  if (!aiActivated && !summary && !hasTranscripts) {
     return (
       <div className="text-center py-16 px-4 flex-1 flex flex-col justify-center animate-fade-in">
         <div className="mx-auto h-16 w-16 rounded-[1.5rem] bg-amber-50/80 text-amber-500 flex items-center justify-center mb-6 shadow-inner">

@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { Observable } from 'rxjs';
-import { Readable } from 'stream';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 import {
   ANSWER_QUESTION_PROMPT,
   DEFAULT_SUMMARY_PROMPT,
@@ -11,7 +11,7 @@ import {
   CLEAN_TRANSCRIPT_PROMPT,
   ANALYZE_IMAGE_PROMPT,
 } from './prompts';
-import { OllamaEmbeddingService } from './embedding.service';
+import { EmbeddingService } from './embedding.service';
 
 type TranscriptionSegment = {
   speaker: string;
@@ -31,16 +31,26 @@ interface GeminiResponse {
 }
 
 /**
- * AI Service — 100% Ollama local (text generation + embedding).
+ * AI Service — Unified LLM and Embedding service interface.
  */
 @Injectable()
 export class AiService {
   private readonly logger = new Logger(AiService.name);
+  private genAI: GoogleGenerativeAI | null = null;
 
   constructor(
     private configService: ConfigService,
-    private embeddingService: OllamaEmbeddingService,
-  ) {}
+    private embeddingService: EmbeddingService,
+  ) {
+    const geminiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (geminiKey) {
+      this.genAI = new GoogleGenerativeAI(geminiKey);
+    } else {
+      this.logger.warn(
+        'GEMINI_API_KEY is not configured. Text generation might fail.',
+      );
+    }
+  }
 
   private getOllamaUrl(): string {
     return (
@@ -54,6 +64,28 @@ export class AiService {
   }
 
   private async generateText(prompt: string): Promise<string> {
+    if (!this.genAI) {
+      throw new Error(
+        'Google Generative AI (Gemini) is not initialized. Check GEMINI_API_KEY.',
+      );
+    }
+
+    const modelName =
+      this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash-lite';
+
+    try {
+      const model = this.genAI.getGenerativeModel({ model: modelName });
+      const result = await model.generateContent(prompt);
+      return result.response.text()?.trim() || '';
+    } catch (error) {
+      this.logger.error(
+        `Gemini text generation failed: ${error instanceof Error ? error.message : error}`,
+      );
+      throw new Error('Failed to generate AI response from Gemini');
+    }
+
+    /*
+    // Ollama / Groq fallback commented out for performance evaluation
     const apiKey =
       this.configService.get<string>('GROQ_API_KEY') ||
       this.configService.get<string>('WHISPER_API_KEY');
@@ -121,6 +153,7 @@ export class AiService {
         throw new Error('Failed to generate AI response from Ollama');
       }
     }
+    */
   }
 
   async answerQuestion(question: string, context: string): Promise<string> {
@@ -134,6 +167,47 @@ export class AiService {
   }
 
   async generateTextStream(prompt: string): Promise<Observable<string>> {
+    await Promise.resolve();
+    if (!this.genAI) {
+      throw new Error(
+        'Google Generative AI (Gemini) is not initialized. Check GEMINI_API_KEY.',
+      );
+    }
+
+    const modelName =
+      this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash-lite';
+
+    return new Observable<string>((subscriber) => {
+      let isCancelled = false;
+
+      void (async () => {
+        try {
+          const model = this.genAI!.getGenerativeModel({ model: modelName });
+          const resultStream = await model.generateContentStream(prompt);
+          for await (const chunk of resultStream.stream) {
+            if (isCancelled) break;
+            const text = chunk.text();
+            if (text) {
+              subscriber.next(text);
+            }
+          }
+          if (!isCancelled) {
+            subscriber.complete();
+          }
+        } catch (err) {
+          if (!isCancelled) {
+            subscriber.error(err);
+          }
+        }
+      })();
+
+      return () => {
+        isCancelled = true;
+      };
+    });
+
+    /*
+    // Ollama / Groq stream fallback commented out for performance evaluation
     const apiKey =
       this.configService.get<string>('GROQ_API_KEY') ||
       this.configService.get<string>('WHISPER_API_KEY');
@@ -287,6 +361,7 @@ export class AiService {
         throw error;
       }
     }
+    */
   }
 
   async answerQuestionStream(
@@ -356,7 +431,8 @@ export class AiService {
         this.configService.get<string>('WHISPER_MODEL') ||
         'whisper-large-v3';
 
-      let promptText = 'Alo, dạ, ok, vâng.';
+      let promptText =
+        'Alo, dạ, ok, vâng, ảo giác, RAG, AI, hallucination, check code.';
       if (meetingTitle) {
         const cleanTitle = meetingTitle.replace(/[\\"]/g, '');
         promptText += ` Chúng ta thảo luận về chủ đề "${cleanTitle}".`;
