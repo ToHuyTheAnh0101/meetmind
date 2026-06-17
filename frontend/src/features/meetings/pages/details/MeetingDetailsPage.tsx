@@ -2,7 +2,7 @@ import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Trash2, AlertCircle, Settings, Shield, Sparkles, History } from "lucide-react";
+import { Loader2, Trash2, AlertCircle, Settings, Sparkles, History, BarChart2 } from "lucide-react";
 import {
   useQuery,
   useMutation,
@@ -19,7 +19,7 @@ import {
 } from "@/lib/meetingTitleHelper";
 
 // --- Subcomponents ---
-import MeetingPermissionsTab from "./MeetingPermissionsTab";
+import { MeetingPollsQaTab } from "./polls_qa/MeetingPollsQaTab";
 import { MeetingSummaryTab } from "./summary/MeetingSummaryTab";
 import { MeetingDiaryTab } from "./diary/MeetingDiaryTab";
 import { MeetingGeneralForm } from "./MeetingGeneralForm";
@@ -39,7 +39,7 @@ const MeetingDetailsPage: React.FC = () => {
   const isNew = location.pathname === "/meetings/new";
   const [copied, setCopied] = useState(false);
   const [isInstant, setIsInstant] = useState(true);
-  const [activeTab, setActiveTab] = useState<"general" | "permissions" | "summary" | "diary">("general");
+  const [activeTab, setActiveTab] = useState<"general" | "polls_qa" | "summary" | "diary">("general");
 
   const [formData, setFormData] = useState<{
     title: string;
@@ -169,7 +169,7 @@ const MeetingDetailsPage: React.FC = () => {
 
   const tabConfig = [
     { id: "general" as const, label: t("meeting.permissions.tab_general"), icon: Settings },
-    ...(isOrganizer ? [{ id: "permissions" as const, label: t("meeting.permissions.tab_permissions"), icon: Shield }] : []),
+    { id: "polls_qa" as const, label: isVi ? "Biểu quyết & Hỏi đáp" : "Polls & Q&A", icon: BarChart2 },
     { id: "summary" as const, label: t("meeting.permissions.tab_summary"), icon: Sparkles },
     { id: "diary" as const, label: t("meeting.permissions.tab_diary"), icon: History },
   ];
@@ -557,14 +557,14 @@ const MeetingDetailsPage: React.FC = () => {
               />
             </div>
           </motion.div>
-        ) : activeTab === "permissions" ? (
+        ) : activeTab === "polls_qa" ? (
           <motion.div
-            key="permissions"
+            key="polls_qa"
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
           >
-            <MeetingPermissionsTab meetingId={id!} variant="details" />
+            <MeetingPollsQaTab meetingId={id!} />
           </motion.div>
         ) : activeTab === "summary" ? (
           <motion.div

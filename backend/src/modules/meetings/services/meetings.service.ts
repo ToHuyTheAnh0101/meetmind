@@ -39,6 +39,8 @@ import { AiService } from '../../../providers/ai/ai.service.js';
 import { ChatHistoryRepository } from '../repositories/chat-history.repository';
 import { ScreenCaptureRepository } from '../repositories/screen-capture.repository';
 import { CloudinaryService } from '../../../providers/cloudinary/cloudinary.service';
+import { MeetingPoll } from '../../polls/entities/meeting-poll.entity';
+import { MeetingQuestion } from '../../qa/entities/meeting-question.entity';
 
 @Injectable()
 export class MeetingsService {
@@ -612,10 +614,50 @@ export class MeetingsService {
       enrichedContext = `${contextText}\n\n[Nội dung màn hình chia sẻ]:\n${visualContext}`;
     }
 
+    // Handlers for Tool Calling
+    const getPolls = async (mid: string) => {
+      const polls = await this.entityManager.find(MeetingPoll, {
+        where: { meetingId: mid },
+        relations: ['options', 'options.votes'],
+      });
+      return polls.map((p) => ({
+        question: p.question,
+        type: p.type,
+        closedAt: p.closedAt,
+        options:
+          p.options?.map((o) => ({
+            text: o.text,
+            voteCount: o.votes?.length || 0,
+          })) || [],
+      }));
+    };
+
+    const getQa = async (mid: string) => {
+      const qa = await this.entityManager.find(MeetingQuestion, {
+        where: { meetingId: mid },
+        relations: ['askedByUser', 'answers', 'answers.answeredByUser'],
+      });
+      return qa.map((q) => ({
+        question: q.content,
+        askedBy: q.askedByUser
+          ? `${q.askedByUser.firstName} ${q.askedByUser.lastName}`
+          : 'Unknown',
+        answers:
+          q.answers?.map((a) => ({
+            content: a.content,
+            answeredBy: a.answeredByUser
+              ? `${a.answeredByUser.firstName} ${a.answeredByUser.lastName}`
+              : 'Unknown',
+          })) || [],
+      }));
+    };
+
     // 5. Gọi LLM để trả lời câu hỏi với context được bổ sung visual context
     const answer = await this.aiService.answerQuestion(
       question,
       enrichedContext,
+      meetingId,
+      { getPolls, getQa },
     );
 
     // 5.5. Gắn ảnh slide vào cuối câu trả lời
@@ -721,11 +763,51 @@ export class MeetingsService {
       contextText = 'No transcript context found.';
     }
 
+    const getPolls = async (mid: string) => {
+      const polls = await this.entityManager.find(MeetingPoll, {
+        where: { meetingId: mid },
+        relations: ['options', 'options.votes'],
+      });
+      return polls.map((p) => ({
+        question: p.question,
+        type: p.type,
+        closedAt: p.closedAt,
+        options:
+          p.options?.map((o) => ({
+            text: o.text,
+            voteCount: o.votes?.length || 0,
+          })) || [],
+      }));
+    };
+
+    const getQa = async (mid: string) => {
+      const qa = await this.entityManager.find(MeetingQuestion, {
+        where: { meetingId: mid },
+        relations: ['askedByUser', 'answers', 'answers.answeredByUser'],
+      });
+      return qa.map((q) => ({
+        question: q.content,
+        askedBy: q.askedByUser
+          ? `${q.askedByUser.firstName} ${q.askedByUser.lastName}`
+          : 'Unknown',
+        answers:
+          q.answers?.map((a) => ({
+            content: a.content,
+            answeredBy: a.answeredByUser
+              ? `${a.answeredByUser.firstName} ${a.answeredByUser.lastName}`
+              : 'Unknown',
+          })) || [],
+      }));
+    };
+
     return new Observable<string>((sub) => {
       let subscription: Subscription | undefined;
 
       this.aiService
-        .answerQuestionStream(question, contextText)
+        .answerQuestionStream(question, contextText, meetingId, {
+          getPolls,
+          getQa,
+        })
         .then((streamObs) => {
           let fullAnswer = '';
 

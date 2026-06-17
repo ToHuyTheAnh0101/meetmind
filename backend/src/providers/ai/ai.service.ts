@@ -2,7 +2,7 @@ import { Injectable, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import axios from 'axios';
 import { Observable } from 'rxjs';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenerativeAI, SchemaType, Part } from '@google/generative-ai';
 import {
   ANSWER_QUESTION_PROMPT,
   DEFAULT_SUMMARY_PROMPT,
@@ -156,10 +156,103 @@ export class AiService {
     */
   }
 
-  async answerQuestion(question: string, context: string): Promise<string> {
+  async answerQuestion(
+    question: string,
+    context: string,
+    meetingId?: string,
+    handlers?: {
+      getPolls: (meetingId: string) => Promise<any>;
+      getQa: (meetingId: string) => Promise<any>;
+    },
+  ): Promise<string> {
     try {
       const prompt = ANSWER_QUESTION_PROMPT(question, context);
-      return await this.generateText(prompt);
+
+      if (!this.genAI) {
+        throw new Error(
+          'Google Generative AI (Gemini) is not initialized. Check GEMINI_API_KEY.',
+        );
+      }
+
+      const modelName =
+        this.configService.get<string>('GEMINI_MODEL') ||
+        'gemini-2.5-flash-lite';
+
+      const toolDeclarations: import('@google/generative-ai').FunctionDeclaration[] =
+        [
+          {
+            name: 'get_meeting_polls',
+            description:
+              'Lấy danh sách các cuộc biểu quyết (polls) trong cuộc họp bao gồm các câu hỏi, các lựa chọn trả lời và số lượt bình chọn cho mỗi lựa chọn.',
+            parameters: {
+              type: SchemaType.OBJECT,
+              properties: {
+                meetingId: {
+                  type: SchemaType.STRING,
+                  description: 'UUID của cuộc họp.',
+                },
+              },
+              required: ['meetingId'],
+            } as unknown as import('@google/generative-ai').FunctionDeclarationSchema,
+          },
+          {
+            name: 'get_meeting_qa',
+            description:
+              'Lấy danh sách các câu hỏi và câu trả lời trong mục Hỏi đáp (Q&A) của cuộc họp.',
+            parameters: {
+              type: SchemaType.OBJECT,
+              properties: {
+                meetingId: {
+                  type: SchemaType.STRING,
+                  description: 'UUID của cuộc họp.',
+                },
+              },
+              required: ['meetingId'],
+            } as unknown as import('@google/generative-ai').FunctionDeclarationSchema,
+          },
+        ];
+
+      const model = this.genAI.getGenerativeModel({
+        model: modelName,
+        tools:
+          meetingId && handlers
+            ? [{ functionDeclarations: toolDeclarations }]
+            : undefined,
+      });
+
+      if (meetingId && handlers) {
+        const chat = model.startChat();
+        const result = await chat.sendMessage(prompt);
+        const responseTyped = result.response as unknown as {
+          functionCalls():
+            | Array<{ name: string; args: Record<string, unknown> }>
+            | undefined;
+        };
+        const functionCalls = responseTyped.functionCalls();
+        if (functionCalls && functionCalls.length > 0) {
+          const responses: Part[] = [];
+          for (const call of functionCalls) {
+            let functionResult: unknown;
+            if (call.name === 'get_meeting_polls') {
+              functionResult = await handlers.getPolls(meetingId);
+            } else if (call.name === 'get_meeting_qa') {
+              functionResult = await handlers.getQa(meetingId);
+            }
+            responses.push({
+              functionResponse: {
+                name: call.name,
+                response: { result: functionResult },
+              },
+            });
+          }
+          const finalResult = await chat.sendMessage(responses);
+          return finalResult.response.text()?.trim() || '';
+        }
+        return result.response.text()?.trim() || '';
+      } else {
+        const result = await model.generateContent(prompt);
+        return result.response.text()?.trim() || '';
+      }
     } catch (error) {
       this.logger.error('Error answering question:', error);
       throw new Error('Failed to answer question');
@@ -367,9 +460,166 @@ export class AiService {
   async answerQuestionStream(
     question: string,
     context: string,
+    meetingId?: string,
+    handlers?: {
+      getPolls: (meetingId: string) => Promise<any>;
+      getQa: (meetingId: string) => Promise<any>;
+    },
   ): Promise<Observable<string>> {
     const prompt = ANSWER_QUESTION_PROMPT(question, context);
-    return this.generateTextStream(prompt);
+
+    if (!meetingId || !handlers) {
+      return this.generateTextStream(prompt);
+    }
+
+    return new Observable<string>((subscriber) => {
+      let isCancelled = false;
+
+      void (async () => {
+        try {
+          if (!this.genAI) {
+            throw new Error(
+              'Google Generative AI (Gemini) is not initialized. Check GEMINI_API_KEY.',
+            );
+          }
+
+          const modelName =
+            this.configService.get<string>('GEMINI_MODEL') ||
+            'gemini-2.5-flash-lite';
+
+          const toolDeclarations: import('@google/generative-ai').FunctionDeclaration[] =
+            [
+              {
+                name: 'get_meeting_polls',
+                description:
+                  'Lấy danh sách các cuộc biểu quyết (polls) trong cuộc họp bao gồm các câu hỏi, các lựa chọn trả lời và số lượt bình chọn cho mỗi lựa chọn.',
+                parameters: {
+                  type: SchemaType.OBJECT,
+                  properties: {
+                    meetingId: {
+                      type: SchemaType.STRING,
+                      description: 'UUID của cuộc họp.',
+                    },
+                  },
+                  required: ['meetingId'],
+                } as unknown as import('@google/generative-ai').FunctionDeclarationSchema,
+              },
+              {
+                name: 'get_meeting_qa',
+                description:
+                  'Lấy danh sách các câu hỏi và câu trả lời trong mục Hỏi đáp (Q&A) của cuộc họp.',
+                parameters: {
+                  type: SchemaType.OBJECT,
+                  properties: {
+                    meetingId: {
+                      type: SchemaType.STRING,
+                      description: 'UUID của cuộc họp.',
+                    },
+                  },
+                  required: ['meetingId'],
+                } as unknown as import('@google/generative-ai').FunctionDeclarationSchema,
+              },
+            ];
+
+          const model = this.genAI.getGenerativeModel({
+            model: modelName,
+            tools: [{ functionDeclarations: toolDeclarations }],
+          });
+
+          const chat = model.startChat();
+
+          const resultStream = await chat.sendMessageStream(prompt);
+
+          const functionCalls: Array<{
+            name: string;
+            args: Record<string, unknown>;
+          }> = [];
+
+          for await (const chunk of resultStream.stream) {
+            if (isCancelled) break;
+
+            const chunkTyped = chunk as unknown as {
+              functionCalls():
+                | Array<{ name: string; args: Record<string, unknown> }>
+                | undefined;
+              candidates?: Array<{
+                content?: {
+                  parts?: Array<{
+                    functionCall?: {
+                      name: string;
+                      args: Record<string, unknown>;
+                    };
+                  }>;
+                };
+              }>;
+            };
+
+            const calls =
+              typeof chunkTyped.functionCalls === 'function'
+                ? chunkTyped.functionCalls()
+                : undefined;
+
+            const legacyCall =
+              chunkTyped.candidates?.[0]?.content?.parts?.[0]?.functionCall;
+
+            if (calls && calls.length > 0) {
+              functionCalls.push(...calls);
+            } else if (legacyCall) {
+              functionCalls.push(legacyCall);
+            } else {
+              const text = chunk.text();
+              if (text) {
+                subscriber.next(text);
+              }
+            }
+          }
+
+          if (isCancelled) return;
+
+          if (functionCalls.length > 0) {
+            const responses: Part[] = [];
+            for (const call of functionCalls) {
+              let functionResult: unknown;
+              if (call.name === 'get_meeting_polls') {
+                functionResult = await handlers.getPolls(meetingId);
+              } else if (call.name === 'get_meeting_qa') {
+                functionResult = await handlers.getQa(meetingId);
+              }
+              responses.push({
+                functionResponse: {
+                  name: call.name,
+                  response: { result: functionResult },
+                },
+              });
+            }
+
+            if (isCancelled) return;
+
+            const finalStream = await chat.sendMessageStream(responses);
+
+            for await (const chunk of finalStream.stream) {
+              if (isCancelled) break;
+              const text = chunk.text();
+              if (text) {
+                subscriber.next(text);
+              }
+            }
+          }
+
+          if (!isCancelled) {
+            subscriber.complete();
+          }
+        } catch (err) {
+          if (!isCancelled) {
+            subscriber.error(err);
+          }
+        }
+      })();
+
+      return () => {
+        isCancelled = true;
+      };
+    });
   }
 
   async generateSummary(title: string, transcript: string): Promise<string> {
