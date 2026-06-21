@@ -20,7 +20,7 @@ curl 'http://localhost:3000/summary-templates' \
     "description": "Dành cho các buổi họp định kỳ, tổng kết tiến độ dự án và cập nhật nhiệm vụ mới.",
     "purpose": "project_discussion",
     "summaryStyle": "detailed",
-    "globalRules": "Không bị ảo giác hóa, những nội dung nào nếu không tìm thấy trong tóm tắt hay transcript cuộc họp thì không tự chế, chỉ cần trả lời khôn khéo như không có hoặc không được nhắc đến trong cuộc họp.",
+    "globalRules": "Không bị ảo giác hóa, chỉ trích xuất những thông tin thực tế được đề cập trong cuộc họp. Nếu một mục không có thông tin, hãy bỏ qua hoặc để trống ô tương ứng thay vì điền các câu trống rỗng.",
     "sections": [
       {
         "name": "executive_summary",

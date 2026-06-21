@@ -585,7 +585,13 @@
       "regenerate": "Tạo lại",
       "empty_no_summary": "Chọn mẫu tóm tắt và nhấp nút khởi tạo bên dưới để bắt đầu phân tích cuộc họp.",
       "chatbot_agent_subtitle": "Trợ lý AI sẵn sàng trả lời",
-      "chatbot_no_ai_warning": "Lưu ý: Cuộc họp này không kích hoạt trợ lý AI. Hỏi đáp có thể không tìm thấy dữ liệu hội thoại."
+      "chatbot_no_ai_warning": "Lưu ý: Cuộc họp này không kích hoạt trợ lý AI. Hỏi đáp có thể không tìm thấy dữ liệu hội thoại.",
+      "edit": "Chỉnh sửa",
+      "preview": "Xem trước",
+      "write": "Viết",
+      "save": "Lưu",
+      "cancel": "Hủy",
+      "regenerate_confirm": "Tạo lại tóm tắt bằng AI sẽ ghi đè lên tất cả nội dung bạn đã chỉnh sửa thủ công. Bạn có chắc chắn muốn tiếp tục?"
     },
     "breakout_initializing": "Đang khởi tạo các phòng thảo luận...",
     "breakout_started_toast": "Đã bắt đầu chia phòng họp nhỏ!",

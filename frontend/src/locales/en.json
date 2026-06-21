@@ -582,7 +582,13 @@
       "regenerate": "Regenerate",
       "empty_no_summary": "Choose a template and click the generate button below to begin analyzing the meeting.",
       "chatbot_agent_subtitle": "AI Agent is ready to answer",
-      "chatbot_no_ai_warning": "Note: AI assistant was not activated for this meeting. Chat Q&A may not find any conversation history."
+      "chatbot_no_ai_warning": "Note: AI assistant was not activated for this meeting. Chat Q&A may not find any conversation history.",
+      "edit": "Edit",
+      "preview": "Preview",
+      "write": "Write",
+      "save": "Save",
+      "cancel": "Cancel",
+      "regenerate_confirm": "Regenerating the AI summary will overwrite all your manual edits. Are you sure you want to continue?"
     },
     "breakout_initializing": "Initializing breakout rooms...",
     "breakout_started_toast": "Breakout rooms started successfully!",

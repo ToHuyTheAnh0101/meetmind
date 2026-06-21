@@ -72,6 +72,20 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
     },
   });
 
+  // 5. Update AI Summary Mutation
+  const updateSummaryMutation = useMutation({
+    mutationFn: async ({ summaryId, summaryText }: { summaryId: string; summaryText: string }) => {
+      const res = await apiClient.put(
+        `/meetings/${meetingId}/summaries/${summaryId}`,
+        { summaryText }
+      );
+      return res.data;
+    },
+    onSuccess: () => {
+      refetchSummaries();
+    },
+  });
+
   const isOngoing = meetingDetail?.status === "ongoing";
   const aiActivated = meetingDetail?.aiActivated === true;
   const hasTranscripts = meetingDetail?.hasTranscripts === true;
@@ -93,6 +107,10 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
     aiActivated && !hasTranscripts && !summary && meetingDetail?.status !== "ongoing";
 
   const handleGenerate = () => {
+    if (summary && summary !== "[GENERATING]") {
+      const confirmOverwrite = window.confirm(t("meeting.summary_tab.regenerate_confirm"));
+      if (!confirmOverwrite) return;
+    }
     generateSummaryMutation.mutate({ templateId: selectedTemplateId });
   };
 
@@ -142,6 +160,9 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                 setSelectedTemplateId={setSelectedTemplateId}
                 templates={templates}
                 handleGenerate={handleGenerate}
+                canEdit={canEdit}
+                summaryId={currentSummary?.id}
+                updateSummaryMutation={updateSummaryMutation}
               />
             </div>
           </div>

@@ -1,6 +1,23 @@
-import React from "react";
+import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { Loader2, Sparkles, Bot, FileText, RefreshCw } from "lucide-react";
+import {
+  Loader2,
+  Sparkles,
+  Bot,
+  FileText,
+  RefreshCw,
+  Edit2,
+  Save,
+  X,
+  Eye,
+  FileEdit,
+  Bold,
+  Italic,
+  Heading,
+  List,
+  CheckSquare,
+  Code,
+} from "lucide-react";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
 
 interface SummaryContentSectionProps {
@@ -15,6 +32,9 @@ interface SummaryContentSectionProps {
   setSelectedTemplateId: (val: string) => void;
   templates: any[] | undefined;
   handleGenerate: () => void;
+  canEdit?: boolean;
+  summaryId?: string;
+  updateSummaryMutation?: any;
 }
 
 export const SummaryContentSection: React.FC<SummaryContentSectionProps> = ({
@@ -29,8 +49,61 @@ export const SummaryContentSection: React.FC<SummaryContentSectionProps> = ({
   setSelectedTemplateId,
   templates,
   handleGenerate,
+  canEdit = false,
+  summaryId,
+  updateSummaryMutation,
 }) => {
   const { t } = useTranslation();
+
+  // Edit Mode States
+  const [isEditing, setIsEditing] = useState(false);
+  const [editedText, setEditedText] = useState("");
+  const [editTab, setEditTab] = useState<"write" | "preview">("write");
+
+  const startEditing = () => {
+    // replace any literal \n characters with actual newline breaks
+    const normalizedText = (summary || "").replace(/\\n/g, "\n");
+    setEditedText(normalizedText);
+    setEditTab("write");
+    setIsEditing(true);
+  };
+
+  const handleSave = () => {
+    if (!summaryId || !updateSummaryMutation) return;
+    updateSummaryMutation.mutate(
+      { summaryId, summaryText: editedText },
+      {
+        onSuccess: () => {
+          setIsEditing(false);
+        },
+      }
+    );
+  };
+
+  const handleCancel = () => {
+    setIsEditing(false);
+  };
+
+  const handleInsertMarkdown = (prefix: string, suffix: string = "") => {
+    const textarea = document.getElementById("summary-textarea") as HTMLTextAreaElement;
+    if (!textarea) return;
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const text = textarea.value;
+    const selectedText = text.substring(start, end);
+    const replacement = prefix + selectedText + suffix;
+    const newText = text.substring(0, start) + replacement + text.substring(end);
+    setEditedText(newText);
+
+    // Set selection back to correct range
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(
+        start + prefix.length,
+        start + prefix.length + selectedText.length
+      );
+    }, 0);
+  };
 
   if (isLoadingSummaries) {
     return (
@@ -108,6 +181,137 @@ export const SummaryContentSection: React.FC<SummaryContentSectionProps> = ({
   }
 
   if (summary) {
+    if (isEditing) {
+      return (
+        <div className="flex-1 flex flex-col justify-between min-w-0">
+          {/* Edit Mode Header */}
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3 mb-4 gap-2">
+            <div className="flex p-0.5 rounded-xl bg-slate-100/80 border border-slate-200">
+              <button
+                type="button"
+                onClick={() => setEditTab("write")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  editTab === "write"
+                    ? "bg-white text-indigo-600 shadow-sm border border-slate-200"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <FileEdit className="h-3 w-3" />
+                <span>{t("meeting.summary_tab.write")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setEditTab("preview")}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
+                  editTab === "preview"
+                    ? "bg-white text-indigo-600 shadow-sm border border-slate-200"
+                    : "text-slate-500 hover:text-slate-800"
+                }`}
+              >
+                <Eye className="h-3 w-3" />
+                <span>{t("meeting.summary_tab.preview")}</span>
+              </button>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={handleCancel}
+                disabled={updateSummaryMutation?.isPending}
+                className="px-3 py-1.5 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all font-black text-xs gap-1"
+              >
+                <X className="h-3.5 w-3.5" />
+                <span>{t("meeting.summary_tab.cancel")}</span>
+              </button>
+              <button
+                type="button"
+                onClick={handleSave}
+                disabled={updateSummaryMutation?.isPending}
+                className="px-3.5 py-1.5 flex items-center justify-center rounded-xl bg-gradient-to-r from-cyan-600 to-indigo-600 text-white shadow-md hover:scale-[1.03] active:scale-95 transition-all font-black text-xs gap-1.5 disabled:opacity-50"
+              >
+                {updateSummaryMutation?.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Save className="h-3.5 w-3.5" />
+                )}
+                <span>{t("meeting.summary_tab.save")}</span>
+              </button>
+            </div>
+          </div>
+
+          {/* Main Edit Panel */}
+          <div className="flex-1 flex flex-col min-h-[400px]">
+            {editTab === "write" ? (
+              <div className="flex-1 flex flex-col border border-slate-200 rounded-2xl bg-slate-50 overflow-hidden focus-within:border-cyan-500 transition-colors">
+                <div className="flex flex-wrap items-center gap-1 bg-slate-100/80 border-b border-slate-200 px-3 py-1.5">
+                  <button
+                    type="button"
+                    onClick={() => handleInsertMarkdown("**", "**")}
+                    className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg transition-colors font-bold text-xs"
+                    title="Bold"
+                  >
+                    <Bold className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertMarkdown("*", "*")}
+                    className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg transition-colors italic text-xs"
+                    title="Italic"
+                  >
+                    <Italic className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertMarkdown("### ", "")}
+                    className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg transition-colors font-black text-xs"
+                    title="Heading"
+                  >
+                    <Heading className="h-3.5 w-3.5" />
+                  </button>
+                  <div className="w-px h-4 bg-slate-200 mx-1" />
+                  <button
+                    type="button"
+                    onClick={() => handleInsertMarkdown("- ", "")}
+                    className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg transition-colors text-xs"
+                    title="Bullet List"
+                  >
+                    <List className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertMarkdown("- [ ] ", "")}
+                    className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg transition-colors text-xs"
+                    title="Todo List"
+                  >
+                    <CheckSquare className="h-3.5 w-3.5" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleInsertMarkdown("```\n", "\n```")}
+                    className="p-1.5 text-slate-500 hover:text-slate-900 hover:bg-slate-200/50 rounded-lg transition-colors text-xs"
+                    title="Code Block"
+                  >
+                    <Code className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <textarea
+                  id="summary-textarea"
+                  value={editedText}
+                  onChange={(e) => setEditedText(e.target.value)}
+                  className="flex-1 w-full p-4 bg-transparent outline-none font-mono text-sm leading-relaxed text-slate-800 resize-none min-h-[350px]"
+                  placeholder="Nhập nội dung tóm tắt tại đây..."
+                />
+              </div>
+            ) : (
+              <div className="flex-1 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar border border-slate-100 rounded-2xl p-4 bg-white shadow-inner">
+                <MarkdownRenderer content={editedText || "*Không có nội dung để xem trước.*"} />
+              </div>
+            )}
+          </div>
+        </div>
+      );
+    }
+
     return (
       <div className="flex-1 flex flex-col justify-between">
         {/* Template Config Row */}
@@ -131,6 +335,16 @@ export const SummaryContentSection: React.FC<SummaryContentSectionProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            {canEdit && (
+              <button
+                onClick={startEditing}
+                className="px-3.5 py-2 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all font-black text-xs gap-1.5 shadow-sm"
+                title={t("meeting.summary_tab.edit")}
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+                <span>{t("meeting.summary_tab.edit")}</span>
+              </button>
+            )}
             <button
               onClick={handleGenerate}
               className="px-3.5 py-2 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all font-black text-xs gap-1.5 shadow-sm"
@@ -190,3 +404,4 @@ export const SummaryContentSection: React.FC<SummaryContentSectionProps> = ({
     </div>
   );
 };
+

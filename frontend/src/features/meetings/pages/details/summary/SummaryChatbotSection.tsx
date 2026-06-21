@@ -106,16 +106,20 @@ export const SummaryChatbotSection: React.FC<SummaryChatbotSectionProps> = ({
 
     try {
       const token = getToken() || "";
-      const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
+      const apiBaseUrl =
+        import.meta.env.VITE_API_URL || "http://localhost:3000";
 
-      const response = await fetch(`${apiBaseUrl}/meetings/${meetingId}/chat/stream`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const response = await fetch(
+        `${apiBaseUrl}/meetings/${meetingId}/chat/stream`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ question: text }),
         },
-        body: JSON.stringify({ question: text }),
-      });
+      );
 
       if (!response.ok) {
         throw new Error("Failed to connect to AI Stream");
@@ -148,8 +152,10 @@ export const SummaryChatbotSection: React.FC<SummaryChatbotSectionProps> = ({
                   accumulatedText += parsed.text;
                   setMessages((prev) =>
                     prev.map((msg) =>
-                      msg.id === aiMessageId ? { ...msg, content: accumulatedText } : msg
-                    )
+                      msg.id === aiMessageId
+                        ? { ...msg, content: accumulatedText }
+                        : msg,
+                    ),
                   );
                 }
               } catch {
@@ -167,8 +173,8 @@ export const SummaryChatbotSection: React.FC<SummaryChatbotSectionProps> = ({
         prev.map((msg) =>
           msg.id === aiMessageId
             ? { ...msg, content: t("meeting.summary_tab.error_connecting") }
-            : msg
-        )
+            : msg,
+        ),
       );
     } finally {
       setIsAiGenerating(false);
@@ -196,12 +202,14 @@ export const SummaryChatbotSection: React.FC<SummaryChatbotSectionProps> = ({
       </div>
 
       {/* AI not activated warning banner in Q&A */}
-      {!aiActivated && !meetingStatus?.hasTranscripts && meetingStatus?.status !== "scheduled" && (
-        <div className="mx-2 mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800 flex items-start gap-2.5 shadow-sm animate-fade-in shrink-0">
-          <Bot className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
-          <span>{t("meeting.summary_tab.chatbot_no_ai_warning")}</span>
-        </div>
-      )}
+      {!aiActivated &&
+        !meetingStatus?.hasTranscripts &&
+        meetingStatus?.status !== "scheduled" && (
+          <div className="mx-2 mb-4 p-3 rounded-2xl bg-amber-50 border border-amber-200 text-xs font-semibold text-amber-800 flex items-start gap-2.5 shadow-sm animate-fade-in shrink-0">
+            <Bot className="h-4 w-4 shrink-0 text-amber-500 mt-0.5" />
+            <span>{t("meeting.summary_tab.chatbot_no_ai_warning")}</span>
+          </div>
+        )}
 
       {/* Messages Area */}
       <div

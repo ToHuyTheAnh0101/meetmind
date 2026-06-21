@@ -88,8 +88,8 @@ Nhiệm vụ của bạn là tạo ra bản tóm tắt cuộc họp tuân thủ 
      - Loại A (Ngoặc vuông chức năng): Định dạng Markdown như hộp kiểm (Checkbox) '- [ ]' hoặc '- [x]', hãy GIỮ NGUYÊN để làm checkbox hiển thị trên giao diện.
      - Loại B (Ngoặc vuông chỉ dẫn/giữ chỗ): Các nhãn hướng dẫn như '[AI tự động...]', '[Công Việc 1]', '[Tên người]', '[Hạn chót]', v.v. Bạn BẮT BUỘC phải XÓA BỎ hoàn toàn cặp ngoặc vuông này và thay thế bằng dữ liệu thực tế.
   2. Tuyệt đối không được sao chép nguyên văn hoặc in các ngoặc vuông chỉ dẫn/giữ chỗ (Loại B) này ra kết quả cuối cùng.
-  3. Nếu một phần nội dung mẫu (ví dụ: mô tả tóm tắt hoặc các hàng trong bảng nhiệm vụ) hoàn toàn không có thông tin thảo luận thực tế trong cuộc họp, bạn BẮT BUỘC phải thay thế phần chỉ dẫn mẫu đó bằng dòng chữ: "Không có thông tin được nhắc đến trong cuộc họp". Tuyệt đối không in lại các dòng chữ hướng dẫn mẫu trong ngoặc vuông.
-  4. Nếu trong cấu trúc mẫu có yêu cầu thông tin chi tiết như người phụ trách hoặc thời hạn/hạn chót (ví dụ: \`Phụ trách: [Tên người]\`, \`Hạn: [Thời gian]\`, \`Người phụ trách: [Tên người được giao]\`, \`Hạn chót: [Hạn hoàn thành]\`), nhưng trong cuộc họp không nhắc đến người phụ trách hoặc thời hạn cụ thể, bạn BẮT BUỘC phải thay thế phần ngoặc vuông đó bằng chữ "không có" hoặc "không đề cập" (ví dụ: \`Phụ trách: không có\`, \`Hạn: không đề cập\`). Tuyệt đối không được giữ nguyên nhãn mẫu trong ngoặc vuông.
+  3. Nếu một phần nội dung mẫu (ví dụ: mô tả tóm tắt hoặc các khối lớn) hoàn toàn không có thông tin thảo luận thực tế trong cuộc họp, bạn hãy bỏ qua hoặc thay thế bằng dòng chữ: "Không có thông tin được nhắc đến trong cuộc họp". Tuyệt đối không in lại các dòng chữ hướng dẫn mẫu trong ngoặc vuông.
+  4. Nếu trong cấu trúc mẫu có các thông tin chi tiết hoặc bổ trợ (ví dụ: \`(Đề xuất bởi: [Tên người])\`, \`Phụ trách: [Tên người]\`, \`Hạn chót: [Hạn hoàn thành]\`, \`- [Tên người]\`), nhưng trong cuộc họp không nhắc đến thông tin cụ thể đó, bạn hãy **lược bỏ hoàn toàn cả phần nhãn và thông tin đi kèm** (ví dụ: bỏ cả cụm \`(Đề xuất bởi: không có)\` hoặc dòng \`Phụ trách: không có\`). Đối với các ô trong bảng Markdown, hãy để trống hoặc để dấu gạch ngang \`-\` thay vì điền chữ "không có" hoặc "không đề cập" để văn bản sạch sẽ và chuyên nghiệp hơn.
 - Đầu ra cuối cùng cho mỗi mục chỉ được chứa Tiêu đề mục (ví dụ: ### **${template.sections[0]?.label || 'Tiêu đề'}**) và phần nội dung đã được phân tích/điền dữ liệu tương ứng.
 - [QUY TẮC BẮT BUỘC - LỌC TRÙNG LẶP DO GỐI ĐẦU ÂM THANH (5S OVERLAP)]:
   1. Transcript cuộc họp đầu vào được ghép từ các phần ghi âm nhỏ gối đầu 5 giây (5s overlap).
@@ -117,10 +117,11 @@ ${context}
 Hãy trả lời câu hỏi sau của người dùng: "${question}"
 
 [Quy tắc nghiêm ngặt khi trả lời]:
-1. TUYỆT ĐỐI TRÁNH ẢO GIÁC HÓA: Chỉ trả lời dựa vào các thông tin thực tế có trong ngữ cảnh cuộc họp được cung cấp ở trên. Tuyệt đối không tự bịa đặt, suy đoán hoặc thêm thắt thông tin nằm ngoài nội dung cuộc họp.
-2. TỪ CHỐI CÂU HỎI NGOÀI LỀ: Nếu câu hỏi hoàn toàn không liên quan đến nội dung cuộc họp, hoặc thông tin được hỏi không hề xuất hiện/không tìm thấy trong ngữ cảnh cuộc họp, hãy lịch sự từ chối trả lời bằng tiếng Việt. Bạn có thể phản hồi khéo léo như: "Nội dung này không được nhắc đến trong cuộc họp" hoặc "Câu hỏi không liên quan đến nội dung cuộc họp", tuyệt đối không tự chế câu trả lời hoặc sử dụng kiến thức bên ngoài cuộc họp để trả lời các vấn đề ngoài lề.
-3. LỌC TRÙNG LẶP DO GỐI ĐẦU 5S: Đoạn transcript có thể chứa các câu nói gối đầu lặp lại 5 giây do kỹ thuật chia nhỏ audio. Hãy chủ động lọc bỏ các câu trùng lặp hoặc câu dở dang bị cắt cụt, ưu tiên chọn phiên bản câu hoàn chỉnh và rõ ràng nhất để trả lời.
-4. SỬA LỖI ĐỒNG ÂM / DỊCH SAI TRONG TRANSCRIPT: Nếu trong transcript xuất hiện các lỗi từ đồng âm do nhận diện giọng nói (Ví dụ: "áp giác" thay vì "ảo giác", "cơ chế ráp" thay vì "cơ chế RAG", "xe màn hình" thay vì "share màn hình"), hãy hiểu theo đúng ngữ cảnh thực tế của cuộc họp công nghệ thông tin và trả lời bằng từ chính xác nhất.
+1. TUYỆT ĐỐI TRÁNH ẢO GIÁC HÓA: Chỉ trả lời dựa vào các thông tin thực tế có trong ngữ cảnh cuộc họp được cung cấp ở trên hoặc dữ liệu lấy được từ các công cụ (tools). Tuyệt đối không tự bịa đặt, suy đoán hoặc thêm thắt thông tin nằm ngoài nội dung cuộc họp.
+2. TRUY XUẤT THÔNG TIN BIỂU QUYẾT (POLL) VÀ HỎI ĐÁP (Q&A): Nếu người dùng hỏi về các cuộc bình chọn/biểu quyết (poll) hoặc các câu hỏi/câu trả lời thảo luận (Q&A) trong cuộc họp, bạn BẮT BUỘC phải gọi các công cụ tương ứng (\`get_meeting_polls\` hoặc \`get_meeting_qa\`) để lấy dữ liệu thực tế và trả lời. Đừng chỉ tìm kiếm trong đoạn transcript cuộc họp vì các thông tin biểu quyết và Q&A được lưu trữ riêng biệt trong hệ thống.
+3. TỪ CHỐI CÂU HỎI NGOÀI LỀ: Nếu câu hỏi hoàn toàn không liên quan đến nội dung cuộc họp, hoặc thông tin được hỏi không hề xuất hiện/không tìm thấy trong ngữ cảnh cuộc họp và các công cụ, hãy lịch sự từ chối trả lời bằng tiếng Việt. Bạn có thể phản hồi khéo léo như: "Nội dung này không được nhắc đến trong cuộc họp" hoặc "Câu hỏi không liên quan đến nội dung cuộc họp", tuyệt đối không tự chế câu trả lời hoặc sử dụng kiến thức bên ngoài cuộc họp để trả lời các vấn đề ngoài lề.
+4. LỌC TRÙNG LẶP DO GỐI ĐẦU 5S: Đoạn transcript có thể chứa các câu nói gối đầu lặp lại 5 giây do kỹ thuật chia nhỏ audio. Hãy chủ động lọc bỏ các câu trùng lặp hoặc câu dở dang bị cắt cụt, ưu tiên chọn phiên bản câu hoàn chỉnh và rõ ràng nhất để trả lời.
+5. SỬA LỖI ĐỒNG ÂM / DỊCH SAI TRONG TRANSCRIPT: Nếu trong transcript xuất hiện các lỗi từ đồng âm do nhận diện giọng nói (Ví dụ: "áp giác" thay vì "ảo giác", "cơ chế ráp" thay vì "cơ chế RAG", "xe màn hình" thay vì "share màn hình"), hãy hiểu theo đúng ngữ cảnh thực tế của cuộc họp công nghệ thông tin và trả lời bằng từ chính xác nhất.
 `.trim();
 
 export const DEFAULT_SUMMARY_PROMPT = (title: string, transcript: string) =>
@@ -159,7 +160,7 @@ Hãy sửa các lỗi chính tả tiếng Việt, khôi phục các thuật ng�
 4. LỌC BỎ TỪ THỪA (FILLER WORDS): Loại bỏ các từ thừa, tiếng ậm ừ lặp đi lặp lại nhiều lần không mang ý nghĩa (như "ừ", "à", "thì", "mà", "là", "nhỉ", "nhé", "đấy") nhưng phải giữ lại ý nghĩa cốt lõi của câu nói.
 5. KHÔNG TỰ Ý VIẾT LẠI: Chỉ sửa lỗi chính tả và thuật ngữ. TUYỆT ĐỐI không được tự ý tóm tắt, diễn đạt lại theo ý mình, hoặc thay đổi/thêm bớt nội dung ý kiến thảo luận của người dùng.
 6. XỬ LÝ RÁC & CÂU NGẮN:
-   - Nếu gặp các câu rác do ảo giác STT tạo ra khi im lặng (Ví dụ: "Hãy subscribe cho kênh...", "Cảm ơn các bạn đã theo dõi"), hãy xóa bỏ hoàn toàn (trả về chuỗi rỗng).
+   - Loại bỏ các câu rác vô nghĩa hoặc câu nói bị lặp lại do lỗi âm thanh/khoảng lặng khi im lặng (trả về chuỗi rỗng nếu cả đoạn không có thông tin hữu ích).
    - Nếu đoạn hội thoại thô chỉ gồm các từ ngắn như "ok", "dạ", "vâng", "được", hãy giữ nguyên chúng.
    - Nếu đoạn hội thoại thô chỉ là tiếng ồn hoặc âm thanh vô nghĩa (Ví dụ: "ư", "ơ", "a"), hãy trả về chuỗi rỗng.
 7. ĐẦU RA: Chỉ trả về duy nhất phần văn bản đã được làm sạch, không thêm bất kỳ câu giải thích hay dẫn dắt nào khác.

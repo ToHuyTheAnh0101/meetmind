@@ -564,13 +564,8 @@ export class AiService {
           'Lấy danh sách các cuộc biểu quyết (polls) trong cuộc họp bao gồm các câu hỏi, các lựa chọn trả lời và số lượt bình chọn cho mỗi lựa chọn.',
         parameters: {
           type: SchemaType.OBJECT,
-          properties: {
-            meetingId: {
-              type: SchemaType.STRING,
-              description: 'UUID của cuộc họp.',
-            },
-          },
-          required: ['meetingId'],
+          properties: {},
+          required: [],
         } as unknown as import('@google/generative-ai').FunctionDeclarationSchema,
       },
       {
@@ -579,13 +574,8 @@ export class AiService {
           'Lấy danh sách các câu hỏi và câu trả lời trong mục Hỏi đáp (Q&A) của cuộc họp.',
         parameters: {
           type: SchemaType.OBJECT,
-          properties: {
-            meetingId: {
-              type: SchemaType.STRING,
-              description: 'UUID của cuộc họp.',
-            },
-          },
-          required: ['meetingId'],
+          properties: {},
+          required: [],
         } as unknown as import('@google/generative-ai').FunctionDeclarationSchema,
       },
     ];
@@ -646,6 +636,20 @@ export class AiService {
     meetingTitle?: string,
     meetingDescription?: string,
   ): Promise<string> {
+    const useGeminiStt =
+      this.configService.get<string>('USE_GEMINI_STT') === 'true';
+    if (useGeminiStt) {
+      this.logger.log(
+        '[STT] Transcribing audio chunk using Google Gemini API...',
+      );
+      return this.transcribeAudioWithGemini(
+        audioBuffer,
+        mimeType,
+        meetingTitle,
+        meetingDescription,
+      );
+    }
+    this.logger.log('[STT] Transcribing audio chunk using Groq Whisper API...');
     const whisperUrl =
       this.configService.get<string>('GROQ_API_URL') ||
       this.configService.get<string>('WHISPER_API_URL');
@@ -729,10 +733,82 @@ export class AiService {
         }
       }
 
-      return this.cleanWhisperHallucinations(rawText, meetingTitle);
+      return rawText;
     } catch (error) {
       this.logger.error('Error transcribing audio:', error);
       throw new Error('Failed to transcribe audio');
+    }
+  }
+
+  private async transcribeAudioWithGemini(
+    audioBuffer: Buffer,
+    mimeType: string,
+    meetingTitle?: string,
+    meetingDescription?: string,
+  ): Promise<string> {
+    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
+    if (!apiKey) {
+      throw new Error('GEMINI_API_KEY is not configured for Speech-to-Text.');
+    }
+
+    const model =
+      this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash';
+    const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
+
+    const base64Audio = audioBuffer.toString('base64');
+
+    let promptText = `
+Bạn là trợ lý chép lời thoại cuộc họp tiếng Việt chuyên nghiệp và trung thực. 
+Hãy lắng nghe đoạn âm thanh được cung cấp dưới đây và chép lại nguyên văn, chính xác tất cả những gì được nói.
+Lưu ý quan trọng:
+- Trả về phần văn bản chép thoại bằng tiếng Việt trực tiếp, TUYỆT ĐỐI không có thêm câu dẫn dắt, giải thích, mở đầu hay kết thúc (Ví dụ: không nói "Dưới đây là...", không nói "Đoạn âm thanh chứa...").
+- Giữ nguyên các thuật ngữ tiếng Anh gốc thường dùng (Ví dụ: share, check, code, RAG, API, deploy, database).
+- Nếu đoạn âm thanh chỉ chứa khoảng lặng, tiếng thở, tiếng ồn hoặc âm thanh không có giọng nói con người rõ ràng, hãy trả về một chuỗi rỗng hoàn toàn (không ghi gì cả). 
+- TUYỆT ĐỐI KHÔNG tự ý ảo giác hóa hoặc chế ra các câu kêu gọi dạng đăng ký kênh mạng xã hội (như "Cảm ơn các bạn đã theo dõi", "Hãy subscribe kênh", "Các bạn có thể nhớ đăng ký kênh").
+`.trim();
+
+    if (meetingTitle) {
+      promptText += `\n- Bối cảnh cuộc họp: Cuộc họp thảo luận về chủ đề "${meetingTitle.replace(/[\\"]/g, '')}".`;
+    }
+    if (meetingDescription) {
+      promptText += `\n- Mô tả bối cảnh cuộc họp: ${meetingDescription.replace(/[\\"]/g, '').slice(0, 100)}.`;
+    }
+
+    try {
+      const response = await axios.post<GeminiResponse>(
+        url,
+        {
+          contents: [
+            {
+              parts: [
+                {
+                  inlineData: {
+                    mimeType: mimeType,
+                    data: base64Audio,
+                  },
+                },
+                {
+                  text: promptText,
+                },
+              ],
+            },
+          ],
+          generationConfig: {
+            temperature: 0.0,
+          },
+        },
+        {
+          headers: { 'Content-Type': 'application/json' },
+          timeout: 25000,
+        },
+      );
+
+      const transcript =
+        response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      return transcript ? transcript.trim() : '';
+    } catch (error) {
+      this.logger.error('Failed to transcribe audio with Gemini:', error);
+      throw new Error('Failed to transcribe audio using Gemini');
     }
   }
 
@@ -888,85 +964,5 @@ export class AiService {
       // Fallback an toàn: coi như ảnh có giá trị để không mất dữ liệu
       return null;
     }
-  }
-
-  private cleanWhisperHallucinations(
-    text: string,
-    meetingTitle?: string,
-  ): string {
-    if (!text) return '';
-
-    // Common Whisper hallucinations in Vietnamese for silent segments
-    const blacklistedPhrases = [
-      /cảm ơn các bạn đã theo dõi/gi,
-      /hẹn gặp lại các bạn trong các video tiếp theo/gi,
-      /hẹn gặp lại các bạn trong những video tiếp theo/gi,
-      /hẹn gặp lại các bạn/gi,
-      /cảm ơn các bạn đã xem/gi,
-      /cảm ơn các bạn/gi,
-      /chào tạm biệt/gi,
-      /hãy đăng ký kênh/gi,
-      /ủng hộ kênh/gi,
-      /chúc các bạn một ngày/gi,
-      /nếu các bạn thấy video này/gi,
-      /hãy subscribe/gi,
-      /sub kênh/gi,
-      /like và share/gi,
-      /like và chia sẻ/gi,
-      /xin chào và hẹn gặp lại/gi,
-      /chào các bạn/gi,
-      /hẹn gặp lại/gi,
-      /cảm ơn bạn đã theo dõi/gi,
-      /cảm ơn mọi người/gi,
-    ];
-
-    let cleaned = text;
-    for (const pattern of blacklistedPhrases) {
-      cleaned = cleaned.replace(pattern, '');
-    }
-
-    // Clean up trailing/leading spaces and punctuations
-    cleaned = cleaned
-      .replace(/^\s*[,.;?!:\-–—\s]+\s*/g, '')
-      .replace(/\s*[,.;?!:\-–—\s]+\s*$/g, '')
-      .trim();
-
-    const lowerText = cleaned.toLowerCase();
-
-    // Discard prompt echoes in case of silence
-    if (
-      lowerText === 'chúng ta thảo luận về chủ đề' ||
-      lowerText === 'chúng ta thảo luận về' ||
-      lowerText === 'alo dạ ok vâng' ||
-      lowerText === 'tiến độ công việc' ||
-      lowerText === 'lập trình dự án' ||
-      lowerText === 'kiểm tra code' ||
-      lowerText === 'ý kiến đóng góp'
-    ) {
-      return '';
-    }
-
-    if (meetingTitle) {
-      const lowerTitle = meetingTitle.toLowerCase().trim();
-      if (lowerText === lowerTitle) {
-        return '';
-      }
-    }
-
-    // If the cleaned text is just a common artifact word like 'cô', 'alo', 'dạ', 'vâng'
-    // but the original text was excessively long (hallucination clutter), clean it completely
-    if (
-      lowerText === 'cô' ||
-      lowerText === 'alo' ||
-      lowerText === 'dạ' ||
-      lowerText === 'vâng' ||
-      lowerText === 'ạ'
-    ) {
-      if (text.length > 50) {
-        return '';
-      }
-    }
-
-    return cleaned;
   }
 }
