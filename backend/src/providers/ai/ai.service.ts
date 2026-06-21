@@ -8,7 +8,6 @@ import {
   DEFAULT_SUMMARY_PROMPT,
   compileSummaryTemplatePrompt,
   PromptTemplateInput,
-  CLEAN_TRANSCRIPT_PROMPT,
   ANALYZE_IMAGE_PROMPT,
 } from './prompts';
 import { EmbeddingService } from './embedding.service';
@@ -52,17 +51,6 @@ export class AiService {
     }
   }
 
-  private getOllamaUrl(): string {
-    return (
-      this.configService.get<string>('OLLAMA_API_URL') ||
-      'http://localhost:11434'
-    );
-  }
-
-  private getOllamaModel(): string {
-    return this.configService.get<string>('OLLAMA_MODEL') || 'qwen2:7b';
-  }
-
   private async generateText(prompt: string): Promise<string> {
     if (!this.genAI) {
       throw new Error(
@@ -83,77 +71,6 @@ export class AiService {
       );
       throw new Error('Failed to generate AI response from Gemini');
     }
-
-    /*
-    // Ollama / Groq fallback commented out for performance evaluation
-    const apiKey =
-      this.configService.get<string>('GROQ_API_KEY') ||
-      this.configService.get<string>('WHISPER_API_KEY');
-    const model =
-      this.configService.get<string>('GROQ_CHAT_MODEL') ||
-      this.configService.get<string>('GROQ_MODEL') ||
-      'llama-3.1-8b-instant';
-
-    if (apiKey && apiKey !== 'your_groq_api_key_here') {
-      const url = 'https://api.groq.com/openai/v1/chat/completions';
-      try {
-        const response = await axios.post<{
-          choices: Array<{
-            message: {
-              content: string;
-            };
-          }>;
-        }>(
-          url,
-          {
-            model,
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0,
-            stream: false,
-          },
-          {
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${apiKey}`,
-            },
-            timeout: 60_000,
-          },
-        );
-        return response.data.choices?.[0]?.message?.content?.trim() || '';
-      } catch (error) {
-        this.logger.error(
-          `Groq text generation failed: ${error instanceof Error ? error.message : error}`,
-        );
-        throw new Error('Failed to generate AI response from Groq');
-      }
-    } else {
-      const url = `${this.getOllamaUrl()}/api/generate`;
-      const ollamaModel = this.getOllamaModel();
-
-      try {
-        const response = await axios.post<{
-          response: string;
-          done: boolean;
-          error?: string;
-        }>(
-          url,
-          { model: ollamaModel, prompt, stream: false, keep_alive: '5m' },
-          { timeout: 120_000 },
-        );
-
-        if (response.data.error) {
-          throw new Error(`Ollama error: ${response.data.error}`);
-        }
-
-        return response.data.response?.trim() || '';
-      } catch (error) {
-        this.logger.error(
-          `Ollama text generation failed (${url}, model=${ollamaModel}): ${error instanceof Error ? error.message : error}`,
-        );
-        throw new Error('Failed to generate AI response from Ollama');
-      }
-    }
-    */
   }
 
   async answerQuestion(
@@ -265,163 +182,6 @@ export class AiService {
         isCancelled = true;
       };
     });
-
-    /*
-    // Ollama / Groq stream fallback commented out for performance evaluation
-    const apiKey =
-      this.configService.get<string>('GROQ_API_KEY') ||
-      this.configService.get<string>('WHISPER_API_KEY');
-    const model =
-      this.configService.get<string>('GROQ_CHAT_MODEL') ||
-      this.configService.get<string>('GROQ_MODEL') ||
-      'llama-3.1-8b-instant';
-
-    if (apiKey && apiKey !== 'your_groq_api_key_here') {
-      const url = 'https://api.groq.com/openai/v1/chat/completions';
-      try {
-        const response = await axios.post(
-          url,
-          {
-            model,
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0,
-            stream: true,
-          },
-          {
-            responseType: 'stream',
-            headers: {
-              'Content-Type': 'application/json',
-              Authorization: `Bearer ${apiKey}`,
-            },
-            timeout: 60_000,
-          },
-        );
-
-        return new Observable<string>((subscriber) => {
-          const stream = response.data as Readable;
-          let buffer = '';
-
-          stream.on('data', (chunk: Buffer) => {
-            buffer += chunk.toString('utf8');
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              const trimmed = line.trim();
-              if (trimmed.length === 0) continue;
-              if (trimmed === 'data: [DONE]') {
-                subscriber.complete();
-                return;
-              }
-              if (trimmed.startsWith('data: ')) {
-                try {
-                  const jsonStr = trimmed.slice(6);
-                  const parsed = JSON.parse(jsonStr) as {
-                    choices?: Array<{
-                      delta?: {
-                        content?: string;
-                      };
-                    }>;
-                  };
-                  const content = parsed.choices?.[0]?.delta?.content;
-                  if (content) {
-                    subscriber.next(content);
-                  }
-                } catch {
-                  // ignore parse errors
-                }
-              }
-            }
-          });
-
-          stream.on('end', () => {
-            subscriber.complete();
-          });
-
-          stream.on('error', (err) => {
-            subscriber.error(err);
-          });
-
-          return () => {
-            stream.destroy();
-          };
-        });
-      } catch (error) {
-        this.logger.error(`Groq stream initialization failed: ${error}`);
-        throw error;
-      }
-    } else {
-      const url = `${this.getOllamaUrl()}/api/generate`;
-      const ollamaModel = this.getOllamaModel();
-
-      try {
-        const response = await axios.post(
-          url,
-          { model: ollamaModel, prompt, stream: true, keep_alive: '5m' },
-          { responseType: 'stream', timeout: 120_000 },
-        );
-
-        return new Observable<string>((subscriber) => {
-          const stream = response.data as Readable;
-          let buffer = '';
-
-          stream.on('data', (chunk: Buffer) => {
-            buffer += chunk.toString('utf8');
-            const lines = buffer.split('\n');
-            buffer = lines.pop() || '';
-
-            for (const line of lines) {
-              if (line.trim().length === 0) continue;
-              try {
-                const parsed = JSON.parse(line) as {
-                  response?: string;
-                  done?: boolean;
-                  error?: string;
-                };
-                if (parsed.error) {
-                  subscriber.error(new Error(parsed.error));
-                  return;
-                }
-                if (parsed.response) {
-                  subscriber.next(parsed.response);
-                }
-                if (parsed.done) {
-                  subscriber.complete();
-                }
-              } catch {
-                // ignore parse errors for partial lines
-              }
-            }
-          });
-
-          stream.on('end', () => {
-            if (buffer.trim().length > 0) {
-              try {
-                const parsed = JSON.parse(buffer) as { response?: string };
-                if (parsed.response) {
-                  subscriber.next(parsed.response);
-                }
-              } catch {
-                // ignore end of stream parsing errors
-              }
-            }
-            subscriber.complete();
-          });
-
-          stream.on('error', (err) => {
-            subscriber.error(err);
-          });
-
-          return () => {
-            stream.destroy();
-          };
-        });
-      } catch (error) {
-        this.logger.error(`Ollama stream initialization failed: ${error}`);
-        throw error;
-      }
-    }
-    */
   }
 
   async answerQuestionStream(
@@ -636,108 +396,15 @@ export class AiService {
     meetingTitle?: string,
     meetingDescription?: string,
   ): Promise<string> {
-    const useGeminiStt =
-      this.configService.get<string>('USE_GEMINI_STT') === 'true';
-    if (useGeminiStt) {
-      this.logger.log(
-        '[STT] Transcribing audio chunk using Google Gemini API...',
-      );
-      return this.transcribeAudioWithGemini(
-        audioBuffer,
-        mimeType,
-        meetingTitle,
-        meetingDescription,
-      );
-    }
-    this.logger.log('[STT] Transcribing audio chunk using Groq Whisper API...');
-    const whisperUrl =
-      this.configService.get<string>('GROQ_API_URL') ||
-      this.configService.get<string>('WHISPER_API_URL');
-
-    if (!whisperUrl) {
-      throw new Error(
-        'GROQ_API_URL is not configured. Audio transcription requires a Whisper instance.',
-      );
-    }
-
-    try {
-      const formData = new globalThis.FormData();
-      const arrayBufferView = new Uint8Array(audioBuffer);
-      const fileBlob = new globalThis.Blob([arrayBufferView], {
-        type: mimeType,
-      });
-      const whisperModel =
-        this.configService.get<string>('GROQ_WHISPER_MODEL') ||
-        this.configService.get<string>('WHISPER_MODEL') ||
-        'whisper-large-v3';
-
-      let promptText =
-        'Alo, dạ, ok, vâng, ảo giác, RAG, AI, hallucination, check code.';
-      if (meetingTitle) {
-        const cleanTitle = meetingTitle.replace(/[\\"]/g, '');
-        promptText += ` Chúng ta thảo luận về chủ đề "${cleanTitle}".`;
-      }
-      if (meetingDescription) {
-        const cleanDesc = meetingDescription
-          .replace(/[\\"]/g, '')
-          .slice(0, 100);
-        promptText += ` Nội dung liên quan đến: ${cleanDesc}.`;
-      } else if (!meetingTitle) {
-        promptText +=
-          ' Chúng ta thảo luận về tiến độ công việc, lập trình dự án, kiểm tra code và ý kiến đóng góp.';
-      }
-
-      formData.append('file', fileBlob, 'audio.webm');
-      formData.append('model', whisperModel);
-      formData.append('language', 'vi');
-      formData.append('temperature', '0.0');
-      formData.append('prompt', promptText);
-      formData.append('response_format', 'verbose_json');
-
-      const headers: Record<string, string> = {
-        'Content-Type': 'multipart/form-data',
-      };
-
-      const whisperApiKey =
-        this.configService.get<string>('GROQ_API_KEY') ||
-        this.configService.get<string>('WHISPER_API_KEY');
-      if (whisperApiKey && whisperApiKey !== 'your_groq_api_key_here') {
-        headers['Authorization'] = `Bearer ${whisperApiKey}`;
-      }
-
-      interface WhisperVerboseResponse {
-        text?: string;
-        segments?: {
-          no_speech_prob?: number;
-        }[];
-      }
-
-      const response = await axios.post<WhisperVerboseResponse>(
-        `${whisperUrl}/v1/audio/transcriptions`,
-        formData,
-        { headers },
-      );
-      const rawText = response.data.text?.trim() || '';
-
-      if (response.data.segments && response.data.segments.length > 0) {
-        const avgNoSpeech =
-          response.data.segments.reduce(
-            (acc, seg) => acc + (seg.no_speech_prob ?? 0),
-            0,
-          ) / response.data.segments.length;
-        if (avgNoSpeech > 0.8) {
-          this.logger.log(
-            `[Whisper Silence Guard] Discarding transcription due to high no_speech_prob: ${avgNoSpeech.toFixed(2)}`,
-          );
-          return '';
-        }
-      }
-
-      return rawText;
-    } catch (error) {
-      this.logger.error('Error transcribing audio:', error);
-      throw new Error('Failed to transcribe audio');
-    }
+    this.logger.log(
+      '[STT] Transcribing audio chunk using Google Gemini API...',
+    );
+    return this.transcribeAudioWithGemini(
+      audioBuffer,
+      mimeType,
+      meetingTitle,
+      meetingDescription,
+    );
   }
 
   private async transcribeAudioWithGemini(
@@ -853,48 +520,13 @@ Lưu ý quan trọng:
     meetingTitle: string,
     speakerName?: string,
   ): Promise<string> {
-    const apiKey = this.configService.get<string>('GEMINI_API_KEY');
-    if (!apiKey) {
-      this.logger.warn(
-        'GEMINI_API_KEY is not configured. Skipping transcript cleaning.',
-      );
-      return text;
-    }
-
-    const model =
-      this.configService.get<string>('GEMINI_MODEL') || 'gemini-2.5-flash-lite';
-    const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${apiKey}`;
-    const prompt = CLEAN_TRANSCRIPT_PROMPT(text, meetingTitle, speakerName);
-
-    try {
-      const response = await axios.post<GeminiResponse>(
-        url,
-        {
-          contents: [
-            {
-              parts: [{ text: prompt }],
-            },
-          ],
-          generationConfig: {
-            temperature: 0.1,
-          },
-        },
-        {
-          headers: { 'Content-Type': 'application/json' },
-          timeout: 15000,
-        },
-      );
-
-      const cleanedText =
-        response.data?.candidates?.[0]?.content?.parts?.[0]?.text;
-      return cleanedText ? cleanedText.trim() : text;
-    } catch (error) {
-      this.logger.error(
-        'Failed to clean transcript chunk using Gemini:',
-        error,
-      );
-      return text;
-    }
+    // Gemini STT is clean, formatted, and natively avoids hallucinations.
+    // Bypassing cleanTranscriptChunk saves execution time and API tokens.
+    this.logger.debug(
+      `cleanTranscriptChunk bypassed for meeting "${meetingTitle}" (speaker: ${speakerName ?? 'unknown'})`,
+    );
+    await Promise.resolve();
+    return text;
   }
 
   /**
