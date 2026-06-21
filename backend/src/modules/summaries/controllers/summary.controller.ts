@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
   Request,
+  NotFoundException,
 } from '@nestjs/common';
 import { SummaryService } from '../services/summary.service';
 import { Summary } from '../entities/summary.entity';
@@ -17,8 +18,6 @@ import { CreateSummaryDto } from '../dto/create-summary.dto';
 import { UpdateSummaryDto } from '../dto/update-summary.dto';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 import { MeetingsService } from '../../meetings/services/meetings.service';
-import { EntityManager } from 'typeorm';
-import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
 
 interface RequestWithUser {
   user: {
@@ -32,7 +31,6 @@ export class SummaryController {
   constructor(
     private summaryService: SummaryService,
     private meetingsService: MeetingsService,
-    private readonly entityManager: EntityManager,
   ) {}
 
   @Get()
@@ -52,16 +50,20 @@ export class SummaryController {
 
   @Get('overall')
   @UseGuards(JwtAuthGuard)
-  async getOverallSummary(
+  async findOverall(
     @Param('meetingId') meetingId: string,
     @Request() req: RequestWithUser,
-  ): Promise<Summary | null> {
+  ): Promise<Summary> {
     await this.meetingsService.findOneWithAccess(
       meetingId,
       req.user.id,
       req.user.email,
     );
-    return this.summaryService.findOverallSummary(meetingId);
+    const summary = await this.summaryService.findOverallSummary(meetingId);
+    if (!summary) {
+      throw new NotFoundException('Overall summary not found for this meeting');
+    }
+    return summary;
   }
 
   @Get(':id')
@@ -81,7 +83,7 @@ export class SummaryController {
 
   @Post('generate')
   @UseGuards(JwtAuthGuard)
-  async generate(
+  async generateAiSummary(
     @Param('meetingId') meetingId: string,
     @Body() body: { templateId?: string },
     @Request() req: RequestWithUser,
@@ -92,27 +94,11 @@ export class SummaryController {
       req.user.email,
     );
 
-    const summary = await this.summaryService.generateAiSummary(
+    return this.summaryService.generateAiSummary(
       meetingId,
+      req.user.id,
       body?.templateId,
     );
-
-    try {
-      const newEvent = this.entityManager.create(MeetLog, {
-        meetingId,
-        type: LogType.AI_SUMMARY_GENERATED,
-        triggeredByUserId: req.user.id,
-        metadata: {
-          templateId: body?.templateId || 'default',
-          timestamp: new Date().toISOString(),
-        },
-      });
-      await this.entityManager.save(MeetLog, newEvent);
-    } catch (err) {
-      console.error('Failed to log AI_SUMMARY_GENERATED event:', err);
-    }
-
-    return summary;
   }
 
   @Post()

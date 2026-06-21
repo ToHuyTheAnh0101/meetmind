@@ -11,22 +11,12 @@ import { User } from '../../../users/user.entity';
 import { Participant } from './participant.entity';
 import { Attachment } from '../../../attachments/entities/attachment.entity';
 import { BreakoutRoom } from '../../../breakout-rooms/entities/breakout-room.entity';
-import { ChatHistory } from '../ai/chat-history.entity';
+import { ChatHistory } from '../../../summaries/entities/chat-history.entity';
 import { SummaryTemplate } from '../../../summaries/entities/summary-template.entity';
 import { TranscriptChunk } from '../content/transcript-chunk.entity';
 
-export enum MeetingStatus {
-  SCHEDULED = 'scheduled',
-  ONGOING = 'ongoing',
-  COMPLETED = 'completed',
-  CANCELLED = 'cancelled',
-  PENDING_COMPLETION = 'pending_completion',
-}
-
-export enum MeetingAccessType {
-  PUBLIC = 'public',
-  INVITE_ONLY = 'invite_only',
-}
+import { MeetingStatus, MeetingAccessType } from '../../../../common/enums';
+export { MeetingStatus, MeetingAccessType };
 
 @Entity('meetings')
 export class Meeting {

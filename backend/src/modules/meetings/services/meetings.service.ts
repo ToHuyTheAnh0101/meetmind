@@ -5,7 +5,6 @@ import {
   BadRequestException,
   Logger,
 } from '@nestjs/common';
-import { Observable, Subscription } from 'rxjs';
 import * as fs from 'fs';
 import * as path from 'path';
 import { ConfigService } from '@nestjs/config';
@@ -13,14 +12,14 @@ import { Inject } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { EntityManager } from 'typeorm';
-import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
+import { LogType } from '../../meetlogs/entities/meet-log.entity';
+import { MeetLogService } from '../../meetlogs/services/meet-log.service';
 import {
   Meeting,
   MeetingStatus,
   MeetingAccessType,
   ParticipantStatus,
   MeetingPermission,
-  ChatMessageType,
   ScreenCapture,
   TranscriptChunk,
 } from '../entities';
@@ -36,11 +35,8 @@ import { ParticipantRepository } from '../repositories/participant.repository';
 import { TranscriptRepository } from '../repositories/transcript.repository';
 import { MailService } from '../../../providers/mail/mail.service';
 import { AiService } from '../../../providers/ai/ai.service.js';
-import { ChatHistoryRepository } from '../repositories/chat-history.repository';
 import { ScreenCaptureRepository } from '../repositories/screen-capture.repository';
 import { CloudinaryService } from '../../../providers/cloudinary/cloudinary.service';
-import { MeetingPoll } from '../../polls/entities/meeting-poll.entity';
-import { MeetingQuestion } from '../../qa/entities/meeting-question.entity';
 
 @Injectable()
 export class MeetingsService {
@@ -66,11 +62,11 @@ export class MeetingsService {
     private configService: ConfigService,
     private aiService: AiService,
     private mailService: MailService,
-    private chatHistoryRepository: ChatHistoryRepository,
     private screenCaptureRepository: ScreenCaptureRepository,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
     private readonly entityManager: EntityManager,
     private cloudinaryService: CloudinaryService,
+    private readonly meetLogService: MeetLogService,
   ) {}
 
   async create(dto: CreateMeetingDto, userId: string): Promise<Meeting> {
@@ -208,15 +204,9 @@ export class MeetingsService {
 
     // Log MEETING_ENDED event
     try {
-      const newEvent = this.entityManager.create(MeetLog, {
-        meetingId: id,
-        type: LogType.MEETING_ENDED,
-        triggeredByUserId: userId,
-        metadata: {
-          timestamp: now.toISOString(),
-        },
+      await this.meetLogService.logEvent(id, LogType.MEETING_ENDED, userId, {
+        timestamp: now.toISOString(),
       });
-      await this.entityManager.save(MeetLog, newEvent);
     } catch (err) {
       this.logger.error('Failed to log MEETING_ENDED event:', err);
     }
@@ -249,16 +239,15 @@ export class MeetingsService {
 
     // Log MEETING_ENDED event (autoComplete)
     try {
-      const newEvent = this.entityManager.create(MeetLog, {
-        meetingId: id,
-        type: LogType.MEETING_ENDED,
-        triggeredByUserId: meeting.organizerId,
-        metadata: {
+      await this.meetLogService.logEvent(
+        id,
+        LogType.MEETING_ENDED,
+        meeting.organizerId || '',
+        {
           timestamp: new Date().toISOString(),
           autoCompleted: true,
         },
-      });
-      await this.entityManager.save(MeetLog, newEvent);
+      );
     } catch (err) {
       this.logger.error(
         'Failed to log MEETING_ENDED event (autoComplete):',
@@ -410,17 +399,16 @@ export class MeetingsService {
 
     if (dto.aiActivated !== undefined && dto.aiActivated !== oldAiActivated) {
       try {
-        const newEvent = this.entityManager.create(MeetLog, {
-          meetingId: id,
-          type: dto.aiActivated
+        await this.meetLogService.logEvent(
+          id,
+          dto.aiActivated
             ? LogType.AI_ASSISTANT_ACTIVATED
             : LogType.AI_ASSISTANT_DEACTIVATED,
-          triggeredByUserId: userId,
-          metadata: {
+          userId,
+          {
             timestamp: new Date().toISOString(),
           },
-        });
-        await this.entityManager.save(MeetLog, newEvent);
+        );
       } catch (err) {
         this.logger.error(
           `Failed to log AI assistant activation/deactivation event:`,
@@ -538,367 +526,6 @@ export class MeetingsService {
     };
 
     return result;
-  }
-
-  async chatWithAI(
-    meetingId: string,
-    question: string,
-    _userId: string,
-  ): Promise<{ answer: string }> {
-    this.logger.log(`User ${_userId} chatting with AI in meeting ${meetingId}`);
-    const meeting = await this.meetingsRepository.findById(meetingId);
-    if (!meeting) {
-      throw new NotFoundException('Meeting not found');
-    }
-
-    // 1. Tạo vector embedding cho câu hỏi
-    const questionEmbedding = await this.aiService.embed(question);
-
-    if (!questionEmbedding || questionEmbedding.length === 0) {
-      throw new BadRequestException(
-        'Failed to generate embedding for the question.',
-      );
-    }
-
-    // 2. Tìm kiếm các đoạn transcript liên quan nhất theo embedding bằng pgvector trực tiếp ở DB
-    // k=8 để có đủ candidates sau khi threshold lọc
-    const relevantChunks =
-      await this.transcriptRepository.findRelevantByEmbedding(
-        meetingId,
-        questionEmbedding,
-        8,
-      );
-
-    // 3. Xử lý ngữ cảnh (context)
-    let contextText = '';
-    if (relevantChunks.length > 0) {
-      contextText = relevantChunks
-        .map((chunk) => {
-          const speakerLabel = chunk.speakerName
-            ? `${chunk.speakerName}: `
-            : '';
-          return `${speakerLabel}${chunk.content}`;
-        })
-        .join('\n');
-    } else {
-      // Fallback thông minh: không tải toàn bộ transcript mà chỉ lấy 25 chunks gần nhất
-      // Tránh context quá dài làm AI bị overwhelm và tốn token
-      this.logger.warn(
-        `No relevant chunks found above threshold for meeting ${meetingId}. Using recent chunks fallback.`,
-      );
-      const recentChunks =
-        await this.transcriptRepository.findRecentChunks(meetingId);
-      contextText = recentChunks
-        .map((c) =>
-          c.speakerName ? `${c.speakerName}: ${c.content}` : c.content,
-        )
-        .join('\n');
-    }
-
-    // 4. Tìm ảnh màn hình liên quan bằng hybrid retrieval (temporal + semantic)
-    // Chỉ lấy ảnh có summary (đã phân tích, không phải ảnh rác)
-    const relevantCaptures = await this.findRelevantCaptures(
-      meetingId,
-      relevantChunks,
-      questionEmbedding,
-    );
-
-    // 4.5. Đưa visual context từ summary của ảnh vào prompt để AI hiểu nội dung slide
-    let enrichedContext = contextText;
-    if (relevantCaptures.length > 0) {
-      const visualContext = relevantCaptures
-        .map(
-          (cap) => `[Slide lúc ${Math.round(cap.timestamp)}s]: ${cap.summary}`,
-        )
-        .join('\n');
-      enrichedContext = `${contextText}\n\n[Nội dung màn hình chia sẻ]:\n${visualContext}`;
-    }
-
-    // Handlers for Tool Calling
-    const getPolls = async (mid: string) => {
-      const polls = await this.entityManager.find(MeetingPoll, {
-        where: { meetingId: mid },
-        relations: ['options', 'options.votes'],
-      });
-      return polls.map((p) => ({
-        question: p.question,
-        type: p.type,
-        closedAt: p.closedAt,
-        options:
-          p.options?.map((o) => ({
-            text: o.text,
-            voteCount: o.votes?.length || 0,
-          })) || [],
-      }));
-    };
-
-    const getQa = async (mid: string) => {
-      const qa = await this.entityManager.find(MeetingQuestion, {
-        where: { meetingId: mid },
-        relations: ['askedByUser', 'answers', 'answers.answeredByUser'],
-      });
-      return qa.map((q) => ({
-        question: q.content,
-        askedBy: q.askedByUser
-          ? `${q.askedByUser.firstName} ${q.askedByUser.lastName}`
-          : 'Unknown',
-        answers:
-          q.answers?.map((a) => ({
-            content: a.content,
-            answeredBy: a.answeredByUser
-              ? `${a.answeredByUser.firstName} ${a.answeredByUser.lastName}`
-              : 'Unknown',
-          })) || [],
-      }));
-    };
-
-    // 5. Gọi LLM để trả lời câu hỏi với context được bổ sung visual context
-    const answer = await this.aiService.answerQuestion(
-      question,
-      enrichedContext,
-      meetingId,
-      { getPolls, getQa },
-    );
-
-    // 5.5. Gắn ảnh slide vào cuối câu trả lời
-    const imageInfoList = relevantCaptures.map((cap) => ({
-      url: cap.imageUrl,
-      timestamp: cap.timestamp,
-    }));
-
-    let finalAnswer = answer;
-    if (imageInfoList.length > 0) {
-      finalAnswer +=
-        '\n\n**Hình ảnh slide được nhắc đến:**\n' +
-        imageInfoList
-          .map(
-            (img) => `![Slide tại ${Math.round(img.timestamp)}s](${img.url})`,
-          )
-          .join('\n');
-    }
-
-    // 5. Lưu lịch sử chat AI (cả câu hỏi của user và phản hồi của AI)
-    try {
-      await this.chatHistoryRepository.save({
-        meetingId,
-        userId: _userId,
-        messageType: ChatMessageType.USER,
-        content: question,
-      });
-
-      await this.chatHistoryRepository.save({
-        meetingId,
-        userId: _userId,
-        messageType: ChatMessageType.AI,
-        content: finalAnswer,
-        metadata:
-          imageInfoList.length > 0 ? { images: imageInfoList } : undefined,
-      });
-    } catch (dbError) {
-      this.logger.error('Failed to save AI chat history:', dbError);
-    }
-
-    return { answer: finalAnswer };
-  }
-
-  async chatWithAIStream(
-    meetingId: string,
-    question: string,
-    _userId: string,
-  ): Promise<Observable<string>> {
-    this.logger.log(
-      `User ${_userId} chatting with AI (Stream) in meeting ${meetingId}`,
-    );
-    const meeting = await this.meetingsRepository.findById(meetingId);
-    if (!meeting) {
-      throw new NotFoundException('Meeting not found');
-    }
-
-    // 1. Tạo vector embedding cho câu hỏi
-    const questionEmbedding = await this.aiService.embed(question);
-
-    if (!questionEmbedding || questionEmbedding.length === 0) {
-      throw new BadRequestException(
-        'Failed to generate embedding for the question.',
-      );
-    }
-
-    // 2. Tìm kiếm các đoạn transcript liên quan nhất theo embedding bằng pgvector trực tiếp ở DB
-    // k=8 để có đủ candidates sau khi threshold lọc
-    const relevantChunks =
-      await this.transcriptRepository.findRelevantByEmbedding(
-        meetingId,
-        questionEmbedding,
-        8,
-      );
-
-    // 3. Xử lý ngữ cảnh (context)
-    let contextText = '';
-    if (relevantChunks.length > 0) {
-      contextText = relevantChunks
-        .map((chunk) => {
-          const speakerLabel = chunk.speakerName
-            ? `${chunk.speakerName}: `
-            : '';
-          return `${speakerLabel}${chunk.content}`;
-        })
-        .join('\n');
-    } else {
-      // Fallback thông minh: không tải toàn bộ transcript mà chỉ lấy 25 chunks gần nhất
-      // Tránh context quá dài làm AI bị overwhelm và tốn token
-      this.logger.warn(
-        `No relevant chunks found above threshold for meeting ${meetingId} (stream). Using recent chunks fallback.`,
-      );
-      const recentChunks =
-        await this.transcriptRepository.findRecentChunks(meetingId);
-      contextText = recentChunks
-        .map((c) =>
-          c.speakerName ? `${c.speakerName}: ${c.content}` : c.content,
-        )
-        .join('\n');
-    }
-
-    if (!contextText || !contextText.trim()) {
-      this.logger.warn('Empty context for Gemini chat stream fallback');
-      contextText = 'No transcript context found.';
-    }
-
-    const getPolls = async (mid: string) => {
-      const polls = await this.entityManager.find(MeetingPoll, {
-        where: { meetingId: mid },
-        relations: ['options', 'options.votes'],
-      });
-      return polls.map((p) => ({
-        question: p.question,
-        type: p.type,
-        closedAt: p.closedAt,
-        options:
-          p.options?.map((o) => ({
-            text: o.text,
-            voteCount: o.votes?.length || 0,
-          })) || [],
-      }));
-    };
-
-    const getQa = async (mid: string) => {
-      const qa = await this.entityManager.find(MeetingQuestion, {
-        where: { meetingId: mid },
-        relations: ['askedByUser', 'answers', 'answers.answeredByUser'],
-      });
-      return qa.map((q) => ({
-        question: q.content,
-        askedBy: q.askedByUser
-          ? `${q.askedByUser.firstName} ${q.askedByUser.lastName}`
-          : 'Unknown',
-        answers:
-          q.answers?.map((a) => ({
-            content: a.content,
-            answeredBy: a.answeredByUser
-              ? `${a.answeredByUser.firstName} ${a.answeredByUser.lastName}`
-              : 'Unknown',
-          })) || [],
-      }));
-    };
-
-    return new Observable<string>((sub) => {
-      let subscription: Subscription | undefined;
-
-      this.aiService
-        .answerQuestionStream(question, contextText, meetingId, {
-          getPolls,
-          getQa,
-        })
-        .then((streamObs) => {
-          let fullAnswer = '';
-
-          subscription = streamObs.subscribe({
-            next: (chunk) => {
-              fullAnswer += chunk;
-              sub.next(chunk);
-            },
-            error: (err) => {
-              sub.error(err);
-            },
-            complete: () => {
-              void (async () => {
-                // Tìm ảnh màn hình liên quan bằng hybrid retrieval
-                const relevantCaptures = await this.findRelevantCaptures(
-                  meetingId,
-                  relevantChunks,
-                  questionEmbedding,
-                );
-
-                const imageInfoList = relevantCaptures.map((cap) => ({
-                  url: cap.imageUrl,
-                  timestamp: cap.timestamp,
-                }));
-
-                let markdownAppendix = '';
-                if (imageInfoList.length > 0) {
-                  markdownAppendix =
-                    '\n\n**Hình ảnh slide được nhắc đến:**\n' +
-                    imageInfoList
-                      .map(
-                        (img) =>
-                          `![Slide tại ${Math.round(img.timestamp)}s](${img.url})`,
-                      )
-                      .join('\n');
-                }
-
-                if (markdownAppendix) {
-                  sub.next(markdownAppendix);
-                  fullAnswer += markdownAppendix;
-                }
-
-                sub.complete();
-
-                // 5. Lưu lịch sử chat AI (cả câu hỏi của user và phản hồi của AI) khi stream kết thúc
-                try {
-                  await this.chatHistoryRepository.save({
-                    meetingId,
-                    userId: _userId,
-                    messageType: ChatMessageType.USER,
-                    content: question,
-                  });
-
-                  await this.chatHistoryRepository.save({
-                    meetingId,
-                    userId: _userId,
-                    messageType: ChatMessageType.AI,
-                    content: fullAnswer,
-                    metadata:
-                      imageInfoList.length > 0
-                        ? { images: imageInfoList }
-                        : undefined,
-                  });
-                } catch (dbError) {
-                  this.logger.error(
-                    'Failed to save AI chat history in stream completion:',
-                    dbError,
-                  );
-                }
-              })();
-            },
-          });
-        })
-        .catch((err) => {
-          sub.error(err);
-        });
-
-      return () => {
-        if (subscription) {
-          subscription.unsubscribe();
-        }
-      };
-    });
-  }
-
-  async getAIChatHistory(meetingId: string, userId: string): Promise<any[]> {
-    const meeting = await this.meetingsRepository.findById(meetingId);
-    if (!meeting) {
-      throw new NotFoundException('Meeting not found');
-    }
-    return this.chatHistoryRepository.findHistory(meetingId, userId);
   }
 
   /**
@@ -1203,7 +830,7 @@ export class MeetingsService {
    * 2. Semantic: tìm ảnh gần nhất theo vector embedding của câu hỏi.
    * Chỉ trả về ảnh có summary (!= null), tối đa MAX_IMAGE_RESULTS ảnh.
    */
-  private async findRelevantCaptures(
+  async findRelevantCaptures(
     meetingId: string,
     relevantChunks: TranscriptChunk[],
     questionEmbedding: number[],

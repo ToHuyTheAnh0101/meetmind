@@ -10,14 +10,8 @@ import {
 import { Meeting } from '../../meetings/entities';
 import { User } from '../../users/user.entity';
 
-export enum AttachmentType {
-  DOCUMENT = 'document',
-  AUDIO = 'audio',
-  LINK = 'link',
-  VIDEO = 'video',
-  IMAGE = 'image',
-  OTHER = 'other',
-}
+import { AttachmentType } from '../../../common/enums';
+export { AttachmentType };
 
 @Entity('attachments')
 @Index(['meetingId'])

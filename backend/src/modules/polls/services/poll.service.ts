@@ -14,10 +14,8 @@ import { PollVote } from '../entities/poll-vote.entity';
 import { MeetingPermission } from '../../meetings/entities';
 import { PollRepository } from '../repositories/poll.repository';
 import { ParticipantRepository } from '../../meetings/repositories/participant.repository';
-import { EntityManager, In, Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
-import { BreakoutRoomParticipant } from '../../breakout-rooms/entities/breakout-room-participant.entity';
-import { BreakoutRoomStatus } from '../../breakout-rooms/entities/breakout-room.entity';
+import { EntityManager, In } from 'typeorm';
+import { BreakoutRoomService } from '../../breakout-rooms/services/breakout-room.service';
 import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
 
 @Injectable()
@@ -26,8 +24,7 @@ export class PollService {
     private pollRepository: PollRepository,
     private participantRepository: ParticipantRepository,
     private entityManager: EntityManager,
-    @InjectRepository(BreakoutRoomParticipant)
-    private readonly breakoutRoomParticipantRepo: Repository<BreakoutRoomParticipant>,
+    private readonly breakoutRoomService: BreakoutRoomService,
   ) {}
 
   private async mapPolls(
@@ -112,17 +109,7 @@ export class PollService {
   ): Promise<string | undefined> {
     if (!breakoutRoomId) return undefined;
     if (breakoutRoomId === 'current') {
-      const assignment = await this.breakoutRoomParticipantRepo.findOne({
-        where: {
-          userId,
-          breakoutRoom: {
-            meetingId,
-            status: BreakoutRoomStatus.ACTIVE,
-          },
-        },
-        relations: ['breakoutRoom'],
-      });
-      return assignment?.breakoutRoomId || undefined;
+      return this.breakoutRoomService.getActiveRoomIdForUser(meetingId, userId);
     }
     return breakoutRoomId;
   }

@@ -12,11 +12,8 @@ import { Meeting } from '../../meetings/entities';
 import { User } from '../../users/user.entity';
 import { BreakoutRoomParticipant } from './breakout-room-participant.entity';
 
-export enum BreakoutRoomStatus {
-  CREATED = 'created',
-  ACTIVE = 'active',
-  CLOSED = 'closed',
-}
+import { BreakoutRoomStatus } from '../../../common/enums';
+export { BreakoutRoomStatus };
 
 @Entity('breakout_rooms')
 @Index(['meetingId'])

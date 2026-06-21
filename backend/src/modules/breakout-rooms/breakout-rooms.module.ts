@@ -1,4 +1,4 @@
-import { Module } from '@nestjs/common';
+import { Module, Global } from '@nestjs/common';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { BreakoutRoom } from './entities/breakout-room.entity';
 import { BreakoutRoomParticipant } from './entities/breakout-room-participant.entity';
@@ -9,6 +9,7 @@ import { BreakoutRoomParticipantRepository } from './repositories/breakout-room-
 import { MeetingsModule } from '../meetings/meetings.module';
 import { LiveKitModule } from '../../providers/livekit/livekit.module';
 
+@Global()
 @Module({
   imports: [
     TypeOrmModule.forFeature([BreakoutRoom, BreakoutRoomParticipant]),

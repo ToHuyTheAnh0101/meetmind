@@ -13,9 +13,6 @@ export {
 // Content & Analytics
 export { TranscriptChunk } from './content/transcript-chunk.entity';
 
-// AI Features
-export { ChatHistory, ChatMessageType } from './ai/chat-history.entity';
-
 export { MeetingChatMessage } from './core/chat-message.entity';
 
 export { ScreenCapture } from './content/screen-capture.entity';

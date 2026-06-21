@@ -8,10 +8,10 @@ import { MeetingQuestion } from '../entities/meeting-question.entity';
 import { MeetingAnswer } from '../entities/meeting-answer.entity';
 import { QuestionRepository } from '../repositories/question.repository';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository, EntityManager } from 'typeorm';
-import { BreakoutRoomParticipant } from '../../breakout-rooms/entities/breakout-room-participant.entity';
-import { BreakoutRoomStatus } from '../../breakout-rooms/entities/breakout-room.entity';
-import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
+import { Repository } from 'typeorm';
+import { BreakoutRoomService } from '../../breakout-rooms/services/breakout-room.service';
+import { LogType } from '../../meetlogs/entities/meet-log.entity';
+import { MeetLogService } from '../../meetlogs/services/meet-log.service';
 import { MeetingPermission } from '../../meetings/entities';
 import { ParticipantRepository } from '../../meetings/repositories/participant.repository';
 
@@ -22,9 +22,8 @@ export class QuestionService {
     @InjectRepository(MeetingAnswer)
     private answerRepository: Repository<MeetingAnswer>,
     private participantRepository: ParticipantRepository,
-    private entityManager: EntityManager,
-    @InjectRepository(BreakoutRoomParticipant)
-    private readonly breakoutRoomParticipantRepo: Repository<BreakoutRoomParticipant>,
+    private meetLogService: MeetLogService,
+    private readonly breakoutRoomService: BreakoutRoomService,
   ) {}
 
   private async resolveBreakoutRoomId(
@@ -34,17 +33,7 @@ export class QuestionService {
   ): Promise<string | undefined> {
     if (!breakoutRoomId) return undefined;
     if (breakoutRoomId === 'current') {
-      const assignment = await this.breakoutRoomParticipantRepo.findOne({
-        where: {
-          userId,
-          breakoutRoom: {
-            meetingId,
-            status: BreakoutRoomStatus.ACTIVE,
-          },
-        },
-        relations: ['breakoutRoom'],
-      });
-      return assignment?.breakoutRoomId || undefined;
+      return this.breakoutRoomService.getActiveRoomIdForUser(meetingId, userId);
     }
     return breakoutRoomId;
   }
@@ -88,16 +77,10 @@ export class QuestionService {
     const savedQuestion = await this.questionRepository.save(question);
 
     try {
-      const newEvent = this.entityManager.create(MeetLog, {
-        meetingId,
-        type: LogType.QA_OPENED,
-        triggeredByUserId: savedQuestion.askedByUserId,
-        metadata: {
-          questionId: savedQuestion.id,
-          content: savedQuestion.content,
-        },
+      await this.meetLogService.logEvent(meetingId, LogType.QA_OPENED, userId, {
+        questionId: savedQuestion.id,
+        content: savedQuestion.content,
       });
-      await this.entityManager.save(MeetLog, newEvent);
     } catch (err) {
       console.error('Failed to log QA_OPENED event:', err);
     }

@@ -6,14 +6,11 @@ import {
   ManyToOne,
   Index,
 } from 'typeorm';
-import { Meeting } from '../core/meeting.entity';
-import { User } from '../../../users/user.entity';
+import { Meeting } from '../../meetings/entities';
+import { User } from '../../users/user.entity';
 
-export enum ChatMessageType {
-  USER = 'user',
-  AI = 'ai',
-  SYSTEM = 'system',
-}
+import { ChatMessageType } from '../../../common/enums';
+export { ChatMessageType };
 
 @Entity('chat_histories')
 @Index(['meetingId', 'userId'])

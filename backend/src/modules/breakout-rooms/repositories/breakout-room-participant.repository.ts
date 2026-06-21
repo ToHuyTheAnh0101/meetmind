@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { BreakoutRoomParticipant } from '../entities/breakout-room-participant.entity';
+import { BreakoutRoomStatus } from '../entities/breakout-room.entity';
 
 @Injectable()
 export class BreakoutRoomParticipantRepository {
@@ -17,6 +18,23 @@ export class BreakoutRoomParticipantRepository {
       where: { breakoutRoomId },
       relations: ['user'],
     });
+  }
+
+  async getActiveRoomIdForUser(
+    meetingId: string,
+    userId: string,
+  ): Promise<string | undefined> {
+    const record = await this.repo.findOne({
+      where: {
+        userId,
+        breakoutRoom: {
+          meetingId,
+          status: BreakoutRoomStatus.ACTIVE,
+        },
+      },
+      relations: ['breakoutRoom'],
+    });
+    return record?.breakoutRoomId || undefined;
   }
 
   create(data: Partial<BreakoutRoomParticipant>): BreakoutRoomParticipant {

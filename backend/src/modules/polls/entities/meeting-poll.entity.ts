@@ -12,10 +12,8 @@ import { Meeting } from '../../meetings/entities';
 import { User } from '../../users/user.entity';
 import { PollOption } from './poll-option.entity';
 
-export enum PollType {
-  SINGLE = 'single',
-  MULTIPLE = 'multiple',
-}
+import { PollType } from '../../../common/enums';
+export { PollType };
 
 export interface PollVoterDto {
   id: string;

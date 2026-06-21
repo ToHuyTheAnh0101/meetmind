@@ -6,6 +6,8 @@ import { MeetingRepository } from '../../meetings/repositories/meeting.repositor
 import { TranscriptRepository } from '../../meetings/repositories/transcript.repository';
 import { AiService } from '../../../providers/ai/ai.service';
 import { MeetingsService } from '../../meetings/services/meetings.service';
+import { MeetLogService } from '../../meetlogs/services/meet-log.service';
+import { LogType } from '../../meetlogs/entities/meet-log.entity';
 
 @Injectable()
 export class SummaryService {
@@ -16,6 +18,7 @@ export class SummaryService {
     private summaryTemplateRepository: SummaryTemplateRepository,
     private aiService: AiService,
     private meetingsService: MeetingsService,
+    private meetLogService: MeetLogService,
   ) {}
 
   async create(meetingId: string, data: Partial<Summary>): Promise<Summary> {
@@ -61,6 +64,7 @@ export class SummaryService {
 
   async generateAiSummary(
     meetingId: string,
+    userId: string,
     templateId?: string,
   ): Promise<Summary> {
     const meeting = await this.meetingRepository.findById(meetingId);
@@ -85,6 +89,24 @@ export class SummaryService {
       });
     }
     const savedSummary = await this.summaryRepository.save(summary);
+
+    // 1.5. Log event using MeetLogService
+    try {
+      await this.meetLogService.logEvent(
+        meetingId,
+        LogType.AI_SUMMARY_GENERATED,
+        userId,
+        {
+          templateId: resolvedTemplateId || 'default',
+          timestamp: new Date().toISOString(),
+        },
+      );
+    } catch (err) {
+      console.error(
+        '[SummaryService] Failed to log AI_SUMMARY_GENERATED event:',
+        err,
+      );
+    }
 
     // 2. Launch AI summarization as an asynchronous non-blocking background job
     this.waitForPendingTranscripts(meetingId)

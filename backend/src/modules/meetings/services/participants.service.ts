@@ -34,11 +34,9 @@ import {
 } from '../entities';
 import { JoinResponseDto } from '../dto/join-response.dto';
 import { EntityManager } from 'typeorm';
-import {
-  BreakoutRoom,
-  BreakoutRoomStatus,
-} from '../../breakout-rooms/entities/breakout-room.entity';
-import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
+import { BreakoutRoomService } from '../../breakout-rooms/services/breakout-room.service';
+import { LogType } from '../../meetlogs/entities/meet-log.entity';
+import { MeetLogService } from '../../meetlogs/services/meet-log.service';
 
 @Injectable()
 export class ParticipantsService {
@@ -73,6 +71,8 @@ export class ParticipantsService {
     private readonly mailService: MailService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
     private readonly entityManager: EntityManager,
+    private readonly meetLogService: MeetLogService,
+    private readonly breakoutRoomService: BreakoutRoomService,
   ) {}
 
   async joinMeeting(
@@ -388,11 +388,10 @@ export class ParticipantsService {
 
       if (activeParticipants === 0) {
         // Check if there are active breakout rooms
-        const activeBreakout = await this.entityManager.findOne(BreakoutRoom, {
-          where: { meetingId: id, status: BreakoutRoomStatus.ACTIVE },
-        });
+        const hasActiveBreakout =
+          await this.breakoutRoomService.hasActiveBreakoutRooms(id);
 
-        if (activeBreakout) {
+        if (hasActiveBreakout) {
           this.logger.log(
             `No active participants left in main room of meeting ${id}, but active breakout rooms exist. Keeping the meeting active.`,
           );
@@ -415,15 +414,10 @@ export class ParticipantsService {
                     .getCount();
 
                 if (currentActiveParticipants === 0) {
-                  const currentActiveBreakout =
-                    await this.entityManager.findOne(BreakoutRoom, {
-                      where: {
-                        meetingId: id,
-                        status: BreakoutRoomStatus.ACTIVE,
-                      },
-                    });
+                  const hasActiveBreakout =
+                    await this.breakoutRoomService.hasActiveBreakoutRooms(id);
 
-                  if (currentActiveBreakout) {
+                  if (hasActiveBreakout) {
                     this.logger.log(
                       `Breakout rooms are still active for meeting ${id} after 15 minutes idle check. Skipping auto-closure.`,
                     );
@@ -633,13 +627,12 @@ export class ParticipantsService {
     metadata?: Record<string, any>,
   ): Promise<void> {
     try {
-      const newEvent = this.entityManager.create(MeetLog, {
+      await this.meetLogService.logEvent(
         meetingId,
         type,
         triggeredByUserId,
-        metadata: metadata || undefined,
-      });
-      await this.entityManager.save(MeetLog, newEvent);
+        metadata,
+      );
     } catch (err) {
       this.logger.error(`Failed to log meeting event ${type}:`, err);
     }

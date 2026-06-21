@@ -302,4 +302,16 @@ export class BreakoutRoomService {
   async leaveBreakoutRoom(meetingId: string, userId: string): Promise<void> {
     await this.participantRepository.removeForUserInMeeting(userId, meetingId);
   }
+
+  async getActiveRoomIdForUser(
+    meetingId: string,
+    userId: string,
+  ): Promise<string | undefined> {
+    return this.participantRepository.getActiveRoomIdForUser(meetingId, userId);
+  }
+
+  async hasActiveBreakoutRooms(meetingId: string): Promise<boolean> {
+    const rooms = await this.breakoutRoomRepository.findByMeetingId(meetingId);
+    return rooms.some((room) => room.status === BreakoutRoomStatus.ACTIVE);
+  }
 }

@@ -5,11 +5,9 @@ import {
   Meeting,
   Participant,
   TranscriptChunk,
-  ChatHistory,
   MeetingChatMessage,
   ScreenCapture,
 } from './entities';
-import { BreakoutRoomParticipant } from '../breakout-rooms/entities/breakout-room-participant.entity';
 
 // Controllers
 import { MeetingsController } from './controllers/meetings.controller';
@@ -21,7 +19,6 @@ import { MeetingRepository } from './repositories/meeting.repository';
 import { ParticipantRepository } from './repositories/participant.repository';
 import { TranscriptRepository } from './repositories/transcript.repository';
 import { MeetingChatMessageRepository } from './repositories/meeting-chat-message.repository';
-import { ChatHistoryRepository } from './repositories/chat-history.repository';
 import { ScreenCaptureRepository } from './repositories/screen-capture.repository';
 
 // Services
@@ -35,6 +32,7 @@ import { LiveKitModule } from '../../providers/livekit/livekit.module';
 import { UsersModule } from '../users/users.module';
 import { AiModule } from '../../providers/ai/ai.module';
 import { CloudinaryModule } from '../../providers/cloudinary/cloudinary.module';
+import { MeetLogsModule } from '../meetlogs/meetlogs.module';
 
 @Module({
   imports: [
@@ -45,15 +43,14 @@ import { CloudinaryModule } from '../../providers/cloudinary/cloudinary.module';
       Meeting,
       Participant,
       TranscriptChunk,
-      ChatHistory,
       MeetingChatMessage,
       ScreenCapture,
-      BreakoutRoomParticipant,
     ]),
     LiveKitModule,
     UsersModule,
     AiModule,
     CloudinaryModule,
+    MeetLogsModule,
   ],
   providers: [
     // Repositories
@@ -61,7 +58,6 @@ import { CloudinaryModule } from '../../providers/cloudinary/cloudinary.module';
     ParticipantRepository,
     TranscriptRepository,
     MeetingChatMessageRepository,
-    ChatHistoryRepository,
     ScreenCaptureRepository,
     // Services
     MeetingsService,
@@ -79,7 +75,6 @@ import { CloudinaryModule } from '../../providers/cloudinary/cloudinary.module';
     ParticipantRepository,
     TranscriptRepository,
     MeetingChatMessageRepository,
-    ChatHistoryRepository,
     ScreenCaptureRepository,
     TypeOrmModule,
   ],

@@ -8,17 +8,8 @@ import {
 } from 'typeorm';
 import { User } from '../../users/user.entity';
 
-export enum SummaryTemplatePurpose {
-  INTERVIEW = 'interview',
-  REPORT = 'report',
-  PROJECT_DISCUSSION = 'project_discussion',
-  TEAM_MEETING = 'team_meeting',
-  BRAINSTORMING = 'brainstorming',
-  TRAINING = 'training',
-  RETROSPECTIVE = 'retrospective',
-  SALES_PITCH = 'sales_pitch',
-  CUSTOM = 'custom',
-}
+import { SummaryTemplatePurpose } from '../../../common/enums';
+export { SummaryTemplatePurpose };
 
 export interface TemplateSectionDef {
   name?: string; // machine key e.g. "candidate_info"

@@ -7,10 +7,7 @@ import {
 } from 'class-validator';
 import { Type } from 'class-transformer';
 
-export enum PollType {
-  SINGLE = 'single',
-  MULTIPLE = 'multiple',
-}
+import { PollType } from '../../../common/enums';
 
 class PollOptionDto {
   @IsString()

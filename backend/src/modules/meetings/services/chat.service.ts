@@ -1,10 +1,7 @@
 import { Injectable, BadRequestException } from '@nestjs/common';
-import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
 import { MeetingChatMessageRepository } from '../repositories/meeting-chat-message.repository';
 import { MeetingChatMessage } from '../entities';
-import { BreakoutRoomParticipant } from '../../breakout-rooms/entities/breakout-room-participant.entity';
-import { BreakoutRoomStatus } from '../../breakout-rooms/entities/breakout-room.entity';
+import { BreakoutRoomService } from '../../breakout-rooms/services/breakout-room.service';
 
 export interface ChatMessageDto {
   id: string;
@@ -19,8 +16,7 @@ export interface ChatMessageDto {
 export class ChatService {
   constructor(
     private readonly chatMessageRepository: MeetingChatMessageRepository,
-    @InjectRepository(BreakoutRoomParticipant)
-    private readonly breakoutRoomParticipantRepo: Repository<BreakoutRoomParticipant>,
+    private readonly breakoutRoomService: BreakoutRoomService,
   ) {}
 
   private async resolveBreakoutRoomId(
@@ -30,17 +26,7 @@ export class ChatService {
   ): Promise<string | undefined> {
     if (!breakoutRoomId) return undefined;
     if (breakoutRoomId === 'current') {
-      const assignment = await this.breakoutRoomParticipantRepo.findOne({
-        where: {
-          userId,
-          breakoutRoom: {
-            meetingId,
-            status: BreakoutRoomStatus.ACTIVE,
-          },
-        },
-        relations: ['breakoutRoom'],
-      });
-      return assignment?.breakoutRoomId || undefined;
+      return this.breakoutRoomService.getActiveRoomIdForUser(meetingId, userId);
     }
     return breakoutRoomId;
   }
