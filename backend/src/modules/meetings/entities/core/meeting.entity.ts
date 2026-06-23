@@ -7,7 +7,7 @@ import {
   ManyToOne,
   OneToMany,
 } from 'typeorm';
-import { User } from '../../../users/user.entity';
+import { User } from '../../../users/entities/user.entity';
 import { Participant } from './participant.entity';
 import { Attachment } from '../../../attachments/entities/attachment.entity';
 import { BreakoutRoom } from '../../../breakout-rooms/entities/breakout-room.entity';

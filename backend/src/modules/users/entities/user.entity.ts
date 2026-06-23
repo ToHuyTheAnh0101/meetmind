@@ -6,7 +6,7 @@ import {
   UpdateDateColumn,
   OneToMany,
 } from 'typeorm';
-import { Meeting, Participant } from '../meetings/entities';
+import { Meeting, Participant } from '../../meetings/entities';
 
 @Entity('users')
 export class User {

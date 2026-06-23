@@ -24,7 +24,7 @@ import {
   LiveKitService,
   LiveKitTokenGrants,
 } from '../../../providers/livekit/livekit.service';
-import { UsersService } from '../../users/users.service';
+import { UsersService } from '../../users/services/users.service';
 import { MailService } from '../../../providers/mail/mail.service';
 import {
   Participant,

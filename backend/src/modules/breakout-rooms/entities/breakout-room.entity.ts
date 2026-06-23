@@ -9,7 +9,7 @@ import {
   Index,
 } from 'typeorm';
 import { Meeting } from '../../meetings/entities';
-import { User } from '../../users/user.entity';
+import { User } from '../../users/entities/user.entity';
 import { BreakoutRoomParticipant } from './breakout-room-participant.entity';
 
 import { BreakoutRoomStatus } from '../../../common/enums';

@@ -9,7 +9,7 @@ import {
   Index,
 } from 'typeorm';
 import { Meeting } from '../../meetings/entities';
-import { User } from '../../users/user.entity';
+import { User } from '../../users/entities/user.entity';
 import { PollOption } from './poll-option.entity';
 
 import { PollType } from '../../../common/enums';

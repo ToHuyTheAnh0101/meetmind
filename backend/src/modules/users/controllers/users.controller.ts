@@ -5,9 +5,10 @@ import {
   Request,
   NotFoundException,
 } from '@nestjs/common';
-import { UsersService } from './users.service';
-import { UserProfileDto } from './dto/user-profile.dto';
-import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { UsersService } from '../services/users.service';
+import { UserProfileDto } from '../dto/user-profile.dto';
+import { User } from '../entities/user.entity';
+import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard';
 
 @Controller('users')
 @UseGuards(JwtAuthGuard)
@@ -18,7 +19,7 @@ export class UsersController {
   async getProfile(
     @Request() req: { user: { id: string } },
   ): Promise<UserProfileDto> {
-    const user = await this.usersService.findById(req.user.id);
+    const user: User | null = await this.usersService.findById(req.user.id);
     if (!user) {
       throw new NotFoundException('User not found');
     }

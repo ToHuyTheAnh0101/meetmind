@@ -8,7 +8,7 @@ import {
   Index,
 } from 'typeorm';
 import { BreakoutRoom } from './breakout-room.entity';
-import { User } from '../../users/user.entity';
+import { User } from '../../users/entities/user.entity';
 
 @Entity('breakout_room_participants')
 @Index(['breakoutRoomId', 'userId'], { unique: true })

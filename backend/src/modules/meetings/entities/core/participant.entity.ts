@@ -6,7 +6,7 @@ import {
   ManyToOne,
   Unique,
 } from 'typeorm';
-import { User } from '../../../users/user.entity';
+import { User } from '../../../users/entities/user.entity';
 import { Meeting } from './meeting.entity';
 
 import { MeetingPermission, ParticipantStatus } from '../../../../common/enums';

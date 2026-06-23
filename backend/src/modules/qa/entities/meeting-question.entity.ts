@@ -10,7 +10,7 @@ import {
   OneToMany,
 } from 'typeorm';
 import { Participant } from '../../meetings/entities';
-import { User } from '../../users/user.entity';
+import { User } from '../../users/entities/user.entity';
 import { MeetingAnswer } from './meeting-answer.entity';
 
 @Entity('meeting-questions')

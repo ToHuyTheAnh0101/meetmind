@@ -24,7 +24,7 @@ import {
   TranscriptChunk,
 } from '../entities';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
-import { UsersService } from '../../users/users.service';
+import { UsersService } from '../../users/services/users.service';
 import { CreateMeetingDto } from '../dto/create-meeting.dto';
 import { UpdateMeetingDto } from '../dto/update-meeting.dto';
 import { ListMeetingsDto } from '../dto/list-meetings.dto';

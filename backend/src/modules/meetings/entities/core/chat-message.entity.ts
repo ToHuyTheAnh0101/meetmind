@@ -9,7 +9,7 @@ import {
   Index,
 } from 'typeorm';
 import { Meeting } from './meeting.entity';
-import { User } from '../../../users/user.entity';
+import { User } from '../../../users/entities/user.entity';
 
 @Entity('meeting_chat_messages')
 @Index(['meetingId'])
