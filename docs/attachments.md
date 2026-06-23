@@ -15,9 +15,8 @@ Tính năng Tệp đính kèm giúp người dùng lưu trữ, chia sẻ và tru
 
 ## 🏗️ Trạng thái Triển khai (Implementation Progress)
 
-> [!WARNING]
-> Hiện tại, tính năng Tệp đính kèm đã được triển khai đầy đủ phần **Backend** (bao gồm Entity cơ sở dữ liệu, Repository, Service và Controller API).
-> Tuy nhiên, ở phía **Frontend**, tính năng này đang ở dạng **Chờ phát triển (Placeholder - Coming Soon)**, hiển thị một khung thông báo đơn giản trong biểu mẫu chi tiết cuộc họp.
+> [!NOTE]
+> Tính năng Tệp đính kèm đã được triển khai hoàn chỉnh ở cả **Backend** và **Frontend** (bao gồm tải lên tệp, quản lý danh sách tài nguyên và tải xuống tệp).
 
 ---
 
@@ -76,7 +75,10 @@ Các API endpoints quản lý tệp đính kèm nằm dưới tiền tố `/meet
 
 ## 💻 Thành phần Giao diện (Frontend)
 
-Mã nguồn Frontend hiện tại chứa giao diện chờ tại:
-* **[MeetingGeneralForm.tsx](file:///home/theanh/meetmind/frontend/src/features/meetings/components/details/MeetingGeneralForm.tsx):**
-  * Tại các dòng từ [582 đến 595](file:///home/theanh/meetmind/frontend/src/features/meetings/components/details/MeetingGeneralForm.tsx#L582-L595), giao diện vẽ một vùng nét đứt (dashed border) hiển thị biểu tượng chiếc kẹp giấy (`Paperclip`), nhãn "Tệp đính kèm & Tài nguyên" (`t("meeting.attachments")`), và nhãn "Sắp ra mắt" (`t("meeting.coming_soon")`).
-  * Giao diện này chưa tích hợp gọi các API endpoints ở trên và chưa có form chọn tệp/tải tệp từ client lên server hoặc dịch vụ đám mây.
+Mã nguồn Frontend quản lý tệp đính kèm tại các tệp sau:
+* **[AttachmentManager.tsx](file:///home/theanh/meetmind/frontend/src/features/meetings/pages/details/permissions/AttachmentManager.tsx):**
+  * Giao diện quản lý tệp tin cho phép kéo thả (drag-and-drop), theo dõi tiến trình tải lên, hiển thị danh sách tệp đính kèm kèm kích thước, loại tệp, và hỗ trợ tải xuống (download) hoặc xóa tệp đính kèm với hộp xác nhận.
+* **[MeetingGeneralForm.tsx](file:///home/theanh/meetmind/frontend/src/features/meetings/pages/details/MeetingGeneralForm.tsx):**
+  * Nhúng thành phần `AttachmentManager` để quản lý các tệp đính kèm của cuộc họp ở trang chi tiết thông tin chung.
+* **[MeetingSidebar.tsx](file:///home/theanh/meetmind/frontend/src/features/meetings/pages/room/MeetingSidebar.tsx):**
+  * Tích hợp tab Tệp đính kèm trong phòng họp WebRTC, cho phép xem danh sách tài nguyên được chia sẻ và tải xuống trực tuyến trong cuộc họp.

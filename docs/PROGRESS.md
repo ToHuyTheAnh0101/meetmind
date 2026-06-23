@@ -15,8 +15,8 @@ Tài liệu này tổng hợp trạng thái phát triển thực tế của tấ
 | 5 | **Bình chọn** (Polls) | ✅ Hoàn thành | ✅ Hoàn thành | [polls.md](file:///home/theanh/meetmind/docs/polls.md) | Bình chọn Đơn/Đa lựa chọn, biểu đồ kết quả (%) thời gian thực, Khóa bình chọn. Tích hợp tab thống kê chi tiết tỷ lệ % phiếu bầu và danh sách người bình chọn. |
 | 6 | **Tóm tắt cuộc họp AI** (Summaries) | ✅ Hoàn thành | ✅ Hoàn thành | [summaries.md](file:///home/theanh/meetmind/docs/summaries.md) | Tóm tắt chạy nền (Background job), Trình soạn mẫu tùy biến (Notion-style Live Preview). |
 | 7 | **Hỏi đáp AI Chatbot** (AI Chatbot Q&A) | ✅ Hoàn thành | ✅ Hoàn thành | [meetings.md](file:///home/theanh/meetmind/docs/meetings.md) | RAG Vector (`pgvector`), Streaming SSE, Tích hợp Slide Capture. Hỗ trợ **Gemini Function Calling** tự động truy xuất dữ liệu Polls & Q&A trong cuộc họp khi người dùng hỏi. |
-| 8 | **Nhật ký & Sự kiện** (Events) | ✅ Hoàn thành | ✅ Hoàn thành | [events.md](file:///home/theanh/meetmind/docs/events.md) | Ghi nhận timeline sự kiện phiên họp, bộ lọc tìm kiếm, thống kê số liệu phiên. |
-| 9 | **Tệp đính kèm** (Attachments) | ✅ Hoàn thành | ⚠️ Placeholder | [attachments.md](file:///home/theanh/meetmind/docs/attachments.md) | Backend đã có đủ APIs & DB. Frontend hiện tại hiển thị giao diện chờ (Coming Soon). |
+| 8 | **Nhật ký Hoạt động** (Meet Logs) | ✅ Hoàn thành | ✅ Hoàn thành | [meet-logs.md](file:///home/theanh/meetmind/docs/meet-logs.md) | Ghi nhận nhật ký hoạt động cuộc họp, bộ lọc tìm kiếm, thống kê số liệu phiên. |
+| 9 | **Tệp đính kèm** (Attachments) | ✅ Hoàn thành | ✅ Hoàn thành | [attachments.md](file:///home/theanh/meetmind/docs/attachments.md) | Tải lên tệp kéo thả trực quan (drag-and-drop), tải xuống tài nguyên và quản lý danh sách tệp đính kèm. |
 
 *Chú dẫn trạng thái:*
 * ✅ **Hoàn thành:** Đã viết mã nguồn chạy ổn định, kết nối thông suốt giữa FE và BE.
@@ -38,7 +38,7 @@ erDiagram
     meetings ||--o{ breakout_rooms : "defines"
     meeting_sessions ||--o{ meeting-questions : "logs questions"
     meeting_sessions ||--o{ meeting-polls : "conducts polls"
-    meeting_sessions ||--o{ meeting-events : "records events"
+    meetings ||--o{ meet_logs : "has logs"
     meeting_sessions ||--o{ summaries : "has summary"
     meeting-questions ||--o{ meeting_answers : "has answers"
     users ||--o{ meeting_answers : "submits answers"
@@ -87,7 +87,7 @@ Dưới đây là các đường dẫn API tương tác giữa Frontend và Back
 ### 6. Module Tóm tắt & Nhật ký (`/meetings/:meetingId`)
 * `POST /.../summaries/generate` -> Bất đồng bộ kích hoạt tóm tắt AI (Background job).
 * `GET /.../summaries` -> Danh sách các bản tóm tắt theo từng phiên họp.
-* `GET /.../events` -> Truy xuất lịch sử dòng sự kiện (timeline log).
+* `GET /.../logs` -> Truy xuất nhật ký hoạt động cuộc họp (Meet logs).
 * `GET /.../sessions` -> Lịch sử các phiên họp thực tế đã diễn ra.
 
 ---
