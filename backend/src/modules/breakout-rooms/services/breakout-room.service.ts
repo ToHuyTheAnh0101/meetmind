@@ -18,8 +18,8 @@ import {
 } from '../entities/breakout-room.entity';
 import { BreakoutRoomParticipant } from '../entities/breakout-room-participant.entity';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
-import { EntityManager } from 'typeorm';
-import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
+import { MeetLogService } from '../../meetlogs/services/meet-log.service';
+import { LogType } from '../../meetlogs/entities/meet-log.entity';
 
 @Injectable()
 export class BreakoutRoomService {
@@ -30,7 +30,7 @@ export class BreakoutRoomService {
     private readonly breakoutRoomRepository: BreakoutRoomRepository,
     private readonly participantRepository: BreakoutRoomParticipantRepository,
     private readonly liveKitService: LiveKitService,
-    private readonly entityManager: EntityManager,
+    private readonly meetLogService: MeetLogService,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -103,16 +103,15 @@ export class BreakoutRoomService {
 
     // Log BREAKOUT_STARTED event
     try {
-      const newEvent = this.entityManager.create(MeetLog, {
+      await this.meetLogService.logEvent(
         meetingId,
-        type: LogType.BREAKOUT_STARTED,
-        triggeredByUserId: userId,
-        metadata: {
+        LogType.BREAKOUT_STARTED,
+        userId,
+        {
           roomsCount: rooms.length,
           roomNames: rooms.map((r) => r.name),
         },
-      });
-      await this.entityManager.save(MeetLog, newEvent);
+      );
     } catch (err) {
       this.logger.error('Failed to log BREAKOUT_STARTED event:', err);
     }
@@ -128,15 +127,14 @@ export class BreakoutRoomService {
 
     // Log BREAKOUT_ENDED event before deleting rooms
     try {
-      const newEvent = this.entityManager.create(MeetLog, {
+      await this.meetLogService.logEvent(
         meetingId,
-        type: LogType.BREAKOUT_ENDED,
-        triggeredByUserId: userId,
-        metadata: {
+        LogType.BREAKOUT_ENDED,
+        userId,
+        {
           timestamp: new Date().toISOString(),
         },
-      });
-      await this.entityManager.save(MeetLog, newEvent);
+      );
     } catch (err) {
       this.logger.error('Failed to log BREAKOUT_ENDED event:', err);
     }

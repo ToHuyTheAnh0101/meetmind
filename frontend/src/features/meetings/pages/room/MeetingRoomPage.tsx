@@ -738,6 +738,10 @@ const MeetingRoomPage: React.FC = () => {
 
           setError(errMsg);
         }}
+        options={{
+          adaptiveStream: true,
+          dynacast: true,
+        }}
         data-lk-theme="default"
         className="w-full h-full flex overflow-hidden relative lg:flex-row flex-row"
       >

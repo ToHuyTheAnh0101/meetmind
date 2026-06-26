@@ -8,6 +8,7 @@ import { BreakoutRoomRepository } from './repositories/breakout-room.repository'
 import { BreakoutRoomParticipantRepository } from './repositories/breakout-room-participant.repository';
 import { MeetingsModule } from '../meetings/meetings.module';
 import { LiveKitModule } from '../../providers/livekit/livekit.module';
+import { MeetLogsModule } from '../meetlogs/meetlogs.module';
 
 @Global()
 @Module({
@@ -15,6 +16,7 @@ import { LiveKitModule } from '../../providers/livekit/livekit.module';
     TypeOrmModule.forFeature([BreakoutRoom, BreakoutRoomParticipant]),
     MeetingsModule,
     LiveKitModule,
+    MeetLogsModule,
   ],
   providers: [
     BreakoutRoomRepository,

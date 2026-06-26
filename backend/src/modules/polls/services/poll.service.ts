@@ -16,7 +16,8 @@ import { PollRepository } from '../repositories/poll.repository';
 import { ParticipantRepository } from '../../meetings/repositories/participant.repository';
 import { EntityManager, In } from 'typeorm';
 import { BreakoutRoomService } from '../../breakout-rooms/services/breakout-room.service';
-import { MeetLog, LogType } from '../../meetlogs/entities/meet-log.entity';
+import { LogType } from '../../meetlogs/entities/meet-log.entity';
+import { MeetLogService } from '../../meetlogs/services/meet-log.service';
 
 @Injectable()
 export class PollService {
@@ -25,6 +26,7 @@ export class PollService {
     private participantRepository: ParticipantRepository,
     private entityManager: EntityManager,
     private readonly breakoutRoomService: BreakoutRoomService,
+    private readonly meetLogService: MeetLogService,
   ) {}
 
   private async mapPolls(
@@ -157,17 +159,16 @@ export class PollService {
     const savedPoll = await this.pollRepository.save(poll);
 
     try {
-      const newEvent = this.entityManager.create(MeetLog, {
+      await this.meetLogService.logEvent(
         meetingId,
-        type: LogType.POLL_STARTED,
-        triggeredByUserId: userId,
-        metadata: {
+        LogType.POLL_STARTED,
+        userId,
+        {
           pollId: savedPoll.id,
           question: savedPoll.question,
           options: savedPoll.options?.map((o) => o.text) || [],
         },
-      });
-      await this.entityManager.save(MeetLog, newEvent);
+      );
     } catch (err) {
       console.error('Failed to log POLL_STARTED event:', err);
     }
@@ -309,16 +310,15 @@ export class PollService {
 
     // Log POLL_ENDED event
     try {
-      const newEvent = this.entityManager.create(MeetLog, {
-        meetingId: poll.meetingId,
-        type: LogType.POLL_ENDED,
-        triggeredByUserId: userId,
-        metadata: {
+      await this.meetLogService.logEvent(
+        poll.meetingId,
+        LogType.POLL_ENDED,
+        userId,
+        {
           pollId: savedPoll.id,
           question: savedPoll.question,
         },
-      });
-      await this.entityManager.save(MeetLog, newEvent);
+      );
     } catch (err) {
       console.error('Failed to log POLL_ENDED event:', err);
     }

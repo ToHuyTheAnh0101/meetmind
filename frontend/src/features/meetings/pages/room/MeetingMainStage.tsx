@@ -284,6 +284,8 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
 
 
   const [showEndConfirmation, setShowEndConfirmation] = useState(false);
+  const [showAIIntroModal, setShowAIIntroModal] = useState(false);
+  const [dontShowAIIntroAgain, setDontShowAIIntroAgain] = useState(false);
   const [cameraPage, setCameraPage] = useState(0);
   const [gridPage, setGridPage] = useState(0);
   const [activeScreenShareIndex, setActiveScreenShareIndex] = useState(0);
@@ -554,6 +556,110 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
             </motion.div>
           </div>
         )}
+        {showAIIntroModal && (
+          <div className="fixed inset-0 z-[1000] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowAIIntroModal(false)}
+              className="absolute inset-0 bg-black/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              className="relative w-full max-w-xl rounded-[2.5rem] border border-white/10 bg-[#0c0c0e]/95 backdrop-blur-2xl p-8 sm:p-10 text-left shadow-2xl overflow-y-auto max-h-[90vh]"
+            >
+              {/* Header */}
+              <div className="flex items-center gap-3.5 mb-6">
+                <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-cyan-500/15 text-cyan-400">
+                  <Sparkles className="h-6 w-6" />
+                </div>
+                <h2 className="text-xl sm:text-2xl font-extrabold text-white tracking-tight">
+                  {t("meeting.recording.ai_intro_title")}
+                </h2>
+              </div>
+
+              {/* Description */}
+              <p className="text-sm text-slate-300 leading-relaxed mb-6">
+                {t("meeting.recording.ai_intro_desc")}
+              </p>
+
+              {/* Feature items */}
+              <div className="space-y-4 mb-6">
+                {/* Micro Recording */}
+                <div className="flex gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 text-cyan-400">
+                    <Radio className="h-5 w-5 animate-pulse" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white mb-1">
+                      {t("meeting.recording.ai_intro_mic_title")}
+                    </h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {t("meeting.recording.ai_intro_mic_desc")}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Screen Capture */}
+                <div className="flex gap-4 p-4 rounded-2xl bg-white/[0.03] border border-white/5">
+                  <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 text-emerald-400">
+                    <Monitor className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-bold text-white mb-1">
+                      {t("meeting.recording.ai_intro_screen_title")}
+                    </h3>
+                    <p className="text-xs text-slate-400 leading-relaxed">
+                      {t("meeting.recording.ai_intro_screen_desc")}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Privacy Policy statement */}
+              <div className="p-4 rounded-2xl bg-cyan-500/5 border border-cyan-500/10 text-xs text-cyan-400 leading-relaxed mb-6">
+                🔒 {t("meeting.recording.ai_intro_privacy")}
+              </div>
+
+              {/* Actions & Do not show again checkbox */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mt-8 pt-4 border-t border-white/5">
+                <label className="flex items-center gap-2.5 cursor-pointer select-none group text-xs text-slate-400 hover:text-slate-200 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={dontShowAIIntroAgain}
+                    onChange={(e) => setDontShowAIIntroAgain(e.target.checked)}
+                    className="h-4 w-4 rounded border-white/10 bg-white/5 text-cyan-500 focus:ring-cyan-500/30 accent-cyan-500 cursor-pointer animate-none"
+                  />
+                  <span>{t("meeting.recording.ai_intro_dont_show_again")}</span>
+                </label>
+
+                <div className="flex items-center gap-3 shrink-0">
+                  <button
+                    onClick={() => setShowAIIntroModal(false)}
+                    className="px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-slate-300 text-xs font-bold transition-all"
+                  >
+                    {t("meeting.recording.ai_intro_cancel")}
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (dontShowAIIntroAgain) {
+                        localStorage.setItem("meetmind_ai_intro_seen", "true");
+                      }
+                      startRecording();
+                      setShowAIIntroModal(false);
+                    }}
+                    className="px-5 py-2.5 rounded-xl bg-cyan-500 hover:bg-cyan-600 text-white text-xs font-bold transition-all shadow-lg shadow-cyan-500/20 active:scale-95"
+                  >
+                    {t("meeting.recording.ai_intro_start")}
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          </div>
+        )}
       </AnimatePresence>
 
       <div className="h-16 lg:h-20 px-4 lg:px-8 flex items-center justify-between border-b border-white/5 relative z-20 bg-black/40 backdrop-blur-md">
@@ -587,7 +693,17 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
             <>
               {!isInBreakout && (
                 <button
-                  onClick={isRecording ? stopRecording : startRecording}
+                  onClick={
+                    isRecording
+                      ? stopRecording
+                      : () => {
+                          if (localStorage.getItem("meetmind_ai_intro_seen") === "true") {
+                            startRecording();
+                          } else {
+                            setShowAIIntroModal(true);
+                          }
+                        }
+                  }
                   className={`p-2.5 lg:px-5 lg:py-3 rounded-xl lg:rounded-2xl flex items-center gap-2 font-semibold text-xs lg:text-sm transition-all tracking-tight active:scale-95 border ${
                     isRecording
                       ? "bg-cyan-500/15 border-cyan-500/30 text-cyan-400 shadow-[0_0_20px_rgba(6,182,212,0.15)]"
@@ -841,9 +957,9 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
             />
             <TrackToggle
               source={Track.Source.ScreenShare}
-              className="bg-white/5 hover:bg-white/10 text-white p-3 rounded-xl transition-all [&[data-lk-enabled='true']]:bg-emerald-500/20 [&[data-lk-enabled='true']]:text-emerald-400"
+              className="hidden lg:inline-flex bg-white/5 hover:bg-white/10 text-white p-3 rounded-xl transition-all [&[data-lk-enabled='true']]:bg-emerald-500/20 [&[data-lk-enabled='true']]:text-emerald-400"
             />
-            <div className="w-px h-6 bg-white/10 mx-1" />
+            <div className="w-px h-6 bg-white/10 mx-1 hidden lg:block" />
 
             <DisconnectButton className="bg-rose-500 hover:bg-rose-600 text-white p-3 rounded-xl shadow-lg">
               <LogOut className="h-5 w-5" />

@@ -616,7 +616,17 @@
       "transcription_paused": "Live translation recording paused.",
       "ai_activated": "AI transcription assistant activated!",
       "transcription_activated": "System is automatically recording for live translation.",
-      "ai_start_failed": "Cannot start AI assistant."
+      "ai_start_failed": "Cannot start AI assistant.",
+      "ai_intro_title": "Activate AI Transcription Assistant",
+      "ai_intro_desc": "To assist with recording and automatically summarizing your meeting using artificial intelligence, the system will perform the following actions:",
+      "ai_intro_mic_title": "Audio Recording & Auto-Transcription",
+      "ai_intro_mic_desc": "Capture audio from your microphone to generate real-time meeting transcripts.",
+      "ai_intro_screen_title": "Smart Screen Capture",
+      "ai_intro_screen_desc": "Capture and analyze slide snapshots when you are sharing your screen to embed them visually in the summary.",
+      "ai_intro_privacy": "MeetMind is fully committed to protecting your audio and visual privacy. Data is used solely for compiling this meeting's report.",
+      "ai_intro_dont_show_again": "Don't show this message again",
+      "ai_intro_cancel": "Cancel",
+      "ai_intro_start": "Agree & Activate"
     },
     "end_breakout_success": "Ended breakout rooms successfully",
     "end_breakout_failed": "Failed to end breakout rooms",

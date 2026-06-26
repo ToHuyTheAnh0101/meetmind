@@ -619,7 +619,17 @@
       "transcription_paused": "Đã tạm dừng ghi âm dịch thoại.",
       "ai_activated": "Đã kích hoạt trợ lý ghi chép AI!",
       "transcription_activated": "Hệ thống tự động ghi âm để dịch thoại.",
-      "ai_start_failed": "Không thể bắt đầu trợ lý AI."
+      "ai_start_failed": "Không thể bắt đầu trợ lý AI.",
+      "ai_intro_title": "Kích hoạt Trợ lý Ghi chép AI",
+      "ai_intro_desc": "Để hỗ trợ bạn ghi chép và tự động tóm tắt cuộc họp bằng trí tuệ nhân tạo, hệ thống sẽ thực hiện các thao tác:",
+      "ai_intro_mic_title": "Thu âm & Tự động ghi chép",
+      "ai_intro_mic_desc": "Nhận diện giọng nói qua micro để chuyển thành văn bản ghi chép cuộc họp theo thời gian thực.",
+      "ai_intro_screen_title": "Chụp slide tự động",
+      "ai_intro_screen_desc": "Chụp và phân tích slide khi bạn đang chia sẻ màn hình để đính kèm trực quan vào biên bản tóm tắt.",
+      "ai_intro_privacy": "MeetMind cam kết bảo mật tuyệt đối dữ liệu âm thanh và hình ảnh của bạn, chỉ dùng nội bộ phục vụ cho phiên họp này.",
+      "ai_intro_dont_show_again": "Không hiển thị lại thông báo này",
+      "ai_intro_cancel": "Hủy bỏ",
+      "ai_intro_start": "Đồng ý & Kích hoạt"
     },
     "end_breakout_success": "Đã kết thúc thảo luận nhóm",
     "end_breakout_failed": "Không thể kết thúc chia phòng",
