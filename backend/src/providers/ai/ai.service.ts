@@ -396,9 +396,6 @@ export class AiService {
     meetingTitle?: string,
     meetingDescription?: string,
   ): Promise<string> {
-    this.logger.log(
-      '[STT] Transcribing audio chunk using Google Gemini API...',
-    );
     return this.transcribeAudioWithGemini(
       audioBuffer,
       mimeType,

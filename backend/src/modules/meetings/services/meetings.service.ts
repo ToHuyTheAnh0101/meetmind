@@ -157,7 +157,6 @@ export class MeetingsService {
       const fileName = `${userId}_chunk_${chunkIndex}.webm`;
       const filePath = path.join(dirPath, fileName);
       fs.writeFileSync(filePath, buffer);
-      this.logger.log(`Saved raw recording chunk to: ${filePath}`);
     } catch (err) {
       this.logger.error(`Failed to save raw recording chunk:`, err);
     }
@@ -211,7 +210,6 @@ export class MeetingsService {
           folder,
           publicId,
         );
-        this.logger.log(`Uploaded screen capture to Cloudinary: ${imageUrl}`);
         return imageUrl;
       } catch (err) {
         this.logger.error(
@@ -240,7 +238,6 @@ export class MeetingsService {
         this.configService.get<string>('BACKEND_URL') ||
         'http://localhost:3000';
       const imageUrl = `${backendUrl}/meetings/${meetingId}/screen-captures/${fileName}`;
-      this.logger.log(`Saved screen capture locally to: ${filePath}`);
       return imageUrl;
     } catch (err) {
       this.logger.error(`Failed to save screen capture locally:`, err);
@@ -275,22 +272,11 @@ export class MeetingsService {
     imageBuffer: Buffer,
     mimeType: string,
   ): Promise<void> {
-    this.logger.log(
-      `[BG Image Analysis] Analyzing capture ${captureId} with Gemini Vision...`,
-    );
-
     const summary = await this.aiService.analyzeImage(imageBuffer, mimeType);
 
     if (!summary) {
-      this.logger.log(
-        `[BG Image Analysis] Capture ${captureId} identified as trash/empty screen. Skipping embedding.`,
-      );
       return;
     }
-
-    this.logger.log(
-      `[BG Image Analysis] Capture ${captureId} is meaningful. Summary: "${summary.slice(0, 80)}..."`,
-    );
 
     let embedding: number[] | null = null;
     try {
@@ -308,10 +294,6 @@ export class MeetingsService {
       summary,
       embedding,
     });
-
-    this.logger.log(
-      `[BG Image Analysis] Enriched capture ${captureId} with summary and embedding.`,
-    );
   }
 
   async create(dto: CreateMeetingDto, userId: string): Promise<Meeting> {

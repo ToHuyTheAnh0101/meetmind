@@ -66,16 +66,12 @@ export class BreakoutRoomService {
         ),
       });
 
-      const savedRoom = await this.breakoutRoomRepository.save(room);
-      this.logger.log(
-        `Created room ${savedRoom.name} with ${savedRoom.participants?.length || 0} participants`,
-      );
+      await this.breakoutRoomRepository.save(room);
     }
 
     // 3. Lấy lại toàn bộ danh sách phòng kèm participants để trả về
     const finalRooms =
       await this.breakoutRoomRepository.findByMeetingId(meetingId);
-    this.logger.log(`Returning ${finalRooms.length} rooms after setup.`);
     return finalRooms;
   }
 
@@ -132,28 +128,18 @@ export class BreakoutRoomService {
     );
 
     await this.breakoutRoomRepository.removeAllForMeeting(meetingId);
-    this.logger.debug(
-      `All breakout rooms for meeting ${meetingId} have been hard deleted.`,
-    );
 
     return { message: 'Breakout rooms closed' };
   }
 
   async getBreakoutToken(meetingId: string, userId: string) {
-    this.logger.debug(
-      `getBreakoutToken: searching for userId="${userId}" in meetingId="${meetingId}"`,
-    );
     const rooms = await this.breakoutRoomRepository.findByMeetingId(meetingId);
-    this.logger.debug(`Total rooms found: ${rooms.length}`);
 
     // Tìm phòng đang ACTIVE mà user này được gán vào
     let foundRoom: BreakoutRoom | null = null;
     let foundParticipant: BreakoutRoomParticipant | null = null;
 
     for (const r of rooms) {
-      this.logger.debug(
-        `Checking Room: "${r.name}" | Status: ${r.status} | Participants Count: ${r.participants?.length}`,
-      );
       const p = r.participants?.find(
         (part) =>
           String(part.userId).toLowerCase().trim() ===
@@ -161,9 +147,6 @@ export class BreakoutRoomService {
       );
 
       if (p) {
-        this.logger.debug(
-          `Found user in room "${r.name}". Room status is ${r.status}`,
-        );
         foundParticipant = p;
         if (r.status === BreakoutRoomStatus.ACTIVE) {
           foundRoom = r;
@@ -173,16 +156,12 @@ export class BreakoutRoomService {
     }
 
     if (!foundRoom || !foundParticipant) {
-      this.logger.debug(
-        `No ACTIVE room found for user ${userId}. (RoomFound=${!!foundRoom}, ParticipantFound=${!!foundParticipant})`,
-      );
       return null;
     }
 
     const room = foundRoom;
     const livekitRoomName = room.livekitRoomName;
     if (!livekitRoomName) {
-      this.logger.debug(`Room livekitRoomName is not defined.`);
       return null;
     }
     const participant = foundParticipant;
