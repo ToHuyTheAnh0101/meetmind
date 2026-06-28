@@ -87,6 +87,7 @@ const MeetingRoomPage: React.FC = () => {
     organizerId: string;
     status?: string;
     startTime?: string;
+    muteOnJoin?: boolean;
   } | null>(null);
 
   const [countdownText, setCountdownText] = useState<string>("");
@@ -251,13 +252,18 @@ const MeetingRoomPage: React.FC = () => {
           organizerId: res.data.organizerId,
           status: res.data.status,
           startTime: res.data.startTime,
+          muteOnJoin: res.data.muteOnJoin ?? false,
         });
         if (res.data.hasPassword) {
           setRequiresPassword(true);
         }
+        const isUserOrganizer = res.data.organizerId === user?.id;
+        if (res.data.muteOnJoin && !isUserOrganizer) {
+          setIsMicOn(false);
+        }
       })
       .catch((err) => console.error("Failed to fetch meeting details", err));
-  }, [id]);
+  }, [id, user?.id, setIsMicOn]);
 
   const handleOpenQuestionModal = useCallback((question: any) => {
     setSelectedQuestionId(question.id);
@@ -395,6 +401,11 @@ const MeetingRoomPage: React.FC = () => {
         ) {
           setRequiresPassword(true);
           setError(t("meeting.invalid_password"));
+        } else if (
+          err.response?.status === 403 &&
+          msg.toLowerCase().includes("not invited")
+        ) {
+          setError(t("meeting.not_invited"));
         } else {
           setError(msg || t("meeting.load_error"));
         }
@@ -704,7 +715,11 @@ const MeetingRoomPage: React.FC = () => {
       <LiveKitRoom
         key={joinData.token}
         video={preJoinChoices.videoEnabled}
-        audio={preJoinChoices.audioEnabled}
+        audio={
+          meetingDetails?.muteOnJoin && !isOrganizer
+            ? false
+            : preJoinChoices.audioEnabled
+        }
         token={joinData.token}
         serverUrl={joinData.liveKitUrl}
         onDisconnected={() => {

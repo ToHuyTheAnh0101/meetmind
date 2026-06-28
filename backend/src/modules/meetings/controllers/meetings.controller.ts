@@ -86,6 +86,8 @@ export class MeetingsController {
       hasPassword: !!meeting.password,
       organizerId: meeting.organizerId,
       isQaEnabled: meeting.isQaEnabled,
+      allowDisplayNameEdit: meeting.allowDisplayNameEdit,
+      muteOnJoin: meeting.muteOnJoin,
       createdAt: meeting.createdAt,
     };
 

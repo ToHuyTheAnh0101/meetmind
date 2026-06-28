@@ -27,6 +27,7 @@ import {
   MeetingStatus,
   ParticipantStatus,
   MeetingPermission,
+  MeetingAccessType,
 } from '../entities';
 import { JoinResponseDto } from '../dto/join-response.dto';
 import { BreakoutRoomService } from '../../breakout-rooms/services/breakout-room.service';
@@ -88,6 +89,11 @@ export class ParticipantsService {
         );
       }
 
+      const user = await this.usersService.findById(userId);
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+
       let participant = await this.participantsRepository.findByMeetingAndUser(
         id,
         userId,
@@ -95,6 +101,21 @@ export class ParticipantsService {
 
       const isOrganizer =
         participant?.isOrganizer || meeting.organizerId === userId;
+
+      // Access Type validation (INVITE_ONLY restriction)
+      if (
+        meeting.accessType === MeetingAccessType.INVITE_ONLY &&
+        !isOrganizer
+      ) {
+        const invitees = meeting.inviteeEmails || [];
+        const userEmail = (user.email || '').trim().toLowerCase();
+        const isInvited = invitees.some(
+          (email) => email.trim().toLowerCase() === userEmail,
+        );
+        if (!isInvited) {
+          throw new ForbiddenException('You are not invited to this meeting');
+        }
+      }
 
       // Password Validation
       if (meeting.password && !isOrganizer) {
@@ -169,10 +190,6 @@ export class ParticipantsService {
         )) as Participant;
       }
 
-      const user = await this.usersService.findById(userId);
-      if (!user) {
-        throw new NotFoundException('User not found');
-      }
       const fullName = displayName || `${user.firstName} ${user.lastName}`;
 
       // If user is WAITING or DENIED, do not generate token

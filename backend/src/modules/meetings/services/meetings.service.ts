@@ -63,6 +63,257 @@ export class MeetingsService {
     private readonly meetLogService: MeetLogService,
   ) {}
 
+  private sendInvitationsAndScheduleReminders(
+    meeting: Meeting,
+    joinUrl: string,
+  ): void {
+    if (!meeting.inviteeEmails || meeting.inviteeEmails.length === 0) return;
+
+    for (const email of meeting.inviteeEmails) {
+      this.mailService
+        .sendMeetingInvitation(
+          email,
+          'Quý khách',
+          meeting.title || '',
+          meeting.startTime || new Date(),
+          joinUrl,
+          meeting.password,
+        )
+        .catch((err) =>
+          this.logger.error(`Không thể gửi lời mời cho ${email}:`, err),
+        );
+
+      if (meeting.reminderMinutes && meeting.reminderMinutes > 0) {
+        this.mailService
+          .scheduleMeetingReminder(
+            email,
+            'Quý khách',
+            meeting.id!,
+            meeting.title || '',
+            meeting.startTime || new Date(),
+            meeting.reminderMinutes,
+            joinUrl,
+            meeting.password,
+          )
+          .catch((err) =>
+            this.logger.error(`Không thể lên lịch nhắc cho ${email}:`, err),
+          );
+      }
+    }
+  }
+
+  private async rescheduleMeetingReminders(
+    meeting: Meeting,
+    joinUrl: string,
+  ): Promise<void> {
+    for (const email of meeting.inviteeEmails || []) {
+      if (meeting.reminderMinutes && meeting.reminderMinutes > 0) {
+        this.mailService
+          .scheduleMeetingReminder(
+            email,
+            'Quý khách',
+            meeting.id!,
+            meeting.title || '',
+            meeting.startTime || new Date(),
+            meeting.reminderMinutes,
+            joinUrl,
+            meeting.password,
+          )
+          .catch((err) =>
+            this.logger.error(
+              `Không thể cập nhật lịch nhắc cho ${email}:`,
+              err,
+            ),
+          );
+      } else {
+        try {
+          await this.mailService.removeMeetingReminder(meeting.id!, email);
+        } catch (err) {
+          this.logger.error(
+            `Failed to remove meeting reminder for ${email}:`,
+            err,
+          );
+        }
+      }
+    }
+  }
+
+  private saveRawAudioChunk(
+    meetingId: string,
+    userId: string,
+    chunkIndex: string | number,
+    buffer: Buffer,
+  ): void {
+    try {
+      const dirPath = path.join(
+        process.cwd(),
+        'uploads',
+        'recordings',
+        meetingId,
+      );
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+      const fileName = `${userId}_chunk_${chunkIndex}.webm`;
+      const filePath = path.join(dirPath, fileName);
+      fs.writeFileSync(filePath, buffer);
+      this.logger.log(`Saved raw recording chunk to: ${filePath}`);
+    } catch (err) {
+      this.logger.error(`Failed to save raw recording chunk:`, err);
+    }
+  }
+
+  private async processAndSaveTranscriptChunk(
+    meetingId: string,
+    transcriptText: string,
+    userId?: string,
+    speakerName?: string,
+    chunkIndexNum?: number,
+    startTimeNum?: number,
+    endTimeNum?: number,
+  ): Promise<void> {
+    const embedding = await this.aiService.embed(transcriptText.trim());
+
+    const chunk = this.transcriptRepository.create({
+      meetingId,
+      content: transcriptText.trim(),
+      embedding:
+        embedding && embedding.length === 1024
+          ? embedding
+          : (null as unknown as number[]),
+      userId,
+      speakerName,
+      chunkIndex: chunkIndexNum,
+      startTime: startTimeNum,
+      endTime: endTimeNum,
+    });
+
+    await this.transcriptRepository.save(chunk);
+
+    this.logger.log(
+      `[Background STT] Saved chunk ${chunkIndexNum} for user ${userId || 'unknown'} in meeting ${meetingId}`,
+    );
+  }
+
+  private async saveScreenCaptureImage(
+    meetingId: string,
+    buffer: Buffer,
+    mimetype: string,
+  ): Promise<string> {
+    const ext = mimetype.includes('png') ? 'png' : 'jpg';
+
+    if (this.cloudinaryService.hasCredentials()) {
+      try {
+        const publicId = `capture_${Date.now()}`;
+        const folder = `meetmind/meetings/${meetingId}/captures`;
+        const imageUrl = await this.cloudinaryService.uploadImage(
+          buffer,
+          folder,
+          publicId,
+        );
+        this.logger.log(`Uploaded screen capture to Cloudinary: ${imageUrl}`);
+        return imageUrl;
+      } catch (err) {
+        this.logger.error(
+          'Failed to upload to Cloudinary, falling back to local storage:',
+          err,
+        );
+      }
+    }
+
+    try {
+      const dirPath = path.join(
+        process.cwd(),
+        'uploads',
+        'captures',
+        meetingId,
+      );
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
+      }
+
+      const fileName = `capture_${Date.now()}.${ext}`;
+      const filePath = path.join(dirPath, fileName);
+      fs.writeFileSync(filePath, buffer);
+
+      const backendUrl =
+        this.configService.get<string>('BACKEND_URL') ||
+        'http://localhost:3000';
+      const imageUrl = `${backendUrl}/meetings/${meetingId}/screen-captures/${fileName}`;
+      this.logger.log(`Saved screen capture locally to: ${filePath}`);
+      return imageUrl;
+    } catch (err) {
+      this.logger.error(`Failed to save screen capture locally:`, err);
+      throw new BadRequestException('Failed to save screen capture file');
+    }
+  }
+
+  private cleanupRecordings(meetingId: string) {
+    try {
+      const dirPath = path.join(
+        process.cwd(),
+        'uploads',
+        'recordings',
+        meetingId,
+      );
+      if (fs.existsSync(dirPath)) {
+        fs.rmSync(dirPath, { recursive: true, force: true });
+        this.logger.log(
+          `Cleaned up temporary recordings for meeting ${meetingId}`,
+        );
+      }
+    } catch (error) {
+      this.logger.error(
+        `Failed to clean up recordings for meeting ${meetingId}:`,
+        error,
+      );
+    }
+  }
+
+  private async analyzeAndEnrichCapture(
+    captureId: string,
+    imageBuffer: Buffer,
+    mimeType: string,
+  ): Promise<void> {
+    this.logger.log(
+      `[BG Image Analysis] Analyzing capture ${captureId} with Gemini Vision...`,
+    );
+
+    const summary = await this.aiService.analyzeImage(imageBuffer, mimeType);
+
+    if (!summary) {
+      this.logger.log(
+        `[BG Image Analysis] Capture ${captureId} identified as trash/empty screen. Skipping embedding.`,
+      );
+      return;
+    }
+
+    this.logger.log(
+      `[BG Image Analysis] Capture ${captureId} is meaningful. Summary: "${summary.slice(0, 80)}..."`,
+    );
+
+    let embedding: number[] | null = null;
+    try {
+      const rawEmbedding = await this.aiService.embed(summary);
+      embedding =
+        rawEmbedding && rawEmbedding.length === 1024 ? rawEmbedding : null;
+    } catch (embedErr) {
+      this.logger.error(
+        `[BG Image Analysis] Failed to create embedding for capture ${captureId}:`,
+        embedErr,
+      );
+    }
+
+    await this.screenCaptureRepository.update(captureId, {
+      summary,
+      embedding,
+    });
+
+    this.logger.log(
+      `[BG Image Analysis] Enriched capture ${captureId} with summary and embedding.`,
+    );
+  }
+
   async create(dto: CreateMeetingDto, userId: string): Promise<Meeting> {
     if (dto.inviteeEmails && dto.inviteeEmails.length > 0) {
       for (const email of dto.inviteeEmails) {
@@ -119,49 +370,12 @@ export class MeetingsService {
       await this.meetingsRepository.save(savedMeeting);
 
       // Gửi email mời họp và lên lịch nhắc nhở cho danh sách khách mời
-      if (savedMeeting.inviteeEmails && savedMeeting.inviteeEmails.length > 0) {
-        const frontendUrl =
-          this.configService.get<string>('FRONTEND_URL') ||
-          'http://localhost:3001';
-        const joinUrl = `${frontendUrl}/room/${savedMeeting.id}`;
+      const frontendUrl =
+        this.configService.get<string>('FRONTEND_URL') ||
+        'http://localhost:3001';
+      const joinUrl = `${frontendUrl}/room/${savedMeeting.id}`;
 
-        for (const email of savedMeeting.inviteeEmails) {
-          // 1. Gửi lời mời ngay lập tức
-          this.mailService
-            .sendMeetingInvitation(
-              email,
-              'Quý khách',
-              savedMeeting.title || '',
-              savedMeeting.startTime || new Date(),
-              joinUrl,
-              savedMeeting.password,
-            )
-            .catch((err) =>
-              this.logger.error(`Không thể gửi lời mời cho ${email}:`, err),
-            );
-
-          // 2. Lên lịch nhắc nhở (Reminder)
-          if (
-            savedMeeting.reminderMinutes &&
-            savedMeeting.reminderMinutes > 0
-          ) {
-            this.mailService
-              .scheduleMeetingReminder(
-                email,
-                'Quý khách',
-                savedMeeting.id!,
-                savedMeeting.title || '',
-                savedMeeting.startTime || new Date(),
-                savedMeeting.reminderMinutes,
-                joinUrl,
-                savedMeeting.password,
-              )
-              .catch((err) =>
-                this.logger.error(`Không thể lên lịch nhắc cho ${email}:`, err),
-              );
-          }
-        }
-      }
+      this.sendInvitationsAndScheduleReminders(savedMeeting, joinUrl);
     } catch (error) {
       await this.meetingsRepository.remove(savedMeeting);
       throw error;
@@ -205,28 +419,6 @@ export class MeetingsService {
     this.cleanupRecordings(id);
 
     return this.meetingsRepository.save(meeting);
-  }
-
-  private cleanupRecordings(meetingId: string) {
-    try {
-      const dirPath = path.join(
-        process.cwd(),
-        'uploads',
-        'recordings',
-        meetingId,
-      );
-      if (fs.existsSync(dirPath)) {
-        fs.rmSync(dirPath, { recursive: true, force: true });
-        this.logger.log(
-          `Cleaned up temporary recordings for meeting ${meetingId}`,
-        );
-      }
-    } catch (error) {
-      this.logger.error(
-        `Failed to clean up recordings for meeting ${meetingId}:`,
-        error,
-      );
-    }
   }
 
   async findAll(
@@ -363,43 +555,7 @@ export class MeetingsService {
         'http://localhost:3001';
       const joinUrl = `${frontendUrl}/room/${updatedMeeting.id}`;
 
-      for (const email of updatedMeeting.inviteeEmails || []) {
-        if (
-          updatedMeeting.reminderMinutes &&
-          updatedMeeting.reminderMinutes > 0
-        ) {
-          this.mailService
-            .scheduleMeetingReminder(
-              email,
-              'Quý khách',
-              updatedMeeting.id!,
-              updatedMeeting.title || '',
-              updatedMeeting.startTime || new Date(),
-              updatedMeeting.reminderMinutes,
-              joinUrl,
-              updatedMeeting.password,
-            )
-            .catch((err) =>
-              this.logger.error(
-                `Không thể cập nhật lịch nhắc cho ${email}:`,
-                err,
-              ),
-            );
-        } else {
-          // Nếu reminderMinutes = 0, hủy job nhắc lịch cũ
-          try {
-            await this.mailService.removeMeetingReminder(
-              updatedMeeting.id!,
-              email,
-            );
-          } catch (err) {
-            this.logger.error(
-              `Failed to remove meeting reminder for ${email}:`,
-              err,
-            );
-          }
-        }
-      }
+      await this.rescheduleMeetingReminders(updatedMeeting, joinUrl);
     }
 
     return updatedMeeting;
@@ -492,26 +648,10 @@ export class MeetingsService {
       : Buffer.from(f.buffer || '');
     const mimetype = typeof f.mimetype === 'string' ? f.mimetype : 'audio/webm';
 
-    try {
-      const dirPath = path.join(
-        process.cwd(),
-        'uploads',
-        'recordings',
-        meetingId,
-      );
-      if (!fs.existsSync(dirPath)) {
-        fs.mkdirSync(dirPath, { recursive: true });
-      }
-      const userId = body?.userId || 'unknown';
-      const chunkIndex =
-        body?.chunkIndex !== undefined ? body.chunkIndex : Date.now();
-      const fileName = `${userId}_chunk_${chunkIndex}.webm`;
-      const filePath = path.join(dirPath, fileName);
-      fs.writeFileSync(filePath, buffer);
-      this.logger.log(`Saved raw recording chunk to: ${filePath}`);
-    } catch (err) {
-      this.logger.error(`Failed to save raw recording chunk:`, err);
-    }
+    const userId = body?.userId || 'unknown';
+    const chunkIndex =
+      body?.chunkIndex !== undefined ? body.chunkIndex : Date.now();
+    this.saveRawAudioChunk(meetingId, userId, chunkIndex, buffer);
 
     // 3. Chuyển đổi âm thanh sang văn bản và lưu trữ DB dưới dạng BACKGROUND JOB bất đồng bộ ngầm
     const chunkIndexNum = body?.chunkIndex
@@ -521,11 +661,11 @@ export class MeetingsService {
       ? parseFloat(body.startTime)
       : undefined;
     const endTimeNum = body?.endTime ? parseFloat(body.endTime) : undefined;
-    const userId = body?.userId || undefined;
+    const userIdVal = body?.userId || undefined;
     const speakerName = body?.speakerName || undefined;
 
     // Track this active transcription background task
-    const userIdStr = userId || 'unknown';
+    const userIdStr = userIdVal || 'unknown';
     const chunkIndexStr = body?.chunkIndex || String(Date.now());
     const transcriptionKey = `${meetingId}:${userIdStr}_chunk_${chunkIndexStr}`;
     this.activeTranscriptions.add(transcriptionKey);
@@ -540,28 +680,14 @@ export class MeetingsService {
           return;
         }
 
-        // 4. Lưu trữ TranscriptChunk vào cơ sở dữ liệu với metadata đầy đủ
-        const embedding = await this.aiService.embed(transcriptText.trim());
-
-        const chunk = this.transcriptRepository.create({
+        await this.processAndSaveTranscriptChunk(
           meetingId,
-          content: transcriptText.trim(),
-          // Lưu null nếu mảng rỗng hoặc sai số chiều (không bằng 1024) để tránh lỗi pgvector DB crash
-          embedding:
-            embedding && embedding.length === 1024
-              ? embedding
-              : (null as unknown as number[]),
-          userId,
+          transcriptText,
+          userIdVal,
           speakerName,
-          chunkIndex: chunkIndexNum,
-          startTime: startTimeNum,
-          endTime: endTimeNum,
-        });
-
-        await this.transcriptRepository.save(chunk);
-
-        this.logger.log(
-          `[Background STT] Saved chunk ${chunkIndexNum} for user ${userIdStr} in meeting ${meetingId}`,
+          chunkIndexNum,
+          startTimeNum,
+          endTimeNum,
         );
       })
       .catch((err) => {
@@ -607,54 +733,12 @@ export class MeetingsService {
       ? f.buffer
       : Buffer.from(f.buffer || '');
     const mimetype = typeof f.mimetype === 'string' ? f.mimetype : 'image/jpeg';
-    const ext = mimetype.includes('png') ? 'png' : 'jpg';
 
-    let imageUrl = '';
-
-    if (this.cloudinaryService.hasCredentials()) {
-      try {
-        const publicId = `capture_${Date.now()}`;
-        const folder = `meetmind/meetings/${meetingId}/captures`;
-        imageUrl = await this.cloudinaryService.uploadImage(
-          buffer,
-          folder,
-          publicId,
-        );
-        this.logger.log(`Uploaded screen capture to Cloudinary: ${imageUrl}`);
-      } catch (err) {
-        this.logger.error(
-          'Failed to upload to Cloudinary, falling back to local storage:',
-          err,
-        );
-      }
-    }
-
-    if (!imageUrl) {
-      try {
-        const dirPath = path.join(
-          process.cwd(),
-          'uploads',
-          'captures',
-          meetingId,
-        );
-        if (!fs.existsSync(dirPath)) {
-          fs.mkdirSync(dirPath, { recursive: true });
-        }
-
-        const fileName = `capture_${Date.now()}.${ext}`;
-        const filePath = path.join(dirPath, fileName);
-        fs.writeFileSync(filePath, buffer);
-
-        const backendUrl =
-          this.configService.get<string>('BACKEND_URL') ||
-          'http://localhost:3000';
-        imageUrl = `${backendUrl}/meetings/${meetingId}/screen-captures/${fileName}`;
-        this.logger.log(`Saved screen capture locally to: ${filePath}`);
-      } catch (err) {
-        this.logger.error(`Failed to save screen capture locally:`, err);
-        throw new BadRequestException('Failed to save screen capture file');
-      }
-    }
+    const imageUrl = await this.saveScreenCaptureImage(
+      meetingId,
+      buffer,
+      mimetype,
+    );
 
     // Lưu record tạm vào DB (chưa có summary/embedding)
     const capture = this.screenCaptureRepository.create({
@@ -677,58 +761,6 @@ export class MeetingsService {
     );
 
     return savedCapture;
-  }
-
-  /**
-   * Background job: Phân tích ảnh chụp màn hình bằng Gemini Vision.
-   * Nếu ảnh có ý nghĩa (summary != null), tạo embedding và cập nhật DB.
-   * Nếu là ảnh rác (summary == null), chỉ ghi log — giữ lại file để tham khảo.
-   */
-  private async analyzeAndEnrichCapture(
-    captureId: string,
-    imageBuffer: Buffer,
-    mimeType: string,
-  ): Promise<void> {
-    this.logger.log(
-      `[BG Image Analysis] Analyzing capture ${captureId} with Gemini Vision...`,
-    );
-
-    // 1. Gọi Gemini Vision để lấy summary
-    const summary = await this.aiService.analyzeImage(imageBuffer, mimeType);
-
-    if (!summary) {
-      this.logger.log(
-        `[BG Image Analysis] Capture ${captureId} identified as trash/empty screen. Skipping embedding.`,
-      );
-      return;
-    }
-
-    this.logger.log(
-      `[BG Image Analysis] Capture ${captureId} is meaningful. Summary: "${summary.slice(0, 80)}..."`,
-    );
-
-    // 2. Tạo vector embedding từ summary
-    let embedding: number[] | null = null;
-    try {
-      const rawEmbedding = await this.aiService.embed(summary);
-      embedding =
-        rawEmbedding && rawEmbedding.length === 1024 ? rawEmbedding : null;
-    } catch (embedErr) {
-      this.logger.error(
-        `[BG Image Analysis] Failed to create embedding for capture ${captureId}:`,
-        embedErr,
-      );
-    }
-
-    // 3. Cập nhật record trong DB với summary và embedding
-    await this.screenCaptureRepository.update(captureId, {
-      summary,
-      embedding,
-    });
-
-    this.logger.log(
-      `[BG Image Analysis] Enriched capture ${captureId} with summary and embedding.`,
-    );
   }
 
   /**

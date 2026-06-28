@@ -308,6 +308,8 @@
     "permission_pending": "Permission Pending",
     "access_control": "Access Control",
     "access_control_desc": "Manage access and invitations",
+    "access_denied": "Access Denied",
+    "not_invited": "You are not invited to this meeting",
     "host_notified": "The host has been notified that you're waiting.",
     "stay_on_page": "Please stay on this page",
     "securing_entry": "while we secure your entry.",

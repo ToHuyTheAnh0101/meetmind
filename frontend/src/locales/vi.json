@@ -307,6 +307,7 @@
     "lobby": "Phòng chờ",
     "permission_pending": "Chờ xác nhận",
     "access_denied": "Từ chối truy cập",
+    "not_invited": "Bạn không có tên trong danh sách khách mời của cuộc họp này",
     "host_notified": "Chủ phòng đã được thông báo bạn đang chờ.",
     "stay_on_page": "Vui lòng giữ nguyên trang này",
     "securing_entry": "trong khi chúng tôi xác nhận quyền truy cập của bạn.",
