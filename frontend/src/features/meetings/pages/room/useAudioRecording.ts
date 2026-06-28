@@ -175,14 +175,21 @@ export function useAudioRecording({
     recordingStartTimeRef.current = null;
 
     if (isOrganizer) {
-      // Delay backend deactivation to ensure the final chunk uploads successfully
+      // Transition state to processing to allow the final chunk to upload successfully
+      apiClient
+        .put(`/meetings/${meetingId}`, { aiRecordingState: 'processing' })
+        .catch((err) => {
+          console.error("Failed to set AI state to processing on backend", err);
+        });
+
+      // After 5 seconds (safe window for uploads), transition to inactive
       setTimeout(() => {
         apiClient
-          .put(`/meetings/${meetingId}`, { aiActivated: false })
+          .put(`/meetings/${meetingId}`, { aiRecordingState: 'inactive' })
           .catch((err) => {
             console.error("Failed to deactivate AI Assistant on backend", err);
           });
-      }, 1500);
+      }, 5000);
 
       const payload = JSON.stringify({ type: "RECORDING_STOPPED" });
       try {
@@ -208,7 +215,10 @@ export function useAudioRecording({
   const startRecording = async () => {
     try {
       if (isOrganizer) {
-        await apiClient.put(`/meetings/${meetingId}`, { aiActivated: true });
+        await apiClient.put(`/meetings/${meetingId}`, {
+          aiActivated: true,
+          aiRecordingState: 'recording',
+        });
 
         const payload = JSON.stringify({ type: "RECORDING_STARTED" });
         try {

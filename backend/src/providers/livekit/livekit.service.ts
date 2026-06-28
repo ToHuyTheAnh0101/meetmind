@@ -25,7 +25,7 @@ export class LiveKitService {
   private livekitUrl: string;
   private logger = new Logger(LiveKitService.name);
 
-  constructor(private configService: ConfigService) {
+  constructor(configService: ConfigService) {
     this.apiKey = configService.get<string>('LIVEKIT_API_KEY') || '';
     this.apiSecret = configService.get<string>('LIVEKIT_API_SECRET') || '';
     this.livekitUrl = configService.get<string>('LIVEKIT_URL') || '';
@@ -44,7 +44,7 @@ export class LiveKitService {
   }
 
   async generateToken(
-    roomName: string,
+    _roomName: string,
     identity: string,
     participantName: string,
     grants: LiveKitTokenGrants,

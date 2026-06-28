@@ -2,10 +2,8 @@ import { Injectable, Inject, Logger } from '@nestjs/common';
 import { CACHE_MANAGER } from '@nestjs/cache-manager';
 import type { Cache } from 'cache-manager';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
-import { MeetingsService } from './meetings.service';
 import { ParticipantsService } from './participants.service';
 import { ParticipantRepository } from '../repositories/participant.repository';
-import { MeetingRepository } from '../repositories/meeting.repository';
 import { ParticipantStatus } from '../entities';
 
 interface LiveKitWebhookEvent {
@@ -34,10 +32,8 @@ export class MeetingsWebhookService {
 
   constructor(
     private readonly liveKitService: LiveKitService,
-    private readonly meetingsService: MeetingsService,
     private readonly participantsService: ParticipantsService,
     private readonly participantRepository: ParticipantRepository,
-    private readonly meetingRepository: MeetingRepository,
     @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
   ) {}
 
@@ -174,6 +170,7 @@ export class MeetingsWebhookService {
   }
 
   private async handleEgressEnded(event: LiveKitWebhookEvent): Promise<void> {
+    await Promise.resolve();
     const egressInfo = event.egressInfo;
     if (egressInfo) {
       const fileResults = egressInfo.fileResults;
@@ -191,17 +188,8 @@ export class MeetingsWebhookService {
           ? Number(egressInfo.startedAt) / 1000000000
           : 0;
 
-        await this.meetingsService.saveAudioRecording(
-          meetingId,
-          participantIdentity,
-          location,
-          size,
-          duration,
-          startedAt,
-        );
-
         this.logger.log(
-          `LiveKit Egress Ended for room ${meetingId}. Audio saved at: ${location}`,
+          `LiveKit Egress Ended for room ${meetingId}. Audio saved for ${participantIdentity} at: ${location}. Size: ${size} bytes, Duration: ${duration}s, Started at: ${startedAt}s. (Database saving is bypassed)`,
         );
       }
     }

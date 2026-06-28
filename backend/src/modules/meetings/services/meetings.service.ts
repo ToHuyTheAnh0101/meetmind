@@ -8,10 +8,6 @@ import {
 import * as fs from 'fs';
 import * as path from 'path';
 import { ConfigService } from '@nestjs/config';
-import { Inject } from '@nestjs/common';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import type { Cache } from 'cache-manager';
-import { EntityManager } from 'typeorm';
 import { LogType } from '../../meetlogs/entities/meet-log.entity';
 import { MeetLogService } from '../../meetlogs/services/meet-log.service';
 import {
@@ -63,8 +59,6 @@ export class MeetingsService {
     private aiService: AiService,
     private mailService: MailService,
     private screenCaptureRepository: ScreenCaptureRepository,
-    @Inject(CACHE_MANAGER) private cacheManager: Cache,
-    private readonly entityManager: EntityManager,
     private cloudinaryService: CloudinaryService,
     private readonly meetLogService: MeetLogService,
   ) {}
@@ -217,50 +211,6 @@ export class MeetingsService {
     return this.meetingsRepository.save(meeting);
   }
 
-  /**
-   * Called automatically when the last participant leaves and a grace period expires
-   */
-  async autoComplete(id: string): Promise<Meeting> {
-    const meeting = await this.findOne(id);
-
-    meeting.status = MeetingStatus.COMPLETED;
-    meeting.actualEndTime = new Date();
-
-    try {
-      await this.liveKitService.deleteRoom(
-        meeting.livekitRoomName || meeting.id || '',
-      );
-    } catch (err) {
-      this.logger.warn(
-        `Could not delete LiveKit room ${meeting.livekitRoomName}`,
-        err,
-      );
-    }
-
-    // Log MEETING_ENDED event (autoComplete)
-    try {
-      await this.meetLogService.logEvent(
-        id,
-        LogType.MEETING_ENDED,
-        meeting.organizerId || '',
-        {
-          timestamp: new Date().toISOString(),
-          autoCompleted: true,
-        },
-      );
-    } catch (err) {
-      this.logger.error(
-        'Failed to log MEETING_ENDED event (autoComplete):',
-        err,
-      );
-    }
-
-    // Cleanup raw recording chunks
-    this.cleanupRecordings(id);
-
-    return this.meetingsRepository.save(meeting);
-  }
-
   private cleanupRecordings(meetingId: string) {
     try {
       const dirPath = path.join(
@@ -386,10 +336,6 @@ export class MeetingsService {
       updateData['password'] = password;
     }
 
-    if (oldAiActivated === true && updateData.aiActivated === false) {
-      updateData.aiActivated = true;
-    }
-
     Object.assign(meeting, {
       ...updateData,
       startTime: dto.startTime ? new Date(dto.startTime) : meeting.startTime,
@@ -481,20 +427,6 @@ export class MeetingsService {
     await this.meetingsRepository.remove(meeting);
   }
 
-  saveAudioRecording(
-    meetingId: string,
-    participantIdentity: string,
-    fileUrl: string,
-    fileSize: number,
-    duration: number = 0,
-    startTime: number = 0,
-  ): Promise<void> {
-    this.logger.log(
-      `[Webhook Audio Egress] Nhận bản ghi âm cho ${participantIdentity} tại ${fileUrl}. Dung lượng: ${fileSize} bytes, Thời lượng: ${duration}s, Bắt đầu lúc: ${startTime}s. (Đã bỏ lưu database)`,
-    );
-    return Promise.resolve();
-  }
-
   async checkConflict(userId: string, time: string, currentMeetingId?: string) {
     const checkTime = new Date(time);
     if (isNaN(checkTime.getTime())) {
@@ -545,12 +477,12 @@ export class MeetingsService {
     const meeting = await this.findOne(meetingId);
     if (!meeting) throw new NotFoundException('Meeting not found');
 
-    if (!meeting.aiActivated) {
+    if (meeting.aiRecordingState === 'inactive') {
       this.logger.warn(
-        `[STT Rejected] Chunk received for meeting ${meetingId} but AI is not activated. Discarding chunk.`,
+        `[STT Rejected] Chunk received for meeting ${meetingId} but AI is not recording. Discarding chunk.`,
       );
       throw new BadRequestException(
-        'AI Assistant is not activated for this meeting',
+        'AI Assistant is not recording for this meeting',
       );
     }
 
@@ -620,25 +552,11 @@ export class MeetingsService {
         }
 
         // 4. Lưu trữ TranscriptChunk vào cơ sở dữ liệu với metadata đầy đủ
-        const cleanedTranscriptText = await this.aiService.cleanTranscriptChunk(
-          transcriptText.trim(),
-          meeting.title || 'Họp MeetMind',
-          speakerName,
-        );
-
-        if (!cleanedTranscriptText || !cleanedTranscriptText.trim()) {
-          this.logger.log(
-            `[Background Clean STT] Cleaned transcript is empty for meeting ${meetingId}`,
-          );
-          return;
-        }
-
-        const cleanedTranscript = cleanedTranscriptText.trim();
-        const embedding = await this.aiService.embed(cleanedTranscript);
+        const embedding = await this.aiService.embed(transcriptText.trim());
 
         const chunk = this.transcriptRepository.create({
           meetingId,
-          content: cleanedTranscript,
+          content: transcriptText.trim(),
           // Lưu null nếu mảng rỗng hoặc sai số chiều (không bằng 1024) để tránh lỗi pgvector DB crash
           embedding:
             embedding && embedding.length === 1024
@@ -683,10 +601,10 @@ export class MeetingsService {
     const meeting = await this.meetingsRepository.findById(meetingId);
     if (!meeting) throw new NotFoundException('Meeting not found');
 
-    // Check if AI Assistant is activated
-    if (!meeting.aiActivated) {
+    // Check if AI Assistant is recording
+    if (meeting.aiRecordingState === 'inactive') {
       throw new BadRequestException(
-        'AI Assistant is not activated. Screen capturing is disabled.',
+        'AI Assistant is not recording. Screen capturing is disabled.',
       );
     }
 

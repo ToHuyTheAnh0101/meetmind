@@ -76,6 +76,9 @@ export class Meeting {
   @Column({ type: 'boolean', default: false })
   aiActivated?: boolean;
 
+  @Column({ type: 'varchar', default: 'inactive' })
+  aiRecordingState?: string;
+
   @Column('jsonb', { default: [] })
   sharedEmails?: string[];
 

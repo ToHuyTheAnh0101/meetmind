@@ -73,17 +73,6 @@ export class ParticipantsController {
     return this.participantsService.admitParticipant(id, userId, req.user.id);
   }
 
-  @Post(':id/reject/:userId')
-  @UseGuards(JwtAuthGuard)
-  @HttpCode(HttpStatus.NO_CONTENT)
-  async rejectParticipant(
-    @Param('id') id: string,
-    @Param('userId') userId: string,
-    @Request() req: { user: { id: string } },
-  ) {
-    return this.participantsService.rejectParticipant(id, userId, req.user.id);
-  }
-
   @Put(':id/participants/:userId/permissions')
   @UseGuards(JwtAuthGuard)
   async updateParticipantPermissions(

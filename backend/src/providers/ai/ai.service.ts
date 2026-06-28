@@ -515,20 +515,6 @@ Lưu ý quan trọng:
     return results.sort((a, b) => a.startTime - b.startTime);
   }
 
-  async cleanTranscriptChunk(
-    text: string,
-    meetingTitle: string,
-    speakerName?: string,
-  ): Promise<string> {
-    // Gemini STT is clean, formatted, and natively avoids hallucinations.
-    // Bypassing cleanTranscriptChunk saves execution time and API tokens.
-    this.logger.debug(
-      `cleanTranscriptChunk bypassed for meeting "${meetingTitle}" (speaker: ${speakerName ?? 'unknown'})`,
-    );
-    await Promise.resolve();
-    return text;
-  }
-
   /**
    * Phân tích hình ảnh màn hình chia sẻ bằng Gemini Vision (multimodal).
    * Trả về chuỗi summary mô tả nội dung màn hình,

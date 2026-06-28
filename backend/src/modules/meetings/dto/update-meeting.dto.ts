@@ -70,4 +70,8 @@ export class UpdateMeetingDto {
   @IsBoolean()
   @IsOptional()
   aiActivated?: boolean;
+
+  @IsString()
+  @IsOptional()
+  aiRecordingState?: string;
 }

@@ -1,6 +1,5 @@
 import {
   Injectable,
-  Inject,
   NotFoundException,
   ForbiddenException,
   BadRequestException,
@@ -16,8 +15,6 @@ export interface LobbyEvent {
   status?: string;
 }
 import { ConfigService } from '@nestjs/config';
-import { CACHE_MANAGER } from '@nestjs/cache-manager';
-import type { Cache } from 'cache-manager';
 import { ParticipantRepository } from '../repositories/participant.repository';
 import { MeetingRepository } from '../repositories/meeting.repository';
 import {
@@ -25,7 +22,6 @@ import {
   LiveKitTokenGrants,
 } from '../../../providers/livekit/livekit.service';
 import { UsersService } from '../../users/services/users.service';
-import { MailService } from '../../../providers/mail/mail.service';
 import {
   Participant,
   MeetingStatus,
@@ -33,7 +29,6 @@ import {
   MeetingPermission,
 } from '../entities';
 import { JoinResponseDto } from '../dto/join-response.dto';
-import { EntityManager } from 'typeorm';
 import { BreakoutRoomService } from '../../breakout-rooms/services/breakout-room.service';
 import { LogType } from '../../meetlogs/entities/meet-log.entity';
 import { MeetLogService } from '../../meetlogs/services/meet-log.service';
@@ -68,9 +63,6 @@ export class ParticipantsService {
     private readonly liveKitService: LiveKitService,
     private readonly usersService: UsersService,
     private readonly configService: ConfigService,
-    private readonly mailService: MailService,
-    @Inject(CACHE_MANAGER) private readonly cacheManager: Cache,
-    private readonly entityManager: EntityManager,
     private readonly meetLogService: MeetLogService,
     private readonly breakoutRoomService: BreakoutRoomService,
   ) {}
@@ -308,43 +300,6 @@ export class ParticipantsService {
       targetName: targetUser
         ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
         : 'Unknown',
-    });
-  }
-
-  async rejectParticipant(
-    id: string,
-    userId: string,
-    hostId: string,
-  ): Promise<void> {
-    const meeting = await this.meetingsRepository.findById(id);
-    if (!meeting) throw new NotFoundException('Meeting not found');
-
-    if (meeting.organizerId !== hostId) {
-      throw new ForbiddenException(
-        'Only the organizer can reject participants',
-      );
-    }
-
-    const participant = await this.participantsRepository.findByMeetingAndUser(
-      id,
-      userId,
-    );
-    if (!participant) {
-      throw new NotFoundException('Participant not found');
-    }
-
-    participant.status = ParticipantStatus.DENIED;
-    await this.participantsRepository.save(participant);
-
-    this.emitLobbyEvent({
-      meetingId: id,
-      type: 'status_updated',
-      userId,
-      status: ParticipantStatus.DENIED,
-    });
-    this.emitLobbyEvent({
-      meetingId: id,
-      type: 'lobby_updated',
     });
   }
 

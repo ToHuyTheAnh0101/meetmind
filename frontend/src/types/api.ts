@@ -65,6 +65,7 @@ export interface Meeting {
   templateId?: string | null;
   template?: SummaryTemplate | null;
   aiActivated?: boolean;
+  aiRecordingState?: 'inactive' | 'recording' | 'processing';
   hasTranscripts?: boolean;
 }
 

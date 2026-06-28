@@ -27,16 +27,6 @@ export class AiChatController {
     private readonly meetingsService: MeetingsService,
   ) {}
 
-  @Post(':id/chat')
-  @UseGuards(JwtAuthGuard)
-  async chatWithAI(
-    @Param('id') id: string,
-    @Body('question') question: string,
-    @Request() req: { user: { id: string } },
-  ): Promise<{ answer: string }> {
-    return this.aiChatService.chatWithAI(id, question, req.user.id);
-  }
-
   @Post(':id/chat/stream')
   @UseGuards(JwtAuthGuard)
   async chatWithAIStream(

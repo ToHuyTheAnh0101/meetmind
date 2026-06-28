@@ -8,7 +8,7 @@ const IMAGE_SIMILARITY_THRESHOLD = 0.6;
 
 @Injectable()
 export class ScreenCaptureRepository extends Repository<ScreenCapture> {
-  constructor(private dataSource: DataSource) {
+  constructor(dataSource: DataSource) {
     super(ScreenCapture, dataSource.createEntityManager());
   }
 

@@ -16,7 +16,6 @@ import {
   UseInterceptors,
   UploadedFile,
   BadRequestException,
-  Logger,
   Res,
   NotFoundException,
 } from '@nestjs/common';
@@ -26,7 +25,6 @@ import * as express from 'express';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { MeetingsService } from '../services/meetings.service';
 import { MeetingsWebhookService } from '../services/meetings-webhook.service';
-import { LiveKitService } from '../../../providers/livekit/livekit.service';
 import { Meeting } from '../entities';
 import { CreateMeetingDto } from '../dto/create-meeting.dto';
 import { UpdateMeetingDto } from '../dto/update-meeting.dto';
@@ -46,11 +44,8 @@ interface RequestWithUser {
 
 @Controller('meetings')
 export class MeetingsController {
-  private readonly logger = new Logger(MeetingsController.name);
-
   constructor(
     private readonly meetingsService: MeetingsService,
-    private readonly liveKitService: LiveKitService,
     private readonly webhookService: MeetingsWebhookService,
     @Inject(CACHE_MANAGER) private cacheManager: Cache,
   ) {}

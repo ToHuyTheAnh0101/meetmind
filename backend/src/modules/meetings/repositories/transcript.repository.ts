@@ -14,7 +14,7 @@ const FALLBACK_RECENT_CHUNKS = 35;
 
 @Injectable()
 export class TranscriptRepository extends Repository<TranscriptChunk> {
-  constructor(private dataSource: DataSource) {
+  constructor(dataSource: DataSource) {
     super(TranscriptChunk, dataSource.createEntityManager());
   }
 
