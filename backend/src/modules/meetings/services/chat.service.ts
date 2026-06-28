@@ -19,18 +19,6 @@ export class ChatService {
     private readonly breakoutRoomService: BreakoutRoomService,
   ) {}
 
-  private async resolveBreakoutRoomId(
-    meetingId: string,
-    userId: string,
-    breakoutRoomId?: string,
-  ): Promise<string | undefined> {
-    if (!breakoutRoomId) return undefined;
-    if (breakoutRoomId === 'current') {
-      return this.breakoutRoomService.getActiveRoomIdForUser(meetingId, userId);
-    }
-    return breakoutRoomId;
-  }
-
   async saveChatMessage(
     meetingId: string,
     userId: string,
@@ -41,7 +29,7 @@ export class ChatService {
       throw new BadRequestException('Message cannot be empty');
     }
 
-    const resolvedRoomId = await this.resolveBreakoutRoomId(
+    const resolvedRoomId = await this.breakoutRoomService.resolveRoomId(
       meetingId,
       userId,
       breakoutRoomId,
@@ -63,7 +51,11 @@ export class ChatService {
     userId?: string,
   ): Promise<ChatMessageDto[]> {
     const resolvedRoomId = userId
-      ? await this.resolveBreakoutRoomId(meetingId, userId, breakoutRoomId)
+      ? await this.breakoutRoomService.resolveRoomId(
+          meetingId,
+          userId,
+          breakoutRoomId,
+        )
       : breakoutRoomId;
 
     const messages = await this.chatMessageRepository.findByMeeting(

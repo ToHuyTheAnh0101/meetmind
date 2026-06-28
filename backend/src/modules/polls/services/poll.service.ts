@@ -104,18 +104,6 @@ export class PollService {
     return isArray ? result : result[0];
   }
 
-  private async resolveBreakoutRoomId(
-    meetingId: string,
-    userId: string,
-    breakoutRoomId?: string,
-  ): Promise<string | undefined> {
-    if (!breakoutRoomId) return undefined;
-    if (breakoutRoomId === 'current') {
-      return this.breakoutRoomService.getActiveRoomIdForUser(meetingId, userId);
-    }
-    return breakoutRoomId;
-  }
-
   async create(
     meetingId: string,
     userId: string,
@@ -141,7 +129,7 @@ export class PollService {
       });
     });
 
-    const resolvedRoomId = await this.resolveBreakoutRoomId(
+    const resolvedRoomId = await this.breakoutRoomService.resolveRoomId(
       meetingId,
       userId,
       data.breakoutRoomId,
@@ -186,7 +174,11 @@ export class PollService {
     userId?: string,
   ): Promise<PollResponseDto[]> {
     const resolvedRoomId = userId
-      ? await this.resolveBreakoutRoomId(meetingId, userId, breakoutRoomId)
+      ? await this.breakoutRoomService.resolveRoomId(
+          meetingId,
+          userId,
+          breakoutRoomId,
+        )
       : breakoutRoomId;
 
     const polls = await this.pollRepository.findByMeetingId(

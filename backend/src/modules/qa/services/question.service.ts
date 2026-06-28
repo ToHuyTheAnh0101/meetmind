@@ -26,18 +26,6 @@ export class QuestionService {
     private readonly breakoutRoomService: BreakoutRoomService,
   ) {}
 
-  private async resolveBreakoutRoomId(
-    meetingId: string,
-    userId: string,
-    breakoutRoomId?: string,
-  ): Promise<string | undefined> {
-    if (!breakoutRoomId) return undefined;
-    if (breakoutRoomId === 'current') {
-      return this.breakoutRoomService.getActiveRoomIdForUser(meetingId, userId);
-    }
-    return breakoutRoomId;
-  }
-
   async create(
     meetingId: string,
     data: Partial<MeetingQuestion> & { breakoutRoomId?: string },
@@ -62,7 +50,7 @@ export class QuestionService {
       );
     }
 
-    const resolvedRoomId = await this.resolveBreakoutRoomId(
+    const resolvedRoomId = await this.breakoutRoomService.resolveRoomId(
       meetingId,
       userId,
       data.breakoutRoomId,
@@ -98,7 +86,11 @@ export class QuestionService {
     userId?: string,
   ): Promise<MeetingQuestion[]> {
     const resolvedRoomId = userId
-      ? await this.resolveBreakoutRoomId(meetingId, userId, breakoutRoomId)
+      ? await this.breakoutRoomService.resolveRoomId(
+          meetingId,
+          userId,
+          breakoutRoomId,
+        )
       : breakoutRoomId;
 
     return this.questionRepository.findByMeetingId(meetingId, resolvedRoomId);

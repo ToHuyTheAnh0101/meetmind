@@ -304,4 +304,16 @@ export class BreakoutRoomService {
     const rooms = await this.breakoutRoomRepository.findByMeetingId(meetingId);
     return rooms.some((room) => room.status === BreakoutRoomStatus.ACTIVE);
   }
+
+  async resolveRoomId(
+    meetingId: string,
+    userId: string,
+    breakoutRoomId?: string,
+  ): Promise<string | undefined> {
+    if (!breakoutRoomId) return undefined;
+    if (breakoutRoomId === 'current') {
+      return this.getActiveRoomIdForUser(meetingId, userId);
+    }
+    return breakoutRoomId;
+  }
 }
