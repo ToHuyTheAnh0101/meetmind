@@ -235,7 +235,7 @@ export class ParticipantsService {
       }
 
       // User actually joined the meeting call, log event
-      await this.logMeetLog(id, LogType.USER_JOINED, userId, {
+      await this.meetLogService.logEvent(id, LogType.USER_JOINED, userId, {
         displayName: fullName,
         email: user.email,
         avatar: user.picture || undefined,
@@ -294,13 +294,18 @@ export class ParticipantsService {
     });
 
     const targetUser = await this.usersService.findById(userId);
-    await this.logMeetLog(id, LogType.PARTICIPANT_ADMITTED, hostId, {
-      targetUserId: userId,
-      targetEmail: targetUser?.email || 'Unknown',
-      targetName: targetUser
-        ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
-        : 'Unknown',
-    });
+    await this.meetLogService.logEvent(
+      id,
+      LogType.PARTICIPANT_ADMITTED,
+      hostId,
+      {
+        targetUserId: userId,
+        targetEmail: targetUser?.email || 'Unknown',
+        targetName: targetUser
+          ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
+          : 'Unknown',
+      },
+    );
   }
 
   async leaveMeeting(id: string, userId: string): Promise<void> {
@@ -326,7 +331,7 @@ export class ParticipantsService {
       await this.participantsRepository.save(participant);
 
       const user = await this.usersService.findById(userId);
-      await this.logMeetLog(id, LogType.USER_LEFT, userId, {
+      await this.meetLogService.logEvent(id, LogType.USER_LEFT, userId, {
         displayName:
           participant.displayName ||
           (user ? `${user.firstName} ${user.lastName}` : 'Unknown'),
@@ -495,12 +500,17 @@ export class ParticipantsService {
       ? `${targetUser.firstName || ''} ${targetUser.lastName || ''}`.trim()
       : 'Unknown';
 
-    await this.logMeetLog(meetingId, LogType.PERMISSIONS_CHANGED, requesterId, {
-      targetUserId,
-      targetEmail: targetUser?.email || 'Unknown',
-      targetName,
-      permissions,
-    });
+    await this.meetLogService.logEvent(
+      meetingId,
+      LogType.PERMISSIONS_CHANGED,
+      requesterId,
+      {
+        targetUserId,
+        targetEmail: targetUser?.email || 'Unknown',
+        targetName,
+        permissions,
+      },
+    );
 
     return saved;
   }
@@ -559,7 +569,7 @@ export class ParticipantsService {
         `Successfully updated permissions for ${participants.length} participants`,
       );
 
-      await this.logMeetLog(
+      await this.meetLogService.logEvent(
         meetingId,
         LogType.PERMISSIONS_CHANGED,
         requesterId,
@@ -573,23 +583,5 @@ export class ParticipantsService {
     }
 
     return { count: participants.length };
-  }
-
-  private async logMeetLog(
-    meetingId: string,
-    type: LogType,
-    triggeredByUserId: string,
-    metadata?: Record<string, any>,
-  ): Promise<void> {
-    try {
-      await this.meetLogService.logEvent(
-        meetingId,
-        type,
-        triggeredByUserId,
-        metadata,
-      );
-    } catch (err) {
-      this.logger.error(`Failed to log meeting event ${type}:`, err);
-    }
   }
 }

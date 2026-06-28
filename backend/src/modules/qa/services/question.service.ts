@@ -76,14 +76,10 @@ export class QuestionService {
 
     const savedQuestion = await this.questionRepository.save(question);
 
-    try {
-      await this.meetLogService.logEvent(meetingId, LogType.QA_OPENED, userId, {
-        questionId: savedQuestion.id,
-        content: savedQuestion.content,
-      });
-    } catch (err) {
-      console.error('Failed to log QA_OPENED event:', err);
-    }
+    await this.meetLogService.logEvent(meetingId, LogType.QA_OPENED, userId, {
+      questionId: savedQuestion.id,
+      content: savedQuestion.content,
+    });
 
     return this.findById(savedQuestion.id!);
   }

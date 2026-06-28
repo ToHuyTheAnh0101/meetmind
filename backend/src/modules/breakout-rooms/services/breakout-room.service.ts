@@ -102,19 +102,15 @@ export class BreakoutRoomService {
     }
 
     // Log BREAKOUT_STARTED event
-    try {
-      await this.meetLogService.logEvent(
-        meetingId,
-        LogType.BREAKOUT_STARTED,
-        userId,
-        {
-          roomsCount: rooms.length,
-          roomNames: rooms.map((r) => r.name),
-        },
-      );
-    } catch (err) {
-      this.logger.error('Failed to log BREAKOUT_STARTED event:', err);
-    }
+    await this.meetLogService.logEvent(
+      meetingId,
+      LogType.BREAKOUT_STARTED,
+      userId,
+      {
+        roomsCount: rooms.length,
+        roomNames: rooms.map((r) => r.name),
+      },
+    );
 
     return rooms;
   }
@@ -126,18 +122,14 @@ export class BreakoutRoomService {
       throw new ForbiddenException('Only organizer can end breakout');
 
     // Log BREAKOUT_ENDED event before deleting rooms
-    try {
-      await this.meetLogService.logEvent(
-        meetingId,
-        LogType.BREAKOUT_ENDED,
-        userId,
-        {
-          timestamp: new Date().toISOString(),
-        },
-      );
-    } catch (err) {
-      this.logger.error('Failed to log BREAKOUT_ENDED event:', err);
-    }
+    await this.meetLogService.logEvent(
+      meetingId,
+      LogType.BREAKOUT_ENDED,
+      userId,
+      {
+        timestamp: new Date().toISOString(),
+      },
+    );
 
     await this.breakoutRoomRepository.removeAllForMeeting(meetingId);
     this.logger.debug(

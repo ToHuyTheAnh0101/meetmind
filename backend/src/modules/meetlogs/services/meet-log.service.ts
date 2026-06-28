@@ -1,9 +1,11 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Logger } from '@nestjs/common';
 import { MeetLog, LogType } from '../entities/meet-log.entity';
 import { MeetLogRepository } from '../repositories/meet-log.repository';
 
 @Injectable()
 export class MeetLogService {
+  private readonly logger = new Logger(MeetLogService.name);
+
   constructor(private meetLogRepository: MeetLogRepository) {}
 
   async create(meetingId: string, data: Partial<MeetLog>): Promise<MeetLog> {
@@ -32,13 +34,18 @@ export class MeetLogService {
     type: LogType,
     triggeredByUserId: string,
     metadata?: Record<string, any>,
-  ): Promise<MeetLog> {
-    const log = this.meetLogRepository.create({
-      meetingId,
-      type,
-      triggeredByUserId,
-      metadata: metadata || undefined,
-    });
-    return this.meetLogRepository.save(log);
+  ): Promise<MeetLog | null> {
+    try {
+      const log = this.meetLogRepository.create({
+        meetingId,
+        type,
+        triggeredByUserId,
+        metadata: metadata || undefined,
+      });
+      return await this.meetLogRepository.save(log);
+    } catch (err) {
+      this.logger.error(`Failed to log meeting event ${type}:`, err);
+      return null;
+    }
   }
 }

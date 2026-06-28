@@ -158,20 +158,16 @@ export class PollService {
 
     const savedPoll = await this.pollRepository.save(poll);
 
-    try {
-      await this.meetLogService.logEvent(
-        meetingId,
-        LogType.POLL_STARTED,
-        userId,
-        {
-          pollId: savedPoll.id,
-          question: savedPoll.question,
-          options: savedPoll.options?.map((o) => o.text) || [],
-        },
-      );
-    } catch (err) {
-      console.error('Failed to log POLL_STARTED event:', err);
-    }
+    await this.meetLogService.logEvent(
+      meetingId,
+      LogType.POLL_STARTED,
+      userId,
+      {
+        pollId: savedPoll.id,
+        question: savedPoll.question,
+        options: savedPoll.options?.map((o) => o.text) || [],
+      },
+    );
 
     return this.findById(savedPoll.id!);
   }
@@ -309,19 +305,15 @@ export class PollService {
     const savedPoll = await this.pollRepository.save(poll);
 
     // Log POLL_ENDED event
-    try {
-      await this.meetLogService.logEvent(
-        poll.meetingId,
-        LogType.POLL_ENDED,
-        userId,
-        {
-          pollId: savedPoll.id,
-          question: savedPoll.question,
-        },
-      );
-    } catch (err) {
-      console.error('Failed to log POLL_ENDED event:', err);
-    }
+    await this.meetLogService.logEvent(
+      poll.meetingId,
+      LogType.POLL_ENDED,
+      userId,
+      {
+        pollId: savedPoll.id,
+        question: savedPoll.question,
+      },
+    );
 
     return this.findById(id);
   }

@@ -7,6 +7,7 @@ import {
   UseGuards,
   Request,
   BadRequestException,
+  InternalServerErrorException,
 } from '@nestjs/common';
 import { MeetLogService } from '../services/meet-log.service';
 import { MeetLog } from '../entities/meet-log.entity';
@@ -46,6 +47,14 @@ export class MeetLogController {
     if (!dto.type) {
       throw new BadRequestException('Log type is required');
     }
-    return this.meetLogService.logEvent(meetingId, dto.type, req.user.id);
+    const log = await this.meetLogService.logEvent(
+      meetingId,
+      dto.type,
+      req.user.id,
+    );
+    if (!log) {
+      throw new InternalServerErrorException('Failed to create meeting log');
+    }
+    return log;
   }
 }

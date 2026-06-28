@@ -91,22 +91,15 @@ export class SummaryService {
     const savedSummary = await this.summaryRepository.save(summary);
 
     // 1.5. Log event using MeetLogService
-    try {
-      await this.meetLogService.logEvent(
-        meetingId,
-        LogType.AI_SUMMARY_GENERATED,
-        userId,
-        {
-          templateId: resolvedTemplateId || 'default',
-          timestamp: new Date().toISOString(),
-        },
-      );
-    } catch (err) {
-      console.error(
-        '[SummaryService] Failed to log AI_SUMMARY_GENERATED event:',
-        err,
-      );
-    }
+    await this.meetLogService.logEvent(
+      meetingId,
+      LogType.AI_SUMMARY_GENERATED,
+      userId,
+      {
+        templateId: resolvedTemplateId || 'default',
+        timestamp: new Date().toISOString(),
+      },
+    );
 
     // 2. Launch AI summarization as an asynchronous non-blocking background job
     this.waitForPendingTranscripts(meetingId)

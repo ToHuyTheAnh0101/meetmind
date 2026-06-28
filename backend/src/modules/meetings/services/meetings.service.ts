@@ -197,13 +197,9 @@ export class MeetingsService {
     }
 
     // Log MEETING_ENDED event
-    try {
-      await this.meetLogService.logEvent(id, LogType.MEETING_ENDED, userId, {
-        timestamp: now.toISOString(),
-      });
-    } catch (err) {
-      this.logger.error('Failed to log MEETING_ENDED event:', err);
-    }
+    await this.meetLogService.logEvent(id, LogType.MEETING_ENDED, userId, {
+      timestamp: now.toISOString(),
+    });
 
     // Cleanup raw recording chunks
     this.cleanupRecordings(id);
@@ -344,23 +340,16 @@ export class MeetingsService {
     const updatedMeeting = await this.meetingsRepository.save(meeting);
 
     if (dto.aiActivated !== undefined && dto.aiActivated !== oldAiActivated) {
-      try {
-        await this.meetLogService.logEvent(
-          id,
-          dto.aiActivated
-            ? LogType.AI_ASSISTANT_ACTIVATED
-            : LogType.AI_ASSISTANT_DEACTIVATED,
-          userId,
-          {
-            timestamp: new Date().toISOString(),
-          },
-        );
-      } catch (err) {
-        this.logger.error(
-          `Failed to log AI assistant activation/deactivation event:`,
-          err,
-        );
-      }
+      await this.meetLogService.logEvent(
+        id,
+        dto.aiActivated
+          ? LogType.AI_ASSISTANT_ACTIVATED
+          : LogType.AI_ASSISTANT_DEACTIVATED,
+        userId,
+        {
+          timestamp: new Date().toISOString(),
+        },
+      );
     }
 
     // Cập nhật lại lịch nhắc nhở nếu có thay đổi liên quan
