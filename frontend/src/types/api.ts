@@ -28,12 +28,6 @@ export enum ParticipantStatus {
 }
 
 export enum MeetingPermission {
-  EDIT_SUMMARY = "edit_summary",
-  CHAT_WITH_AI = "chat_with_ai",
-  UPDATE_PERMISSIONS = "update_permissions",
-  VIEW_TRANSCRIPT = "view_transcript",
-  DOWNLOAD_RECORDING = "download_recording",
-  EDIT_MEETING_INFO = "edit_meeting_info",
   MANAGE_POLLS = "manage_polls",
   MANAGE_QA = "manage_qa",
   CO_HOST = "co_host",

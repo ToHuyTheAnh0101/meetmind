@@ -15,8 +15,12 @@ import { ChatHistory } from '../../../summaries/entities/chat-history.entity';
 import { SummaryTemplate } from '../../../summaries/entities/summary-template.entity';
 import { TranscriptChunk } from '../content/transcript-chunk.entity';
 
-import { MeetingStatus, MeetingAccessType } from '../../../../common/enums';
-export { MeetingStatus, MeetingAccessType };
+import {
+  MeetingStatus,
+  MeetingAccessType,
+  AiRecordingState,
+} from '../../../../common/enums';
+export { MeetingStatus, MeetingAccessType, AiRecordingState };
 
 @Entity('meetings')
 export class Meeting {
@@ -76,8 +80,8 @@ export class Meeting {
   @Column({ type: 'boolean', default: false })
   aiActivated?: boolean;
 
-  @Column({ type: 'varchar', default: 'inactive' })
-  aiRecordingState?: string;
+  @Column({ type: 'varchar', default: AiRecordingState.INACTIVE })
+  aiRecordingState?: AiRecordingState;
 
   @Column('jsonb', { default: [] })
   sharedEmails?: string[];

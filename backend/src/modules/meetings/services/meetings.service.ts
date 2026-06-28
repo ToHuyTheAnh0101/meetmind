@@ -18,6 +18,7 @@ import {
   MeetingPermission,
   ScreenCapture,
   TranscriptChunk,
+  AiRecordingState,
 } from '../entities';
 import { LiveKitService } from '../../../providers/livekit/livekit.service';
 import { UsersService } from '../../users/services/users.service';
@@ -297,31 +298,10 @@ export class MeetingsService {
   }
 
   async create(dto: CreateMeetingDto, userId: string): Promise<Meeting> {
-    if (dto.inviteeEmails && dto.inviteeEmails.length > 0) {
-      for (const email of dto.inviteeEmails) {
-        const user = await this.usersService.findByEmail(
-          email.trim().toLowerCase(),
-        );
-        if (!user) {
-          throw new BadRequestException(
-            `Email "${email}" chưa đăng ký tài khoản trên hệ thống.`,
-          );
-        }
-      }
-    }
-
     const { password, ...meetingData } = dto;
     const hashedPassword = password; // Raw text
 
-    const organizerPermissions = [
-      MeetingPermission.EDIT_SUMMARY,
-      MeetingPermission.CHAT_WITH_AI,
-      MeetingPermission.UPDATE_PERMISSIONS,
-      MeetingPermission.VIEW_TRANSCRIPT,
-      MeetingPermission.DOWNLOAD_RECORDING,
-      MeetingPermission.EDIT_MEETING_INFO,
-      MeetingPermission.MANAGE_POLLS,
-    ];
+    const organizerPermissions = Object.values(MeetingPermission);
 
     const meeting = this.meetingsRepository.create({
       ...meetingData,
@@ -340,6 +320,7 @@ export class MeetingsService {
           isOrganizer: true,
           permissions: organizerPermissions,
           status: ParticipantStatus.ADMITTED,
+          isInMeeting: true,
         }),
       ],
     });
@@ -379,6 +360,7 @@ export class MeetingsService {
 
     meeting.status = MeetingStatus.COMPLETED;
     meeting.actualEndTime = now;
+    meeting.aiRecordingState = AiRecordingState.INACTIVE;
 
     // Delete the room so all users are booted
     try {
@@ -480,19 +462,6 @@ export class MeetingsService {
     dto: UpdateMeetingDto,
     userId: string,
   ): Promise<Meeting> {
-    if (dto.inviteeEmails && dto.inviteeEmails.length > 0) {
-      for (const email of dto.inviteeEmails) {
-        const user = await this.usersService.findByEmail(
-          email.trim().toLowerCase(),
-        );
-        if (!user) {
-          throw new BadRequestException(
-            `Email "${email}" chưa đăng ký tài khoản trên hệ thống.`,
-          );
-        }
-      }
-    }
-
     const meeting = await this.findOne(id);
 
     if (meeting.organizerId !== userId) {
@@ -604,7 +573,7 @@ export class MeetingsService {
     const meeting = await this.findOne(meetingId);
     if (!meeting) throw new NotFoundException('Meeting not found');
 
-    if (meeting.aiRecordingState === 'inactive') {
+    if (meeting.aiRecordingState === AiRecordingState.INACTIVE) {
       this.logger.warn(
         `[STT Rejected] Chunk received for meeting ${meetingId} but AI is not recording. Discarding chunk.`,
       );
@@ -699,7 +668,7 @@ export class MeetingsService {
     if (!meeting) throw new NotFoundException('Meeting not found');
 
     // Check if AI Assistant is recording
-    if (meeting.aiRecordingState === 'inactive') {
+    if (meeting.aiRecordingState === AiRecordingState.INACTIVE) {
       throw new BadRequestException(
         'AI Assistant is not recording. Screen capturing is disabled.',
       );

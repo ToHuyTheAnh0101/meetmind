@@ -28,6 +28,7 @@ import {
   ParticipantStatus,
   MeetingPermission,
   MeetingAccessType,
+  AiRecordingState,
 } from '../entities';
 import { JoinResponseDto } from '../dto/join-response.dto';
 import { BreakoutRoomService } from '../../breakout-rooms/services/breakout-room.service';
@@ -128,15 +129,7 @@ export class ParticipantsService {
         }
       }
 
-      const organizerPermissions = [
-        MeetingPermission.EDIT_SUMMARY,
-        MeetingPermission.CHAT_WITH_AI,
-        MeetingPermission.UPDATE_PERMISSIONS,
-        MeetingPermission.VIEW_TRANSCRIPT,
-        MeetingPermission.DOWNLOAD_RECORDING,
-        MeetingPermission.EDIT_MEETING_INFO,
-        MeetingPermission.MANAGE_POLLS,
-      ];
+      const organizerPermissions = Object.values(MeetingPermission);
 
       if (!participant) {
         // If waiting room is enabled and user is not organizer, they start as WAITING
@@ -430,6 +423,7 @@ export class ParticipantsService {
                     );
                     meeting.status = MeetingStatus.COMPLETED;
                     meeting.actualEndTime = new Date();
+                    meeting.aiRecordingState = AiRecordingState.INACTIVE;
                     await this.meetingsRepository.save(meeting);
 
                     try {

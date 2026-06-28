@@ -3,6 +3,7 @@ export {
   Meeting,
   MeetingStatus,
   MeetingAccessType,
+  AiRecordingState,
 } from './core/meeting.entity';
 export {
   Participant,
