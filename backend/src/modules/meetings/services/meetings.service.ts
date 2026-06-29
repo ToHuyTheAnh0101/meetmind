@@ -574,17 +574,8 @@ export class MeetingsService {
     if (!meeting) throw new NotFoundException('Meeting not found');
 
     if (meeting.aiRecordingState === AiRecordingState.INACTIVE) {
-      this.logger.warn(
-        `[STT Rejected] Chunk received for meeting ${meetingId} but AI is not recording. Discarding chunk.`,
-      );
       throw new BadRequestException(
         'AI Assistant is not recording for this meeting',
-      );
-    }
-
-    if (meeting.status !== MeetingStatus.ONGOING) {
-      this.logger.log(
-        `[STT] Meeting ${meetingId} is ${meeting.status} — attaching late chunk to it anyway.`,
       );
     }
 
