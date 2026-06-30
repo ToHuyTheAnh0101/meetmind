@@ -12,6 +12,8 @@ import { QuestionService } from '../../qa/services/question.service';
 import { AiService } from '../../../providers/ai/ai.service';
 import { TranscriptRepository } from '../../meetings/repositories/transcript.repository';
 import { MeetingRepository } from '../../meetings/repositories/meeting.repository';
+import { ScreenCaptureRepository } from '../../meetings/repositories/screen-capture.repository';
+import { ScreenCapture, TranscriptChunk } from '../../meetings/entities';
 import { ChatMessageType } from '../entities/chat-history.entity';
 
 @Injectable()
@@ -26,6 +28,7 @@ export class AiChatService {
     private readonly aiService: AiService,
     private readonly transcriptRepository: TranscriptRepository,
     private readonly meetingRepository: MeetingRepository,
+    private readonly screenCaptureRepository: ScreenCaptureRepository,
   ) {}
 
   async chatWithAIStream(
@@ -141,12 +144,11 @@ export class AiChatService {
             complete: () => {
               void (async () => {
                 // Tìm ảnh màn hình liên quan bằng hybrid retrieval
-                const relevantCaptures =
-                  await this.meetingsService.findRelevantCaptures(
-                    meetingId,
-                    relevantChunks,
-                    questionEmbedding,
-                  );
+                const relevantCaptures = await this.findRelevantCaptures(
+                  meetingId,
+                  relevantChunks,
+                  questionEmbedding,
+                );
 
                 const imageInfoList = relevantCaptures.map((cap) => ({
                   url: cap.imageUrl,
@@ -219,5 +221,92 @@ export class AiChatService {
       throw new NotFoundException('Meeting not found');
     }
     return this.chatHistoryRepository.findHistory(meetingId, userId);
+  }
+
+  /**
+   * Hybrid retrieval cho screen captures trong RAG:
+   * 1. Temporal: tìm ảnh trong khoảng thời gian của các transcript chunks liên quan.
+   * 2. Semantic: tìm ảnh gần nhất theo vector embedding của câu hỏi.
+   * Chỉ trả về ảnh có summary (!= null), tối đa MAX_IMAGE_RESULTS ảnh.
+   */
+  async findRelevantCaptures(
+    meetingId: string,
+    relevantChunks: TranscriptChunk[],
+    questionEmbedding: number[],
+    maxResults = 3,
+  ): Promise<ScreenCapture[]> {
+    const MAX_IMAGE_RESULTS = maxResults;
+    const seenIds = new Set<string>();
+    const results: ScreenCapture[] = [];
+
+    // 1. Temporal: tìm ảnh trong khoảng timestamp của các chunks liên quan
+    if (relevantChunks.length > 0) {
+      const timeRanges = relevantChunks
+        .filter((c) => c.startTime !== undefined && c.startTime !== null)
+        .map((c) => ({
+          start: Math.max(0, c.startTime! - 5),
+          end: (c.endTime ?? c.startTime!) + 15,
+        }));
+
+      if (timeRanges.length > 0) {
+        try {
+          const query = this.screenCaptureRepository
+            .createQueryBuilder('capture')
+            .where('capture.meetingId = :meetingId', { meetingId })
+            // Chỉ lấy ảnh đã được Gemini phân tích và có ý nghĩa
+            .andWhere('capture.summary IS NOT NULL');
+
+          const rangeConditions = timeRanges.map(
+            (_, i) => `(capture.timestamp BETWEEN :start${i} AND :end${i})`,
+          );
+          query.andWhere(`(${rangeConditions.join(' OR ')})`);
+          timeRanges.forEach((r, i) => {
+            query.setParameter(`start${i}`, r.start);
+            query.setParameter(`end${i}`, r.end);
+          });
+
+          const temporalCaptures = await query
+            .orderBy('capture.timestamp', 'ASC')
+            .getMany();
+
+          for (const cap of temporalCaptures) {
+            if (!seenIds.has(cap.id) && results.length < MAX_IMAGE_RESULTS) {
+              seenIds.add(cap.id);
+              results.push(cap);
+            }
+          }
+        } catch (err) {
+          this.logger.error(
+            '[RAG] Failed temporal screen capture search:',
+            err,
+          );
+        }
+      }
+    }
+
+    // 2. Semantic: tìm ảnh gần nhất theo vector embedding của câu hỏi
+    if (results.length < MAX_IMAGE_RESULTS && questionEmbedding.length > 0) {
+      try {
+        const semanticCaptures =
+          await this.screenCaptureRepository.findRelevantByEmbedding(
+            meetingId,
+            questionEmbedding,
+            MAX_IMAGE_RESULTS,
+          );
+
+        for (const cap of semanticCaptures) {
+          if (!seenIds.has(cap.id) && results.length < MAX_IMAGE_RESULTS) {
+            seenIds.add(cap.id);
+            results.push(cap);
+          }
+        }
+      } catch (err) {
+        this.logger.error('[RAG] Failed semantic screen capture search:', err);
+      }
+    }
+
+    // Sắp xếp kết quả theo thời gian tăng dần để hiển thị theo trình tự cuộc họp
+    results.sort((a, b) => a.timestamp - b.timestamp);
+    return results;
   }
 }
