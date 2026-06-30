@@ -41,6 +41,7 @@ interface Question {
   };
   createdAt: string;
   answers: Answer[];
+  revealAnswers?: boolean;
 }
 
 interface QuestionDetailModalProps {
@@ -81,7 +82,8 @@ const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
   const filteredAnswers = React.useMemo(() => {
     if (!question) return [];
     // Hosts and Co-hosts see all answers to "collect" them
-    if (isOrganizer || isCoHost) return question.answers;
+    // If revealAnswers is true, regular participants can see all answers too
+    if (isOrganizer || isCoHost || question.revealAnswers) return question.answers;
     // Regular participants see their own answers + host's answers
     return question.answers.filter(a => a.answeredByUserId === userId);
   }, [question, isOrganizer, isCoHost, userId]);
@@ -129,7 +131,7 @@ const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
                   <MessageCircle className="h-5 w-5" />
                 </div>
                 <div>
-                  <h3 className="text-xl font-black text-white">{t('meeting.discussion_details') || 'Chi tiết hỏi đáp'}</h3>
+                  <h3 className="text-xl font-semibold text-white">{t('meeting.discussion_details') || 'Chi tiết hỏi đáp'}</h3>
                   <p className="text-[13px] font-medium text-slate-300">{t('meeting.view_all_responses') || 'Xem tất cả câu trả lời từ mọi người'}</p>
                 </div>
               </div>
@@ -162,7 +164,7 @@ const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
                   {new Date(question.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                 </span>
               </div>
-              <p className="text-lg font-black text-white leading-relaxed">
+              <p className="text-lg font-medium text-white leading-relaxed">
                 {question.content}
               </p>
             </div>

@@ -45,6 +45,9 @@ export class MeetingQuestion {
   @Index()
   breakoutRoomId?: string;
 
+  @Column({ default: false })
+  revealAnswers?: boolean;
+
   @CreateDateColumn()
   createdAt?: Date;
 

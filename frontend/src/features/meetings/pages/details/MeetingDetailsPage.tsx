@@ -564,7 +564,7 @@ const MeetingDetailsPage: React.FC = () => {
             animate={{ opacity: 1, x: 0 }}
             exit={{ opacity: 0, x: -20 }}
           >
-            <MeetingPollsQaTab meetingId={id!} />
+            <MeetingPollsQaTab meetingId={id!} canEdit={canEdit} />
           </motion.div>
         ) : activeTab === "summary" ? (
           <motion.div

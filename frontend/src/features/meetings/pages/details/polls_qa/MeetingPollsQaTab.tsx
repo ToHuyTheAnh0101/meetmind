@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   BarChart2,
@@ -10,9 +10,11 @@ import {
   HelpCircle,
 } from "lucide-react";
 import apiClient from "@/lib/apiClient";
+import { useAuth } from "@/features/auth/AuthContext";
 
 interface MeetingPollsQaTabProps {
   meetingId: string;
+  canEdit?: boolean;
 }
 
 interface PollVoter {
@@ -47,8 +49,12 @@ interface Answer {
   answeredByUserId: string;
   answeredByUser?: {
     id: string;
-    name: string;
-    avatarUrl?: string;
+    firstName: string;
+    lastName: string;
+    picture?: string;
+  };
+  answeredByParticipant?: {
+    displayName: string;
   };
   content: string;
   createdAt: string;
@@ -60,13 +66,18 @@ interface Question {
   askedByUserId: string;
   askedByUser?: {
     id: string;
-    name: string;
-    avatarUrl?: string;
+    firstName: string;
+    lastName: string;
+    picture?: string;
+  };
+  askedByParticipant?: {
+    displayName: string;
   };
   content: string;
   answers?: Answer[];
   createdAt: string;
   updatedAt: string;
+  revealAnswers?: boolean;
 }
 
 const MOCK_POLLS = (meetingId: string): Poll[] => [
@@ -144,7 +155,8 @@ const MOCK_QUESTIONS = (meetingId: string): Question[] => [
     askedByUserId: "u2",
     askedByUser: {
       id: "u2",
-      name: "Trần Thị B",
+      firstName: "Trần",
+      lastName: "Thị B",
     },
     content: "Dự án mới này sẽ sử dụng cơ sở dữ liệu gì vậy mọi người?",
     createdAt: new Date(Date.now() - 5400000).toISOString(),
@@ -157,7 +169,8 @@ const MOCK_QUESTIONS = (meetingId: string): Question[] => [
         answeredByUserId: "u1",
         answeredByUser: {
           id: "u1",
-          name: "Nguyễn Văn A",
+          firstName: "Nguyễn",
+          lastName: "Văn A",
         },
         content: "Chúng ta sẽ dùng PostgreSQL kết hợp với TypeORM cho dự án này nhé.",
         createdAt: new Date(Date.now() - 4800000).toISOString(),
@@ -170,7 +183,8 @@ const MOCK_QUESTIONS = (meetingId: string): Question[] => [
     askedByUserId: "u3",
     askedByUser: {
       id: "u3",
-      name: "Lê Văn C",
+      firstName: "Lê",
+      lastName: "Văn C",
     },
     content: "Đã có thiết kế Figma hoàn chỉnh chưa ạ?",
     createdAt: new Date(Date.now() - 1200000).toISOString(),
@@ -181,11 +195,15 @@ const MOCK_QUESTIONS = (meetingId: string): Question[] => [
 
 export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
   meetingId,
+  canEdit = false,
 }) => {
-  const { i18n } = useTranslation();
+  const { t, i18n } = useTranslation();
   const isVi = i18n.language === "vi";
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
 
   const [activeSubTab, setActiveSubTab] = useState<"polls" | "qa">("polls");
+  const [selectedQuestion, setSelectedQuestion] = useState<Question | null>(null);
 
   // Fetch Polls
   const { data: dbPolls = [], isLoading: isLoadingPolls } = useQuery<Poll[]>({
@@ -207,8 +225,40 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
     },
   });
 
+  // Mutations
+  const updateQuestionMutation = useMutation({
+    mutationFn: async ({ questionId, revealAnswers }: { questionId: string; revealAnswers: boolean }) => {
+      return apiClient.patch(`/meetings/${meetingId}/qa/${questionId}`, { revealAnswers });
+    },
+    onSuccess: (_data, variables) => {
+      queryClient.invalidateQueries({ queryKey: ["meeting-qa", meetingId] });
+      // If modal is open, update selectedQuestion too
+      if (selectedQuestion) {
+        setSelectedQuestion((prev) => {
+          if (!prev) return null;
+          return { ...prev, revealAnswers: variables.revealAnswers };
+        });
+      }
+    }
+  });
+
   const polls = dbPolls && dbPolls.length > 0 ? dbPolls : MOCK_POLLS(meetingId);
   const questions = dbQuestions && dbQuestions.length > 0 ? dbQuestions : MOCK_QUESTIONS(meetingId);
+
+  // Helpers
+  const getAuthorName = (author?: { firstName?: string; lastName?: string }, participant?: { displayName?: string }) => {
+    if (participant?.displayName) return participant.displayName;
+    if (author) {
+      return [author.firstName, author.lastName].filter(Boolean).join(" ") || (isVi ? "Người dùng ẩn danh" : "Anonymous User");
+    }
+    return isVi ? "Người dùng ẩn danh" : "Anonymous User";
+  };
+
+  const getFilteredAnswers = (q: Question) => {
+    const answers = q.answers || [];
+    if (canEdit || q.revealAnswers) return answers;
+    return answers.filter(a => a.answeredByUserId === user?.id);
+  };
 
   // Helpers
   const getInitials = (name?: string) => {
@@ -522,7 +572,8 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
             ) : (
               // Questions & Answers list
               questions.map((q) => {
-                const answerCount = q.answers?.length || 0;
+                const filteredAnswers = getFilteredAnswers(q);
+                const answerCount = filteredAnswers.length;
 
                 return (
                   <div
@@ -532,11 +583,11 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
                     {/* Question Author and Header */}
                     <div className="flex items-center justify-between">
                       <div className="flex items-center space-x-3">
-                        {q.askedByUser?.avatarUrl ? (
+                        {q.askedByUser?.picture ? (
                           <img
                             className="w-10 h-10 rounded-full object-cover ring-1 ring-slate-100 dark:ring-slate-800"
-                            src={q.askedByUser.avatarUrl}
-                            alt={q.askedByUser.name}
+                            src={q.askedByUser.picture}
+                            alt={getAuthorName(q.askedByUser, q.askedByParticipant)}
                           />
                         ) : (
                           <div
@@ -544,12 +595,12 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
                               q.askedByUser?.id
                             )}`}
                           >
-                            {getInitials(q.askedByUser?.name)}
+                            {getInitials(getAuthorName(q.askedByUser, q.askedByParticipant))}
                           </div>
                         )}
                         <div>
                           <h5 className="text-sm font-semibold text-slate-800 dark:text-slate-200">
-                            {q.askedByUser?.name || (isVi ? "Người dùng ẩn danh" : "Anonymous User")}
+                            {getAuthorName(q.askedByUser, q.askedByParticipant)}
                           </h5>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400">
                             {formatDateTime(q.createdAt)}
@@ -558,11 +609,13 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
                       </div>
 
                       {/* Question badge or answer count */}
-                      <span
-                        className={`inline-flex items-center px-2 py-0.5 rounded-md text-[11px] font-medium ${
+                      <button
+                        onClick={() => answerCount > 0 && setSelectedQuestion(q)}
+                        disabled={answerCount === 0}
+                        className={`inline-flex items-center px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all ${
                           answerCount > 0
-                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30"
-                            : "bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30"
+                            ? "bg-emerald-50 text-emerald-700 dark:bg-emerald-950/20 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-950/45 cursor-pointer active:scale-95 shadow-sm"
+                            : "bg-amber-50 text-amber-700 dark:bg-amber-950/20 dark:text-amber-400 border border-amber-100 dark:border-amber-900/30 cursor-default"
                         }`}
                       >
                         {answerCount > 0
@@ -572,7 +625,7 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
                           : isVi
                           ? "Chưa trả lời"
                           : "Unanswered"}
-                      </span>
+                      </button>
                     </div>
 
                     {/* Question Content */}
@@ -580,47 +633,32 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
                       <p className="whitespace-pre-line leading-relaxed">{q.content}</p>
                     </div>
 
-                    {/* Answers Section */}
-                    {q.answers && q.answers.length > 0 && (
-                      <div className="pl-4 sm:pl-6 border-l-2 border-slate-100 dark:border-slate-800 space-y-4 pt-2">
-                        {q.answers.map((answer) => (
-                          <div key={answer.id} className="space-y-1.5 relative">
-                            {/* Connector indicator for visuals */}
-                            <div className="absolute -left-4 sm:-left-6 top-4 w-2 sm:w-3.5 border-t border-slate-200 dark:border-slate-700" />
-
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center space-x-2">
-                                {answer.answeredByUser?.avatarUrl ? (
-                                  <img
-                                    className="w-6 h-6 rounded-full object-cover"
-                                    src={answer.answeredByUser.avatarUrl}
-                                    alt={answer.answeredByUser.name}
-                                  />
-                                ) : (
-                                  <div
-                                    className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${getRandomBgColor(
-                                      answer.answeredByUser?.id
-                                    )}`}
-                                  >
-                                    {getInitials(answer.answeredByUser?.name)}
-                                  </div>
-                                )}
-                                <span className="text-xs font-semibold text-slate-700 dark:text-slate-300">
-                                  {answer.answeredByUser?.name ||
-                                    (isVi ? "Người dùng ẩn danh" : "Anonymous User")}
-                                </span>
-                              </div>
-                              <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                                {formatDateTime(answer.createdAt)}
-                              </span>
-                            </div>
-
-                            {/* Answer Text bubble */}
-                            <div className="bg-indigo-50/30 dark:bg-indigo-950/10 p-3 rounded-xl border border-indigo-100/20 dark:border-indigo-950/30 text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                              {answer.content}
-                            </div>
+                    {/* Toggle Switch - Only for Host */}
+                    {canEdit && (
+                      <div className="pt-2 border-t border-slate-100 dark:border-slate-800/40 flex justify-start">
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            updateQuestionMutation.mutate({ questionId: q.id, revealAnswers: !q.revealAnswers });
+                          }}
+                          className="flex items-center gap-2 hover:opacity-80 transition-all text-left bg-transparent border-none p-0 outline-none"
+                        >
+                          <div className={`h-4 w-8 rounded-full p-[2px] transition-all duration-300 flex items-center relative shrink-0 ${
+                            q.revealAnswers 
+                              ? 'bg-lime-100 dark:bg-lime-500/40 border border-lime-300 dark:border-lime-500/30' 
+                              : 'bg-slate-200 dark:bg-slate-800 border border-slate-300/50 dark:border-white/10'
+                          }`}>
+                            <div className={`h-2.5 w-2.5 rounded-full transition-all duration-300 transform ${
+                              q.revealAnswers 
+                                ? 'translate-x-4 bg-lime-500 dark:bg-lime-400 shadow-[0_0_8px_rgba(132,204,22,0.6)]' 
+                                : 'translate-x-0 bg-slate-400 dark:bg-slate-500'
+                            }`} />
                           </div>
-                        ))}
+                          <span className="text-[12px] font-semibold text-slate-500 dark:text-slate-400 select-none">
+                            {t('meeting.reveal_answers') || 'Công khai câu trả lời'}
+                          </span>
+                        </button>
                       </div>
                     )}
                   </div>
@@ -628,6 +666,121 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
               })
             )}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Responses Modal */}
+      <AnimatePresence>
+        {selectedQuestion && (
+          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setSelectedQuestion(null)}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 20 }}
+              className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[85vh] z-10"
+            >
+              {/* Header */}
+              <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
+                <div className="flex items-center space-x-2">
+                  <MessageSquare className="w-5 h-5 text-indigo-500" />
+                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
+                    {isVi ? "Danh sách câu trả lời" : "Responses List"}
+                  </h3>
+                </div>
+                <button
+                  onClick={() => setSelectedQuestion(null)}
+                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer"
+                >
+                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+
+              {/* Content area */}
+              <div className="p-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
+                {/* Question Info */}
+                <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-100/50 dark:border-slate-800/40 space-y-2">
+                  <div className="flex items-center space-x-2.5">
+                    {selectedQuestion.askedByUser?.picture ? (
+                      <img
+                        className="w-8 h-8 rounded-full object-cover"
+                        src={selectedQuestion.askedByUser.picture}
+                        alt=""
+                      />
+                    ) : (
+                      <div
+                        className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${getRandomBgColor(
+                          selectedQuestion.askedByUser?.id
+                        )}`}
+                      >
+                        {getInitials(getAuthorName(selectedQuestion.askedByUser, selectedQuestion.askedByParticipant))}
+                      </div>
+                    )}
+                    <div>
+                      <h5 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                        {getAuthorName(selectedQuestion.askedByUser, selectedQuestion.askedByParticipant)}
+                      </h5>
+                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                        {formatDateTime(selectedQuestion.createdAt)}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 pl-1 leading-relaxed">
+                    {selectedQuestion.content}
+                  </p>
+                </div>
+
+                {/* Answers list */}
+                <div className="space-y-4">
+                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">
+                    {isVi ? "Các phản hồi" : "Responses"} ({getFilteredAnswers(selectedQuestion).length})
+                  </h4>
+                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                    {getFilteredAnswers(selectedQuestion).map((answer) => (
+                      <div key={answer.id} className="space-y-1.5 p-3.5 bg-indigo-50/20 dark:bg-indigo-950/5 rounded-2xl border border-slate-100 dark:border-slate-800/40">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center space-x-2">
+                            {answer.answeredByUser?.picture ? (
+                              <img
+                                className="w-6 h-6 rounded-full object-cover"
+                                src={answer.answeredByUser.picture}
+                                alt=""
+                              />
+                            ) : (
+                              <div
+                                className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${getRandomBgColor(
+                                  answer.answeredByUser?.id
+                                )}`}
+                              >
+                                {getInitials(getAuthorName(answer.answeredByUser, answer.answeredByParticipant))}
+                              </div>
+                            )}
+                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                              {getAuthorName(answer.answeredByUser, answer.answeredByParticipant)}
+                            </span>
+                          </div>
+                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                            {formatDateTime(answer.createdAt)}
+                          </span>
+                        </div>
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed pl-1 pt-0.5">
+                          {answer.content}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

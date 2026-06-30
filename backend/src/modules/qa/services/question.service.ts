@@ -113,4 +113,37 @@ export class QuestionService {
 
     return savedAnswer;
   }
+
+  async update(
+    meetingId: string,
+    id: string,
+    userId: string,
+    data: { revealAnswers?: boolean },
+  ): Promise<MeetingQuestion> {
+    const participant = await this.participantRepository.findByMeetingAndUser(
+      meetingId,
+      userId,
+    );
+    if (
+      !participant ||
+      (!participant.isOrganizer &&
+        !participant.permissions?.includes(MeetingPermission.MANAGE_QA) &&
+        !participant.permissions?.includes(MeetingPermission.CO_HOST))
+    ) {
+      throw new ForbiddenException(
+        'You do not have permission to update questions in this meeting',
+      );
+    }
+
+    const question = await this.findById(id);
+    if (question.meetingId !== meetingId) {
+      throw new BadRequestException('Question does not belong to this meeting');
+    }
+
+    if (data.revealAnswers !== undefined) {
+      question.revealAnswers = data.revealAnswers;
+    }
+
+    return this.questionRepository.save(question);
+  }
 }

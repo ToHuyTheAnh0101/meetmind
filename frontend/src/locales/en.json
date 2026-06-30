@@ -433,6 +433,7 @@
     "qa_section": "Q&A",
     "ask_host": "Ask organizers",
     "host_asking": "Host is asking",
+    "reveal_answers": "Public responses",
     "enter_question": "Type your question...",
     "enter_answer": "Type your answer...",
     "ask_anonymous": "Ask anonymously",

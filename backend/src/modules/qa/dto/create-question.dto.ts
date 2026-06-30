@@ -1,4 +1,4 @@
-import { IsString, IsOptional } from 'class-validator';
+import { IsString, IsOptional, IsBoolean } from 'class-validator';
 
 export class CreateQuestionDto {
   @IsString()
@@ -7,6 +7,16 @@ export class CreateQuestionDto {
   @IsString()
   @IsOptional()
   breakoutRoomId?: string;
+
+  @IsBoolean()
+  @IsOptional()
+  revealAnswers?: boolean;
+}
+
+export class UpdateQuestionDto {
+  @IsBoolean()
+  @IsOptional()
+  revealAnswers?: boolean;
 }
 
 export class CreateAnswerDto {

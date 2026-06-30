@@ -37,6 +37,7 @@ interface Question {
   };
   answers: Answer[];
   createdAt: string;
+  revealAnswers?: boolean;
 }
 
 interface QATabProps {
@@ -96,6 +97,18 @@ const QATab: React.FC<QATabProps> = ({
     },
     onSuccess: () => {
       setNewQuestion('');
+      queryClient.invalidateQueries({ queryKey: ['questions', meetingId] });
+      // Broadcast update
+      const encoder = new TextEncoder();
+      send(encoder.encode(JSON.stringify({ type: 'QA_UPDATED', meetingId })), { reliable: true });
+    }
+  });
+
+  const updateQuestionMutation = useMutation({
+    mutationFn: async ({ questionId, revealAnswers }: { questionId: string; revealAnswers: boolean }) => {
+      return apiClient.patch(`/meetings/${meetingId}/qa/${questionId}`, { revealAnswers });
+    },
+    onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['questions', meetingId] });
       // Broadcast update
       const encoder = new TextEncoder();
@@ -193,7 +206,7 @@ const QATab: React.FC<QATabProps> = ({
                     >
                       <MessageSquare className="h-3.5 w-3.5 text-lime-400" />
                       <span className="text-[12px] font-semibold text-slate-400 group-hover:text-slate-200">
-                        {hasManagePrivilege ? q.answers.length : q.answers.filter(a => a.answeredByUserId === userId).length} {t('meeting.responses') || 'Phản hồi'}
+                        {hasManagePrivilege || q.revealAnswers ? q.answers.length : q.answers.filter(a => a.answeredByUserId === userId).length} {t('meeting.responses') || 'Phản hồi'}
                       </span>
                     </button>
                     
@@ -212,6 +225,30 @@ const QATab: React.FC<QATabProps> = ({
                     {t('common.reply')}
                   </button>
                 </div>
+
+                {hasManagePrivilege && (
+                  <div className="pt-2 border-t border-white/5 flex justify-start">
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        updateQuestionMutation.mutate({ questionId: q.id, revealAnswers: !q.revealAnswers });
+                      }}
+                      className="flex items-center gap-2 hover:opacity-80 transition-all text-left bg-transparent border-none p-0 outline-none"
+                    >
+                      <div className={`h-4 w-8 rounded-full p-[2px] transition-all duration-300 flex items-center relative shrink-0 ${
+                        q.revealAnswers ? 'bg-lime-500/40 border border-lime-500/30' : 'bg-slate-800 border border-white/10'
+                      }`}>
+                        <div className={`h-2.5 w-2.5 rounded-full transition-all duration-300 transform ${
+                          q.revealAnswers ? 'translate-x-4 bg-lime-400 shadow-[0_0_8px_rgba(132,204,22,0.6)]' : 'translate-x-0 bg-slate-500'
+                        }`} />
+                      </div>
+                      <span className="text-[12px] font-semibold text-slate-400 select-none">
+                        {t('meeting.reveal_answers') || 'Công khai câu trả lời'}
+                      </span>
+                    </button>
+                  </div>
+                )}
               </motion.div>
             ))
           )}
