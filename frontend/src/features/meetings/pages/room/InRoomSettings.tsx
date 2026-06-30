@@ -3,6 +3,7 @@ import { useTranslation } from "react-i18next";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useDataChannel } from "@livekit/components-react";
 import apiClient from "@/lib/apiClient";
+import { emitCustomEvent, MeetingEvents } from "@/hooks/useCustomEvent";
 import { Check, Loader2, AlertCircle } from "lucide-react";
 import { Meeting } from "@/types/api";
 import SettingToggle from "../details/general/SettingToggle";
@@ -65,9 +66,7 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
       );
 
       // Also refresh locally for the host
-      window.dispatchEvent(
-        new CustomEvent("refresh-meeting", { detail: { meetingId } }),
-      );
+      emitCustomEvent(MeetingEvents.REFRESH_MEETING, { meetingId });
 
       setTimeout(() => setSaveStatus("idle"), 2000);
     },

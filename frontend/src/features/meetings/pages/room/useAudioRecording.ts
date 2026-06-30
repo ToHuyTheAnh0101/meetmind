@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocalParticipant } from "@livekit/components-react";
 import apiClient from "@/lib/apiClient";
 import { showSuccessToast, showErrorToast } from "@/lib/toastUtils";
+import { useCustomEvent, MeetingEvents } from "@/hooks/useCustomEvent";
 
 interface UseAudioRecordingOptions {
   meetingId: string;
@@ -260,28 +261,21 @@ export function useAudioRecording({
 
   // ─── Effects ─────────────────────────────────────────────────────────────
 
-  // Listen for organizer broadcast signals
-  useEffect(() => {
-    const handleRecordingStarted = () => {
-      if (!isOrganizer && !isRecordingRef.current) {
-        startRecording();
-      }
-    };
-
-    const handleRecordingStopped = () => {
-      if (!isOrganizer && isRecordingRef.current) {
-        stopRecording();
-      }
-    };
-
-    window.addEventListener("recording-started", handleRecordingStarted);
-    window.addEventListener("recording-stopped", handleRecordingStopped);
-
-    return () => {
-      window.removeEventListener("recording-started", handleRecordingStarted);
-      window.removeEventListener("recording-stopped", handleRecordingStopped);
-    };
+  const handleRecordingStarted = useCallback(() => {
+    if (!isOrganizer && !isRecordingRef.current) {
+      startRecording();
+    }
   }, [isOrganizer]);
+
+  const handleRecordingStopped = useCallback(() => {
+    if (!isOrganizer && isRecordingRef.current) {
+      stopRecording();
+    }
+  }, [isOrganizer]);
+
+  // Listen for organizer broadcast signals
+  useCustomEvent(MeetingEvents.RECORDING_STARTED, handleRecordingStarted);
+  useCustomEvent(MeetingEvents.RECORDING_STOPPED, handleRecordingStopped);
 
   // Reactively start/stop local MediaRecorder based on recording + mic status
   const shouldLocalRecord = isRecording && isMicrophoneEnabled;

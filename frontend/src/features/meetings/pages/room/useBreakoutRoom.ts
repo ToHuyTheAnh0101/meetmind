@@ -3,6 +3,7 @@ import { toast } from "react-hot-toast";
 import { useTranslation } from "react-i18next";
 import apiClient from "@/lib/apiClient";
 import { showSuccessToast, showErrorToast } from "@/lib/toastUtils";
+import { useCustomEvent, MeetingEvents } from "@/hooks/useCustomEvent";
 
 export interface JoinResponse {
   meetingId: string;
@@ -277,15 +278,8 @@ export const useBreakoutRoom = (meetingId: string | undefined, userId: string | 
   }, [meetingId, joinData?.token, joinData?.isBreakoutRoom, isOrganizer, handleBreakoutStarted, handleJoinBreakoutAsHost]);
 
   // Listen to breakout room signals
-  useEffect(() => {
-    window.addEventListener("breakout-started", handleBreakoutStarted);
-    window.addEventListener("breakout-ended", handleBreakoutEnded);
-
-    return () => {
-      window.removeEventListener("breakout-started", handleBreakoutStarted);
-      window.removeEventListener("breakout-ended", handleBreakoutEnded);
-    };
-  }, [handleBreakoutStarted, handleBreakoutEnded]);
+  useCustomEvent(MeetingEvents.BREAKOUT_STARTED, handleBreakoutStarted);
+  useCustomEvent(MeetingEvents.BREAKOUT_ENDED, handleBreakoutEnded);
 
   // Polling breakout status
   useEffect(() => {

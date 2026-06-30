@@ -13,6 +13,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '@/lib/apiClient';
+import { useCustomEvent, MeetingEvents } from '@/hooks/useCustomEvent';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -411,16 +412,11 @@ const PollTab: React.FC<PollTabProps> = ({
   });
 
   // Listener for real-time updates
-  React.useEffect(() => {
-    const handleRefresh = (e: Event) => {
-      const detail = (e as CustomEvent<{ meetingId: string }>).detail;
-      if (detail?.meetingId === meetingId) {
-        queryClient.invalidateQueries({ queryKey: ['polls', meetingId] });
-      }
-    };
-    window.addEventListener('refresh-polls', handleRefresh);
-    return () => window.removeEventListener('refresh-polls', handleRefresh);
-  }, [meetingId, queryClient]);
+  useCustomEvent(MeetingEvents.REFRESH_POLLS, (detail: any) => {
+    if (detail?.meetingId === meetingId) {
+      queryClient.invalidateQueries({ queryKey: ['polls', meetingId] });
+    }
+  });
 
   // Vote Mutation
   const voteMutation = useMutation({

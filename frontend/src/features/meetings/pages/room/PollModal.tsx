@@ -2,11 +2,8 @@ import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDataChannel } from '@livekit/components-react';
-import { 
-  BarChart3, 
-  X,
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { BarChart3, X } from 'lucide-react';
+import BaseModal from '@/components/ui/BaseModal';
 import apiClient from '@/lib/apiClient';
 
 interface PollModalProps {
@@ -22,59 +19,31 @@ const PollModal: React.FC<PollModalProps> = ({ isOpen, onClose, meetingId, isInB
   const queryClient = useQueryClient();
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div className="fixed inset-0 z-[1000] flex items-center justify-center p-4">
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-            className="absolute inset-0 bg-slate-900/40 backdrop-blur-sm"
-          />
-          
-          <motion.div
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
-            className="relative w-full max-w-lg bg-[#0f1115] rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden border border-white/10"
-          >
-            {/* Header */}
-            <div className="px-8 py-6 border-b border-white/5 flex items-center justify-between bg-white/5">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-500/20">
-                  <BarChart3 className="h-5 w-5" />
-                </div>
-                <div>
-                  <h3 className="text-xl font-black text-white">{t('meeting.new_poll') || 'Tạo bình chọn'}</h3>
-                  <p className="text-[13px] font-medium text-slate-300">{t('meeting.poll_subtitle') || 'Thu thập ý kiến nhanh chóng từ mọi người'}</p>
-                </div>
-              </div>
-              <button 
-                onClick={onClose}
-                className="p-2.5 rounded-xl hover:bg-white/5 text-slate-500 hover:text-white transition-all"
-              >
-                <X className="h-6 w-6" />
-              </button>
-            </div>
-
-            {/* Content */}
-            <div className="px-8 py-6 overflow-y-auto max-h-[70vh] custom-scrollbar bg-transparent">
-              <CreatePollForm 
-                meetingId={meetingId} 
-                onClose={onClose}
-                isInBreakout={isInBreakout}
-                breakoutRoomId={breakoutRoomId}
-                onSuccess={() => {
-                  queryClient.invalidateQueries({ queryKey: ['polls', meetingId] });
-                  onClose();
-                }}
-              />
-            </div>
-          </motion.div>
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t('meeting.new_poll') || 'Tạo bình chọn'}
+      subtitle={t('meeting.poll_subtitle') || 'Thu thập ý kiến nhanh chóng từ mọi người'}
+      icon={
+        <div className="p-3 rounded-2xl bg-rose-500 text-white shadow-lg shadow-rose-500/20">
+          <BarChart3 className="h-5 w-5" />
         </div>
-      )}
-    </AnimatePresence>
+      }
+    >
+      {/* Content */}
+      <div className="px-8 py-6 overflow-y-auto max-h-[70vh] custom-scrollbar bg-transparent">
+        <CreatePollForm 
+          meetingId={meetingId} 
+          onClose={onClose}
+          isInBreakout={isInBreakout}
+          breakoutRoomId={breakoutRoomId}
+          onSuccess={() => {
+            queryClient.invalidateQueries({ queryKey: ['polls', meetingId] });
+            onClose();
+          }}
+        />
+      </div>
+    </BaseModal>
   );
 };
 

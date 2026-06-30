@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { useTranslation } from 'react-i18next';
+import BaseModal from '@/components/ui/BaseModal';
 
 interface Participant {
   id: string;
@@ -178,28 +179,21 @@ const BreakoutManagementModal: React.FC<Props> = ({
     }
   };
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-[1000] flex items-center justify-center p-0 sm:p-4 bg-black/60 backdrop-blur-sm">
-      <motion.div 
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="relative w-full h-full lg:h-[85vh] lg:max-w-5xl bg-[#0f1115] lg:border border-white/10 lg:rounded-[2.5rem] shadow-2xl flex flex-col overflow-hidden"
-      >
-        {/* Header */}
-        <div className="p-4 lg:p-8 border-b border-white/5 flex items-center justify-between shrink-0">
-          <div>
-            <h2 className="text-lg lg:text-2xl font-black text-white flex items-center gap-2 lg:gap-3">
-              <Grid2X2 className="text-teal-400 h-5 w-5 lg:h-6 lg:w-6" />
-              {t('meeting.breakout_rooms_title', 'Chia phòng họp nhỏ')}
-            </h2>
-            <p className="text-slate-400 text-xs lg:text-sm mt-1">{t('meeting.breakout_rooms_subtitle', 'Quản lý và phân bổ người tham gia vào các nhóm thảo luận')}</p>
-          </div>
-          <button onClick={onClose} className="p-2 lg:p-3 hover:bg-white/5 rounded-2xl transition-colors">
-            <X className="text-slate-400 h-5 w-5 lg:h-6 lg:w-6" />
-          </button>
+    <BaseModal
+      isOpen={isOpen}
+      onClose={onClose}
+      title={t('meeting.breakout_rooms_title', 'Chia phòng họp nhỏ')}
+      subtitle={t('meeting.breakout_rooms_subtitle', 'Quản lý và phân bổ người tham gia vào các nhóm thảo luận')}
+      maxWidthClassName="lg:max-w-5xl"
+      containerClassName="bg-[#0f1115] lg:border border-white/10 lg:rounded-[2.5rem] text-white w-full h-full lg:h-[85vh] flex flex-col"
+      icon={
+        <div className="p-3 rounded-2xl bg-teal-500/10 text-teal-400 shadow-lg shrink-0">
+          <Grid2X2 className="h-5 w-5 lg:h-6 lg:w-6" />
         </div>
+      }
+    >
+      <div className="flex flex-col flex-1 overflow-hidden">
 
         {/* Toolbar */}
         <div className="px-4 py-3 lg:px-8 lg:py-4 bg-white/5 border-b border-white/5 flex flex-wrap items-center gap-3 lg:gap-4 shrink-0">
@@ -443,8 +437,8 @@ const BreakoutManagementModal: React.FC<Props> = ({
             </button>
           </div>
         </div>
-      </motion.div>
-    </div>
+      </div>
+    </BaseModal>
   );
 };
 

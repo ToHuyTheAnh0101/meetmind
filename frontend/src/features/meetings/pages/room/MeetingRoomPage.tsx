@@ -20,7 +20,6 @@ import { useTranslation } from "react-i18next";
 
 import apiClient from "@/lib/apiClient";
 import { useAuth } from "@/features/auth/AuthContext";
-import { getToken } from "@/lib/tokenStorage";
 
 // Sub-components
 import MeetingLobby from "./MeetingLobby";
@@ -41,6 +40,8 @@ import { useBreakoutRoom } from "./useBreakoutRoom";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Toaster, toast } from "react-hot-toast";
 import { showSuccessToast, showErrorToast } from "@/lib/toastUtils";
+import { useSSE } from "@/hooks/useSSE";
+import { useCustomEvent, MeetingEvents } from "@/hooks/useCustomEvent";
 
 interface JoinResponse {
   meetingId: string;
@@ -198,34 +199,14 @@ const MeetingRoomPage: React.FC = () => {
   });
 
   // Listen to Server-Sent Events (SSE) for lobby updates (for Host/Co-host)
-  useEffect(() => {
-    if (!id || (!isOrganizer && !isCoHost)) return;
-
-    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-    const token = getToken() || "";
-    const eventSource = new EventSource(
-      `${apiBaseUrl}/meetings/${id}/lobby/sse?token=${encodeURIComponent(token)}`
-    );
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "lobby_updated") {
-          queryClient.invalidateQueries({ queryKey: ["meeting-participants", id] });
-        }
-      } catch (err) {
-        console.error("Error parsing lobby SSE event in MeetingRoomPage", err);
+  useSSE(
+    (id && (isOrganizer || isCoHost)) ? `/meetings/${id}/lobby/sse` : null,
+    (data: any) => {
+      if (data.type === "lobby_updated") {
+        queryClient.invalidateQueries({ queryKey: ["meeting-participants", id] });
       }
-    };
-
-    eventSource.onerror = (err) => {
-      console.error("Lobby SSE connection error in MeetingRoomPage", err);
-    };
-
-    return () => {
-      eventSource.close();
-    };
-  }, [id, isOrganizer, isCoHost, queryClient]);
+    }
+  );
 
   const hasWaitingLobby = useMemo(() => {
     if (!participantsData?.items) return false;
@@ -493,94 +474,67 @@ const MeetingRoomPage: React.FC = () => {
     }
   }, [meetingDetails?.startTime, t]);
 
-  useEffect(() => {
-    const handleRefreshMeeting = (e: any) => {
-      if (e.detail?.meetingId === id) {
-        fetchMeetingDetails();
-        queryClient.invalidateQueries({ queryKey: ["meeting-participants", id] });
-      }
-    };
-    const handleRefreshQA = (e: any) => {
-      if (e.detail?.meetingId === id) {
-        queryClient.invalidateQueries({ queryKey: ["questions", id] });
-        if (activeTabRef.current !== "qa" || !isSidebarOpenRef.current) {
-          setHasUnreadQA(true);
-        }
-      }
-    };
-    const handleRefreshPolls = (e: any) => {
-      if (e.detail?.meetingId === id) {
-        queryClient.invalidateQueries({ queryKey: ["polls", id] });
-        if (activeTabRef.current !== "polls" || !isSidebarOpenRef.current) {
-          setHasUnreadPolls(true);
-        }
-      }
-    };
-    window.addEventListener("refresh-meeting", handleRefreshMeeting);
-    window.addEventListener("refresh-qa", handleRefreshQA);
-    window.addEventListener("refresh-polls", handleRefreshPolls);
-
-    return () => {
-      window.removeEventListener("refresh-meeting", handleRefreshMeeting);
-      window.removeEventListener("refresh-qa", handleRefreshQA);
-      window.removeEventListener("refresh-polls", handleRefreshPolls);
-    };
+  const handleRefreshMeeting = useCallback((detail: any) => {
+    if (detail?.meetingId === id) {
+      fetchMeetingDetails();
+      queryClient.invalidateQueries({ queryKey: ["meeting-participants", id] });
+    }
   }, [id, fetchMeetingDetails, queryClient]);
 
-  useEffect(() => {
-    if (!isWaitingInLobby || !id) return;
+  const handleRefreshQA = useCallback((detail: any) => {
+    if (detail?.meetingId === id) {
+      queryClient.invalidateQueries({ queryKey: ["questions", id] });
+      if (activeTabRef.current !== "qa" || !isSidebarOpenRef.current) {
+        setHasUnreadQA(true);
+      }
+    }
+  }, [id, queryClient]);
 
-    const apiBaseUrl = import.meta.env.VITE_API_URL || "http://localhost:3000";
-    const token = getToken() || "";
-    const eventSource = new EventSource(
-      `${apiBaseUrl}/meetings/${id}/participants/status-sse?token=${encodeURIComponent(token)}`
-    );
+  const handleRefreshPolls = useCallback((detail: any) => {
+    if (detail?.meetingId === id) {
+      queryClient.invalidateQueries({ queryKey: ["polls", id] });
+      if (activeTabRef.current !== "polls" || !isSidebarOpenRef.current) {
+        setHasUnreadPolls(true);
+      }
+    }
+  }, [id, queryClient]);
 
-    const checkAndJoin = async () => {
-      try {
-        const response = await apiClient.post<JoinResponse>(
-          `/meetings/${id}/join`,
-          { password },
-          { _skipLogout: true } as any,
-        );
-        if (
-          response.data.status === "admitted" ||
-          response.data.status === "active"
-        ) {
+  useCustomEvent(MeetingEvents.REFRESH_MEETING, handleRefreshMeeting);
+  useCustomEvent(MeetingEvents.REFRESH_QA, handleRefreshQA);
+  useCustomEvent(MeetingEvents.REFRESH_POLLS, handleRefreshPolls);
+
+  const checkAndJoin = useCallback(async () => {
+    try {
+      const response = await apiClient.post<JoinResponse>(
+        `/meetings/${id}/join`,
+        { password },
+        { _skipLogout: true } as any,
+      );
+      if (
+        response.data.status === "admitted" ||
+        response.data.status === "active"
+      ) {
+        setIsWaitingInLobby(false);
+        setJoinData(response.data);
+      }
+    } catch (err) {
+      console.error("Failed to automatically join after SSE admittance notification", err);
+    }
+  }, [id, password]);
+
+  useSSE(
+    (isWaitingInLobby && id) ? `/meetings/${id}/participants/status-sse` : null,
+    (data: any) => {
+      if (data.type === "status_updated") {
+        if (data.status === "admitted") {
+          checkAndJoin();
+        } else if (data.status === "denied") {
           setIsWaitingInLobby(false);
-          setJoinData(response.data);
+          setError(t("meeting.access_denied"));
         }
-      } catch (err) {
-        console.error("Failed to automatically join after SSE admittance notification", err);
       }
-    };
-
-    eventSource.onmessage = (event) => {
-      try {
-        const data = JSON.parse(event.data);
-        if (data.type === "status_updated") {
-          if (data.status === "admitted") {
-            eventSource.close();
-            checkAndJoin();
-          } else if (data.status === "denied") {
-            eventSource.close();
-            setIsWaitingInLobby(false);
-            setError(t("meeting.access_denied"));
-          }
-        }
-      } catch (err) {
-        console.error("Error parsing status SSE event", err);
-      }
-    };
-
-    eventSource.onerror = (err) => {
-      console.error("Status SSE connection error", err);
-    };
-
-    return () => {
-      eventSource.close();
-    };
-  }, [isWaitingInLobby, id, password, t]);
+    }
+  );
 
   useEffect(() => {
     let activeTrack: LocalVideoTrack | null = null;

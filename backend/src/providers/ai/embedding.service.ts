@@ -58,17 +58,4 @@ export class EmbeddingService {
       return [];
     }
   }
-
-  /**
-   * Embed batch — giới hạn concurrency để tránh vượt quota Gemini.
-   */
-  async embedBatch(texts: string[], concurrency = 3): Promise<number[][]> {
-    const results: number[][] = [];
-    for (let i = 0; i < texts.length; i += concurrency) {
-      const batch = texts.slice(i, i + concurrency);
-      const embeddings = await Promise.all(batch.map((t) => this.embed(t)));
-      results.push(...embeddings);
-    }
-    return results;
-  }
 }

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDataChannel } from '@livekit/components-react';
@@ -11,6 +11,8 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import apiClient from '@/lib/apiClient';
+import { useCustomEvent, MeetingEvents } from '@/hooks/useCustomEvent';
+import { getUserDisplayName } from '@/lib/userUtils';
 
 interface Answer {
   id: string;
@@ -76,15 +78,11 @@ const QATab: React.FC<QATabProps> = ({
   });
 
   // Real-time Listener
-  useEffect(() => {
-    const handleRefresh = (e: any) => {
-      if (e.detail?.meetingId === meetingId) {
-        queryClient.invalidateQueries({ queryKey: ['questions', meetingId] });
-      }
-    };
-    window.addEventListener('refresh-qa', handleRefresh);
-    return () => window.removeEventListener('refresh-qa', handleRefresh);
-  }, [meetingId, queryClient]);
+  useCustomEvent(MeetingEvents.REFRESH_QA, (detail: any) => {
+    if (detail?.meetingId === meetingId) {
+      queryClient.invalidateQueries({ queryKey: ['questions', meetingId] });
+    }
+  });
 
   // Mutations
   const createQuestionMutation = useMutation({
@@ -183,7 +181,7 @@ const QATab: React.FC<QATabProps> = ({
                     <span className="text-xs font-bold text-slate-300">
                       {q.askedByUserId === userId 
                         ? t('common.you') 
-                        : (q.askedByParticipant?.displayName || (q.askedByUser ? `${q.askedByUser.firstName} ${q.askedByUser.lastName}` : t('common.participant')))
+                        : getUserDisplayName(q.askedByUser, q.askedByParticipant, t('common.participant'))
                       }
                     </span>
                   </div>

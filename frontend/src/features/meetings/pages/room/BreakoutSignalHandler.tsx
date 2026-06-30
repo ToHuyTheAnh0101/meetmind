@@ -1,62 +1,52 @@
-import React, { useEffect } from "react";
+import React, { useCallback } from "react";
 import { useLocalParticipant } from "@livekit/components-react";
+import { useCustomEvent, emitCustomEvent, MeetingEvents } from "@/hooks/useCustomEvent";
 
 export const BreakoutSignalHandler: React.FC = () => {
   const { localParticipant } = useLocalParticipant();
 
-  useEffect(() => {
-    const handleStart = (e: any) => {
-      const rooms = e.detail;
-      const assignments = rooms.flatMap((r: any) =>
-        r.participants.map((p: any) => ({
-          userId: p.userId,
-          roomId: r.id,
-          roomName: r.name,
-        })),
-      );
+  const handleStart = useCallback((rooms: any) => {
+    const assignments = rooms.flatMap((r: any) =>
+      r.participants.map((p: any) => ({
+        userId: p.userId,
+        roomId: r.id,
+        roomName: r.name,
+      })),
+    );
 
-      const payload = JSON.stringify({
-        type: "BREAKOUT_STARTED",
-        assignments,
+    const payload = JSON.stringify({
+      type: "BREAKOUT_STARTED",
+      assignments,
+    });
+
+    try {
+      localParticipant.publishData(new TextEncoder().encode(payload), {
+        reliable: true,
       });
+    } catch (err) {
+      console.error("Failed to publish BREAKOUT_STARTED", err);
+    }
 
-      try {
-        localParticipant.publishData(new TextEncoder().encode(payload), {
-          reliable: true,
-        });
-      } catch (err) {
-        console.error("Failed to publish BREAKOUT_STARTED", err);
-      }
-
-      // Manually trigger for the sender (Host)
-      window.dispatchEvent(
-        new CustomEvent("breakout-started", { detail: JSON.parse(payload) }),
-      );
-    };
-
-    const handleEnd = () => {
-      const payload = JSON.stringify({ type: "BREAKOUT_ENDED" });
-      try {
-        localParticipant.publishData(new TextEncoder().encode(payload), {
-          reliable: true,
-        });
-      } catch (err) {
-        console.error("Failed to publish BREAKOUT_ENDED", err);
-      }
-
-      // Manually trigger for the sender (Host)
-      window.dispatchEvent(
-        new CustomEvent("breakout-ended", { detail: JSON.parse(payload) }),
-      );
-    };
-
-    window.addEventListener("send-breakout-start-signal", handleStart);
-    window.addEventListener("send-breakout-end-signal", handleEnd);
-    return () => {
-      window.removeEventListener("send-breakout-start-signal", handleStart);
-      window.removeEventListener("send-breakout-end-signal", handleEnd);
-    };
+    // Manually trigger for the sender (Host)
+    emitCustomEvent(MeetingEvents.BREAKOUT_STARTED, JSON.parse(payload));
   }, [localParticipant]);
+
+  const handleEnd = useCallback(() => {
+    const payload = JSON.stringify({ type: "BREAKOUT_ENDED" });
+    try {
+      localParticipant.publishData(new TextEncoder().encode(payload), {
+        reliable: true,
+      });
+    } catch (err) {
+      console.error("Failed to publish BREAKOUT_ENDED", err);
+    }
+
+    // Manually trigger for the sender (Host)
+    emitCustomEvent(MeetingEvents.BREAKOUT_ENDED, JSON.parse(payload));
+  }, [localParticipant]);
+
+  useCustomEvent(MeetingEvents.SEND_BREAKOUT_START_SIGNAL, handleStart);
+  useCustomEvent(MeetingEvents.SEND_BREAKOUT_END_SIGNAL, handleEnd);
 
   return null;
 };

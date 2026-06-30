@@ -1,5 +1,6 @@
 import React from "react";
 import { useDataChannel } from "@livekit/components-react";
+import { emitCustomEvent, MeetingEvents } from "@/hooks/useCustomEvent";
 
 interface DataHandlerProps {
   meetingId: string;
@@ -18,42 +19,28 @@ export const DataHandler: React.FC<DataHandlerProps> = ({
           : (msg.payload as string),
       );
       if (data.type === "POLL_CREATED" || data.type === "POLL_UPDATED") {
-        window.dispatchEvent(
-          new CustomEvent("refresh-polls", { detail: { meetingId } }),
-        );
+        emitCustomEvent(MeetingEvents.REFRESH_POLLS, { meetingId });
         if (data.type === "POLL_CREATED") {
           onNotify();
         }
       }
       if (data.type === "QA_UPDATED") {
-        window.dispatchEvent(
-          new CustomEvent("refresh-qa", { detail: { meetingId } }),
-        );
+        emitCustomEvent(MeetingEvents.REFRESH_QA, { meetingId });
       }
       if (data.type === "MEETING_UPDATED" || data.type === "PERMISSIONS_UPDATED") {
-        window.dispatchEvent(
-          new CustomEvent("refresh-meeting", { detail: { meetingId } }),
-        );
+        emitCustomEvent(MeetingEvents.REFRESH_MEETING, { meetingId });
       }
       if (data.type === "BREAKOUT_STARTED") {
-        window.dispatchEvent(
-          new CustomEvent("breakout-started", { detail: data }),
-        );
+        emitCustomEvent(MeetingEvents.BREAKOUT_STARTED, data);
       }
       if (data.type === "BREAKOUT_ENDED") {
-        window.dispatchEvent(
-          new CustomEvent("breakout-ended", { detail: data }),
-        );
+        emitCustomEvent(MeetingEvents.BREAKOUT_ENDED, data);
       }
       if (data.type === "RECORDING_STARTED") {
-        window.dispatchEvent(
-          new CustomEvent("recording-started", { detail: data }),
-        );
+        emitCustomEvent(MeetingEvents.RECORDING_STARTED, data);
       }
       if (data.type === "RECORDING_STOPPED") {
-        window.dispatchEvent(
-          new CustomEvent("recording-stopped", { detail: data }),
-        );
+        emitCustomEvent(MeetingEvents.RECORDING_STOPPED, data);
       }
     } catch (e) {
       console.error("Failed to parse data message", e);

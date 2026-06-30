@@ -11,6 +11,9 @@ import {
 } from "lucide-react";
 import apiClient from "@/lib/apiClient";
 import { useAuth } from "@/features/auth/AuthContext";
+import { getUserDisplayName, getInitials, getRandomBgColor } from "@/lib/userUtils";
+import { formatDateTime } from "@/features/meetings/utils/formatters";
+import BaseModal from "@/components/ui/BaseModal";
 
 interface MeetingPollsQaTabProps {
   meetingId: string;
@@ -246,56 +249,14 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
   const questions = dbQuestions && dbQuestions.length > 0 ? dbQuestions : MOCK_QUESTIONS(meetingId);
 
   // Helpers
-  const getAuthorName = (author?: { firstName?: string; lastName?: string }, participant?: { displayName?: string }) => {
-    if (participant?.displayName) return participant.displayName;
-    if (author) {
-      return [author.firstName, author.lastName].filter(Boolean).join(" ") || (isVi ? "Người dùng ẩn danh" : "Anonymous User");
-    }
-    return isVi ? "Người dùng ẩn danh" : "Anonymous User";
+  const getAuthorName = (author?: any, participant?: any) => {
+    return getUserDisplayName(author, participant, isVi ? "Người dùng ẩn danh" : "Anonymous User");
   };
 
   const getFilteredAnswers = (q: Question) => {
     const answers = q.answers || [];
     if (canEdit || q.revealAnswers) return answers;
     return answers.filter(a => a.answeredByUserId === user?.id);
-  };
-
-  // Helpers
-  const getInitials = (name?: string) => {
-    if (!name) return "?";
-    return name
-      .split(" ")
-      .filter(Boolean)
-      .map((n) => n[0])
-      .join("")
-      .toUpperCase()
-      .slice(0, 2);
-  };
-
-  const getRandomBgColor = (id?: string) => {
-    if (!id) return "bg-indigo-500";
-    const colors = [
-      "bg-indigo-500",
-      "bg-violet-500",
-      "bg-purple-500",
-      "bg-pink-500",
-      "bg-rose-500",
-      "bg-cyan-500",
-      "bg-teal-500",
-      "bg-emerald-500",
-      "bg-blue-500",
-    ];
-    let hash = 0;
-    for (let i = 0; i < id.length; i++) {
-      hash = id.charCodeAt(i) + ((hash << 5) - hash);
-    }
-    const index = Math.abs(hash) % colors.length;
-    return colors[index];
-  };
-
-  const formatDateTime = (dateStr: string) => {
-    const d = new Date(dateStr);
-    return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) + " - " + d.toLocaleDateString();
   };
 
   const getPollTotalVotes = (poll: Poll) => {
@@ -428,7 +389,7 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
                       </div>
                       <div className="flex items-center text-xs text-slate-500 dark:text-slate-400">
                         <Clock className="w-3.5 h-3.5 mr-1" />
-                        <span>{formatDateTime(poll.createdAt)}</span>
+                        <span>{formatDateTime(poll.createdAt, isVi)}</span>
                       </div>
                     </div>
 
@@ -603,7 +564,7 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
                             {getAuthorName(q.askedByUser, q.askedByParticipant)}
                           </h5>
                           <span className="text-[11px] text-slate-500 dark:text-slate-400">
-                            {formatDateTime(q.createdAt)}
+                            {formatDateTime(q.createdAt, isVi)}
                           </span>
                         </div>
                       </div>
@@ -670,119 +631,92 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
       </AnimatePresence>
 
       {/* Responses Modal */}
-      <AnimatePresence>
+      <BaseModal
+        isOpen={!!selectedQuestion}
+        onClose={() => setSelectedQuestion(null)}
+        title={isVi ? "Danh sách câu trả lời" : "Responses List"}
+        maxWidthClassName="max-w-lg"
+        containerClassName="bg-white dark:bg-slate-900 rounded-[2rem] border border-slate-100 dark:border-slate-800 text-slate-800 dark:text-slate-100 flex flex-col max-h-[85vh] z-10"
+        backdropClassName="bg-slate-900/60 backdrop-blur-md"
+        icon={<MessageSquare className="w-5 h-5 text-indigo-500" />}
+      >
         {selectedQuestion && (
-          <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setSelectedQuestion(null)}
-              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.9, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.9, y: 20 }}
-              className="relative w-full max-w-lg bg-white dark:bg-slate-900 rounded-[2rem] shadow-2xl overflow-hidden border border-slate-100 dark:border-slate-800 flex flex-col max-h-[85vh] z-10"
-            >
-              {/* Header */}
-              <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800/60 flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  <MessageSquare className="w-5 h-5 text-indigo-500" />
-                  <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">
-                    {isVi ? "Danh sách câu trả lời" : "Responses List"}
-                  </h3>
+          <div className="p-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
+            {/* Question Info */}
+            <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-100/50 dark:border-slate-800/40 space-y-2">
+              <div className="flex items-center space-x-2.5">
+                {selectedQuestion.askedByUser?.picture ? (
+                  <img
+                    className="w-8 h-8 rounded-full object-cover"
+                    src={selectedQuestion.askedByUser.picture}
+                    alt=""
+                  />
+                ) : (
+                  <div
+                    className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${getRandomBgColor(
+                      selectedQuestion.askedByUser?.id
+                    )}`}
+                  >
+                    {getInitials(getAuthorName(selectedQuestion.askedByUser, selectedQuestion.askedByParticipant))}
+                  </div>
+                )}
+                <div>
+                  <h5 className="text-xs font-bold text-slate-800 dark:text-slate-200">
+                    {getAuthorName(selectedQuestion.askedByUser, selectedQuestion.askedByParticipant)}
+                  </h5>
+                  <span className="text-[10px] text-slate-500 dark:text-slate-400">
+                    {formatDateTime(selectedQuestion.createdAt, isVi)}
+                  </span>
                 </div>
-                <button
-                  onClick={() => setSelectedQuestion(null)}
-                  className="p-2 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-500 hover:text-slate-800 dark:hover:text-white transition-all cursor-pointer"
-                >
-                  <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                  </svg>
-                </button>
               </div>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 pl-1 leading-relaxed">
+                {selectedQuestion.content}
+              </p>
+            </div>
 
-              {/* Content area */}
-              <div className="p-6 overflow-y-auto space-y-6 flex-1 custom-scrollbar">
-                {/* Question Info */}
-                <div className="bg-slate-50 dark:bg-slate-950/40 p-4 rounded-2xl border border-slate-100/50 dark:border-slate-800/40 space-y-2">
-                  <div className="flex items-center space-x-2.5">
-                    {selectedQuestion.askedByUser?.picture ? (
-                      <img
-                        className="w-8 h-8 rounded-full object-cover"
-                        src={selectedQuestion.askedByUser.picture}
-                        alt=""
-                      />
-                    ) : (
-                      <div
-                        className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-bold text-white ${getRandomBgColor(
-                          selectedQuestion.askedByUser?.id
-                        )}`}
-                      >
-                        {getInitials(getAuthorName(selectedQuestion.askedByUser, selectedQuestion.askedByParticipant))}
+            {/* Answers list */}
+            <div className="space-y-4">
+              <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">
+                {isVi ? "Các phản hồi" : "Responses"} ({getFilteredAnswers(selectedQuestion).length})
+              </h4>
+              <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
+                {getFilteredAnswers(selectedQuestion).map((answer) => (
+                  <div key={answer.id} className="space-y-1.5 p-3.5 bg-indigo-50/20 dark:bg-indigo-950/5 rounded-2xl border border-slate-100 dark:border-slate-800/40">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        {answer.answeredByUser?.picture ? (
+                          <img
+                            className="w-6 h-6 rounded-full object-cover"
+                            src={answer.answeredByUser.picture}
+                            alt=""
+                          />
+                        ) : (
+                          <div
+                            className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${getRandomBgColor(
+                              answer.answeredByUser?.id
+                            )}`}
+                          >
+                            {getInitials(getAuthorName(answer.answeredByUser, answer.answeredByParticipant))}
+                          </div>
+                        )}
+                        <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
+                          {getAuthorName(answer.answeredByUser, answer.answeredByParticipant)}
+                        </span>
                       </div>
-                    )}
-                    <div>
-                      <h5 className="text-xs font-bold text-slate-800 dark:text-slate-200">
-                        {getAuthorName(selectedQuestion.askedByUser, selectedQuestion.askedByParticipant)}
-                      </h5>
-                      <span className="text-[10px] text-slate-500 dark:text-slate-400">
-                        {formatDateTime(selectedQuestion.createdAt)}
+                      <span className="text-[10px] text-slate-400 dark:text-slate-500">
+                        {formatDateTime(answer.createdAt, isVi)}
                       </span>
                     </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed pl-1 pt-0.5">
+                      {answer.content}
+                    </p>
                   </div>
-                  <p className="text-sm font-semibold text-slate-700 dark:text-slate-200 pl-1 leading-relaxed">
-                    {selectedQuestion.content}
-                  </p>
-                </div>
-
-                {/* Answers list */}
-                <div className="space-y-4">
-                  <h4 className="text-xs font-bold text-slate-500 uppercase tracking-wider pl-1">
-                    {isVi ? "Các phản hồi" : "Responses"} ({getFilteredAnswers(selectedQuestion).length})
-                  </h4>
-                  <div className="space-y-4 max-h-[300px] overflow-y-auto pr-1 custom-scrollbar">
-                    {getFilteredAnswers(selectedQuestion).map((answer) => (
-                      <div key={answer.id} className="space-y-1.5 p-3.5 bg-indigo-50/20 dark:bg-indigo-950/5 rounded-2xl border border-slate-100 dark:border-slate-800/40">
-                        <div className="flex items-center justify-between">
-                          <div className="flex items-center space-x-2">
-                            {answer.answeredByUser?.picture ? (
-                              <img
-                                className="w-6 h-6 rounded-full object-cover"
-                                src={answer.answeredByUser.picture}
-                                alt=""
-                              />
-                            ) : (
-                              <div
-                                className={`w-6 h-6 rounded-full flex items-center justify-center text-[9px] font-bold text-white ${getRandomBgColor(
-                                  answer.answeredByUser?.id
-                                )}`}
-                              >
-                                {getInitials(getAuthorName(answer.answeredByUser, answer.answeredByParticipant))}
-                              </div>
-                            )}
-                            <span className="text-xs font-bold text-slate-700 dark:text-slate-300">
-                              {getAuthorName(answer.answeredByUser, answer.answeredByParticipant)}
-                            </span>
-                          </div>
-                          <span className="text-[10px] text-slate-400 dark:text-slate-500">
-                            {formatDateTime(answer.createdAt)}
-                          </span>
-                        </div>
-                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed pl-1 pt-0.5">
-                          {answer.content}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
+                ))}
               </div>
-            </motion.div>
+            </div>
           </div>
         )}
-      </AnimatePresence>
+      </BaseModal>
     </div>
   );
 };

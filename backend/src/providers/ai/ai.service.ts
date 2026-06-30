@@ -386,25 +386,7 @@ export class AiService {
     return this.embeddingService.embed(text);
   }
 
-  async embedBatch(texts: string[], concurrency = 4): Promise<number[][]> {
-    return this.embeddingService.embedBatch(texts, concurrency);
-  }
-
   async transcribeAudio(
-    audioBuffer: Buffer,
-    mimeType: string,
-    meetingTitle?: string,
-    meetingDescription?: string,
-  ): Promise<string> {
-    return this.transcribeAudioWithGemini(
-      audioBuffer,
-      mimeType,
-      meetingTitle,
-      meetingDescription,
-    );
-  }
-
-  private async transcribeAudioWithGemini(
     audioBuffer: Buffer,
     mimeType: string,
     meetingTitle?: string,

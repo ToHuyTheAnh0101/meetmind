@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import apiClient from "@/lib/apiClient";
+import { useCustomEvent, MeetingEvents } from "@/hooks/useCustomEvent";
 
 import { useParticipants } from "@livekit/components-react";
 
@@ -119,14 +120,8 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
     }
   }, [participantsKey, activeTab, isOpen, fetchBreakoutRooms]);
 
-  useEffect(() => {
-    window.addEventListener("breakout-started", fetchBreakoutRooms);
-    window.addEventListener("breakout-ended", fetchBreakoutRooms);
-    return () => {
-      window.removeEventListener("breakout-started", fetchBreakoutRooms);
-      window.removeEventListener("breakout-ended", fetchBreakoutRooms);
-    };
-  }, [fetchBreakoutRooms]);
+  useCustomEvent(MeetingEvents.BREAKOUT_STARTED, fetchBreakoutRooms);
+  useCustomEvent(MeetingEvents.BREAKOUT_ENDED, fetchBreakoutRooms);
   const tabs = [
     {
       id: "chat",
