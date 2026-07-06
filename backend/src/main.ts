@@ -8,9 +8,21 @@ if (!globalThis.crypto) {
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
+import { json, Request } from 'express';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, { rawBody: true });
+
+  // Parse LiveKit webhook content-type application/webhook+json and preserve rawBody
+  app.use(
+    '/meetings/webhooks/livekit',
+    json({
+      type: 'application/webhook+json',
+      verify: (req: Request & { rawBody?: Buffer }, res, buf) => {
+        req.rawBody = buf;
+      },
+    }),
+  );
 
   // Enable CORS
   app.enableCors({
