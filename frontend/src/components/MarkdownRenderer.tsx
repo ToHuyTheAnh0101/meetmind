@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { useTranslation } from "react-i18next";
+import { Image as ImageIcon, ChevronDown, ChevronUp } from "lucide-react";
 
 interface MarkdownRendererProps {
   content: string;
@@ -15,6 +16,27 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
 }) => {
   const { t } = useTranslation();
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
+  const [isImagesExpanded, setIsImagesExpanded] = useState(false);
+
+  // Extract images and clean content
+  const { cleanedContent, extractedImages } = useMemo(() => {
+    if (!content) return { cleanedContent: "", extractedImages: [] };
+
+    const imgRegex = /!\[([^\]]*)\]\(([^)]+)\)/g;
+    const images: { alt: string; src: string }[] = [];
+    let match;
+    while ((match = imgRegex.exec(content)) !== null) {
+      images.push({ alt: match[1], src: match[2] });
+    }
+
+    let cleaned = content.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, "");
+    cleaned = cleaned.replace(/\*\*Hình ảnh slide được nhắc đến:\*\*/gi, "");
+    cleaned = cleaned.replace(/Hình ảnh slide được nhắc đến:/gi, "");
+    cleaned = cleaned.replace(/\n{3,}/g, "\n\n").trim();
+
+    return { cleanedContent: cleaned, extractedImages: images };
+  }, [content]);
+
 
   // Friendly Variables Mapping
   const FRIENDLY_VARIABLES_VI: { [key: string]: string } = useMemo(
@@ -341,7 +363,7 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
     );
   };
 
-  const lines = content.split("\n");
+  const lines = cleanedContent.split("\n");
   const elements: React.ReactNode[] = [];
 
   let currentTableRows: string[][] = [];
@@ -527,6 +549,61 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({
       <div className="space-y-3 text-slate-700 leading-relaxed font-medium font-sans">
         {elements}
       </div>
+
+      {extractedImages.length > 0 && (
+        <div className="mt-4 font-sans">
+          <button
+            type="button"
+            onClick={() => setIsImagesExpanded(!isImagesExpanded)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-slate-100 hover:bg-slate-200/80 active:scale-95 transition-all text-xs font-bold text-slate-600 shadow-sm border border-slate-200/50 cursor-pointer"
+          >
+            <ImageIcon className="h-4 w-4 text-slate-500" />
+            <span>
+              {isImagesExpanded
+                ? "Thu gọn hình ảnh"
+                : `Xem hình ảnh liên quan (${extractedImages.length} ảnh)`}
+            </span>
+            {isImagesExpanded ? (
+              <ChevronUp className="h-4 w-4 text-slate-400" />
+            ) : (
+              <ChevronDown className="h-4 w-4 text-slate-400" />
+            )}
+          </button>
+
+          {isImagesExpanded && (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-3 animate-in fade-in slide-in-from-bottom-2 duration-300">
+              {extractedImages.map((img, idx) => (
+                <div
+                  key={idx}
+                  className="group relative cursor-pointer rounded-2xl overflow-hidden border border-slate-100 bg-white shadow-sm hover:shadow-md hover:scale-[1.02] active:scale-[0.98] transition-all"
+                  onClick={() => setPreviewImageUrl(img.src)}
+                >
+                  <img
+                    src={img.src}
+                    alt={img.alt || "meeting capture"}
+                    className="w-full h-[180px] object-cover"
+                    onError={(e) => {
+                      (e.target as HTMLElement).style.display = "none";
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity flex items-end p-2.5">
+                    <span className="text-[10px] text-white font-bold truncate">
+                      {img.alt || `Ảnh slide ${idx + 1}`}
+                    </span>
+                  </div>
+                  {img.alt && (
+                    <div className="bg-slate-50 px-3 py-2 border-t border-slate-100 text-center">
+                      <span className="text-[10px] font-bold text-slate-500 truncate block">
+                        {img.alt}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Lightbox Preview Modal for Image (using Portal to cover full screen) */}
       {previewImageUrl &&
