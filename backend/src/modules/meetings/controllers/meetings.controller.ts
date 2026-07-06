@@ -161,9 +161,16 @@ export class MeetingsController {
   @Post('webhooks/livekit')
   async handleLiveKitWebhook(
     @Headers('authorization') authHeader: string,
-    @Req() req: Request & { rawBody?: string },
+    @Req() req: Request & { rawBody?: Buffer },
   ) {
-    const payload = String(req.rawBody || JSON.stringify(req.body));
+    console.log(
+      '[Webhook] rawBody type:',
+      typeof req.rawBody,
+      req.rawBody ? 'exists' : 'does not exist',
+    );
+    const payload = req.rawBody
+      ? req.rawBody.toString('utf-8')
+      : JSON.stringify(req.body);
     return this.webhookService.handleWebhook(payload, authHeader);
   }
 
