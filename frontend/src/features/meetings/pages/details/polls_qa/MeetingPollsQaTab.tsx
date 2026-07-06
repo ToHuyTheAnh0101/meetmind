@@ -83,119 +83,6 @@ interface Question {
   revealAnswers?: boolean;
 }
 
-const MOCK_POLLS = (meetingId: string): Poll[] => [
-  {
-    id: "mock-poll-1",
-    meetingId: meetingId,
-    createdByUserId: "user-1",
-    question: "Chúng ta nên chọn framework nào cho dự án mới?",
-    type: "single",
-    closedAt: new Date(Date.now() - 3600000).toISOString(),
-    createdAt: new Date(Date.now() - 7200000).toISOString(),
-    updatedAt: new Date(Date.now() - 3600000).toISOString(),
-    options: [
-      {
-        id: "opt-1",
-        text: "Next.js (React)",
-        voterIds: ["u1", "u2", "u3", "u4"],
-        voters: [
-          { id: "u1", name: "Nguyễn Văn A" },
-          { id: "u2", name: "Trần Thị B" },
-          { id: "u3", name: "Lê Văn C" },
-          { id: "u4", name: "Phạm Văn D" },
-        ],
-      },
-      {
-        id: "opt-2",
-        text: "Nuxt.js (Vue)",
-        voterIds: ["u5", "u6"],
-        voters: [
-          { id: "u5", name: "Hoàng Văn E" },
-          { id: "u6", name: "Đỗ Thị F" },
-        ],
-      },
-      {
-        id: "opt-3",
-        text: "SvelteKit",
-        voterIds: [],
-        voters: [],
-      },
-    ],
-  },
-  {
-    id: "mock-poll-2",
-    meetingId: meetingId,
-    createdByUserId: "user-1",
-    question: "Bạn đánh giá thế nào về tiến độ hiện tại?",
-    type: "multiple",
-    closedAt: null,
-    createdAt: new Date(Date.now() - 1800000).toISOString(),
-    updatedAt: new Date(Date.now() - 1800000).toISOString(),
-    options: [
-      {
-        id: "opt-4",
-        text: "Rất tốt, đúng kế hoạch",
-        voterIds: ["u1", "u2"],
-        voters: [
-          { id: "u1", name: "Nguyễn Văn A" },
-          { id: "u2", name: "Trần Thị B" },
-        ],
-      },
-      {
-        id: "opt-5",
-        text: "Hơi chậm, cần đẩy nhanh",
-        voterIds: ["u5"],
-        voters: [{ id: "u5", name: "Hoàng Văn E" }],
-      },
-    ],
-  },
-];
-
-const MOCK_QUESTIONS = (meetingId: string): Question[] => [
-  {
-    id: "mock-q-1",
-    meetingId: meetingId,
-    askedByUserId: "u2",
-    askedByUser: {
-      id: "u2",
-      firstName: "Trần",
-      lastName: "Thị B",
-    },
-    content: "Dự án mới này sẽ sử dụng cơ sở dữ liệu gì vậy mọi người?",
-    createdAt: new Date(Date.now() - 5400000).toISOString(),
-    updatedAt: new Date(Date.now() - 5400000).toISOString(),
-    answers: [
-      {
-        id: "mock-a-1",
-        meetingId: meetingId,
-        questionId: "mock-q-1",
-        answeredByUserId: "u1",
-        answeredByUser: {
-          id: "u1",
-          firstName: "Nguyễn",
-          lastName: "Văn A",
-        },
-        content: "Chúng ta sẽ dùng PostgreSQL kết hợp với TypeORM cho dự án này nhé.",
-        createdAt: new Date(Date.now() - 4800000).toISOString(),
-      },
-    ],
-  },
-  {
-    id: "mock-q-2",
-    meetingId: meetingId,
-    askedByUserId: "u3",
-    askedByUser: {
-      id: "u3",
-      firstName: "Lê",
-      lastName: "Văn C",
-    },
-    content: "Đã có thiết kế Figma hoàn chỉnh chưa ạ?",
-    createdAt: new Date(Date.now() - 1200000).toISOString(),
-    updatedAt: new Date(Date.now() - 1200000).toISOString(),
-    answers: [],
-  },
-];
-
 export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
   meetingId,
   canEdit = false,
@@ -245,8 +132,8 @@ export const MeetingPollsQaTab: React.FC<MeetingPollsQaTabProps> = ({
     }
   });
 
-  const polls = dbPolls && dbPolls.length > 0 ? dbPolls : MOCK_POLLS(meetingId);
-  const questions = dbQuestions && dbQuestions.length > 0 ? dbQuestions : MOCK_QUESTIONS(meetingId);
+  const polls = dbPolls;
+  const questions = dbQuestions;
 
   // Helpers
   const getAuthorName = (author?: any, participant?: any) => {

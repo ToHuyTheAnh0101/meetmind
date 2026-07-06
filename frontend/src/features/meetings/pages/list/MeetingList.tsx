@@ -27,9 +27,6 @@ const parsePaginatedPayload = (payload: unknown): PaginatedResponse<Meeting> | n
   return null
 }
 
-// --- Constants & Mock Data ---
-const MOCK_MEETINGS: Meeting[] = []
-
 // --- Component ---
 const MeetingList: React.FC<MeetingListProps> = ({ searchQuery, status }) => {
   const { t } = useTranslation()
@@ -57,33 +54,18 @@ const MeetingList: React.FC<MeetingListProps> = ({ searchQuery, status }) => {
     },
   })
 
-  const filteredMock = useMemo(() => {
-    return MOCK_MEETINGS.filter((meeting) => {
-      const matchesSearch =
-        meeting.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (meeting.description &&
-          meeting.description.toLowerCase().includes(searchQuery.toLowerCase()))
-      const matchesStatus = !status || meeting.status === status
-      return matchesSearch && matchesStatus
-    }).sort(
-      (a, b) => new Date(b.startTime).getTime() - new Date(a.startTime).getTime(),
-    )
-  }, [searchQuery, status])
-
   const { items, totalPages } = useMemo(() => {
-    if (apiResponse && apiResponse.items.length > 0) {
+    if (apiResponse) {
       return {
         items: apiResponse.items,
         totalPages: apiResponse.meta.totalPages,
       }
     }
-
-    const start = (page - 1) * LIMIT
     return {
-      items: filteredMock.slice(start, start + LIMIT),
-      totalPages: Math.ceil(filteredMock.length / LIMIT),
+      items: [],
+      totalPages: 0,
     }
-  }, [apiResponse, filteredMock, page])
+  }, [apiResponse])
 
   if (isLoading) {
     return (

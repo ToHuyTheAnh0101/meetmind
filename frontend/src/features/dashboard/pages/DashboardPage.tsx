@@ -62,9 +62,7 @@ const parseMeetingsPayload = (payload: unknown): Meeting[] => {
   return []
 }
 
-// --- Mock Data ---
-const MOCK_MEETINGS: Meeting[] = []
-
+// --- Constants & Helpers ---
 const getStatusBadgeStyles = (status: string) => {
   switch (status) {
     case 'ongoing':
@@ -103,8 +101,8 @@ const DashboardPage: React.FC = () => {
     },
   })
 
-  // Combine API data with mock data if needed for visualization
-  const meetings = apiMeetings.length > 0 ? apiMeetings : MOCK_MEETINGS
+  // Combine API data if needed for visualization
+  const meetings = apiMeetings
 
   const meetingsByDate = useMemo(() => {
     const grouped = new Map<string, Meeting[]>()

@@ -126,12 +126,12 @@ export const TemplateNotionPreview: React.FC<TemplateNotionPreviewProps> = ({
                     </div>
 
                     {!selectedTemplate?.isSystem && (
-                      <div className="flex items-center justify-end gap-1 border-t border-slate-100/50 pt-2 opacity-50 group-hover:opacity-100 transition-opacity">
+                      <div className="flex items-center justify-end gap-1 border-t border-slate-100/50 pt-2">
                         <button
                           type="button"
                           onClick={() => moveSection(idx, "up")}
                           disabled={idx === 0}
-                          className={`flex h-5 w-5 items-center justify-center rounded border text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition ${
+                          className={`flex h-5 w-5 items-center justify-center rounded border text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition ${
                             idx === 0 ? "opacity-30 cursor-not-allowed border-transparent" : "border-slate-100"
                           }`}
                           title={t("template.action_move_up")}
@@ -142,7 +142,7 @@ export const TemplateNotionPreview: React.FC<TemplateNotionPreviewProps> = ({
                           type="button"
                           onClick={() => moveSection(idx, "down")}
                           disabled={idx === formSections.length - 1}
-                          className={`flex h-5 w-5 items-center justify-center rounded border text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition ${
+                          className={`flex h-5 w-5 items-center justify-center rounded border text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition ${
                             idx === formSections.length - 1 ? "opacity-30 cursor-not-allowed border-transparent" : "border-slate-100"
                           }`}
                           title={t("template.action_move_down")}
@@ -152,7 +152,7 @@ export const TemplateNotionPreview: React.FC<TemplateNotionPreviewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleStartEditSection(sec)}
-                          className="flex h-5 w-5 items-center justify-center rounded border border-slate-100 text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition"
+                          className="flex h-5 w-5 items-center justify-center rounded border border-slate-100 text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition"
                           title={t("template.action_edit_block")}
                         >
                           <Edit3 className="h-3 w-3" />
@@ -160,7 +160,7 @@ export const TemplateNotionPreview: React.FC<TemplateNotionPreviewProps> = ({
                         <button
                           type="button"
                           onClick={() => handleDeleteSection(sec.name)}
-                          className="flex h-5 w-5 items-center justify-center rounded text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"
+                          className="flex h-5 w-5 items-center justify-center rounded text-slate-700 hover:bg-rose-50 hover:text-rose-700 transition"
                           title={t("template.action_delete_block")}
                         >
                           <X className="h-3 w-3" />

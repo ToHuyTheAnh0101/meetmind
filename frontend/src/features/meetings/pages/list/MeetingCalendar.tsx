@@ -47,9 +47,6 @@ const parseMeetingsPayload = (payload: unknown): Meeting[] => {
 
   return []
 }
-
-const MOCK_MEETINGS: Meeting[] = []
-
 const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onScheduleClick }) => {
   const { t, i18n } = useTranslation()
   const today = useMemo(() => new Date(), [])
@@ -66,7 +63,7 @@ const MeetingCalendar: React.FC<MeetingCalendarProps> = ({ onMeetingClick, onSch
     },
   })
 
-  const meetings = apiMeetings.length > 0 ? apiMeetings : MOCK_MEETINGS
+  const meetings = apiMeetings
 
   const meetingsByDate = useMemo(() => {
     const grouped = new Map<string, Meeting[]>()

@@ -86,7 +86,7 @@ export const TemplateActiveBlocks: React.FC<TemplateActiveBlocksProps> = ({
                     type="button"
                     onClick={() => moveSection(idx, "up")}
                     disabled={idx === 0}
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg border text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition ${
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg border text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition ${
                       idx === 0
                         ? "opacity-30 cursor-not-allowed border-transparent"
                         : "border-slate-100"
@@ -100,7 +100,7 @@ export const TemplateActiveBlocks: React.FC<TemplateActiveBlocksProps> = ({
                     type="button"
                     onClick={() => moveSection(idx, "down")}
                     disabled={idx === formSections.length - 1}
-                    className={`flex h-8 w-8 items-center justify-center rounded-lg border text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition ${
+                    className={`flex h-8 w-8 items-center justify-center rounded-lg border text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition ${
                       idx === formSections.length - 1
                         ? "opacity-30 cursor-not-allowed border-transparent"
                         : "border-slate-100"
@@ -113,7 +113,7 @@ export const TemplateActiveBlocks: React.FC<TemplateActiveBlocksProps> = ({
                   <button
                     type="button"
                     onClick={() => handleStartEditSection(sec)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-100 text-slate-400 hover:bg-slate-50 hover:text-slate-700 transition"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg border border-slate-100 text-slate-700 hover:bg-slate-50 hover:text-slate-900 transition"
                     title={t("template.action_edit_block")}
                   >
                     <Edit3 className="h-4 w-4" />
@@ -122,7 +122,7 @@ export const TemplateActiveBlocks: React.FC<TemplateActiveBlocksProps> = ({
                   <button
                     type="button"
                     onClick={() => handleDeleteSection(sec.name)}
-                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 hover:bg-rose-50 hover:text-rose-600 transition"
+                    className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-700 hover:bg-rose-50 hover:text-rose-700 transition"
                     title={t("template.action_delete_block")}
                   >
                     <X className="h-4 w-4" />
