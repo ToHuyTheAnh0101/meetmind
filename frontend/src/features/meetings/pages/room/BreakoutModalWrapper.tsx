@@ -5,6 +5,7 @@ import { useTranslation } from "react-i18next";
 import apiClient from "@/lib/apiClient";
 import { showSuccessToast, showErrorToast } from "@/lib/toastUtils";
 import BreakoutManagementModal from "./BreakoutManagementModal";
+import { emitCustomEvent, MeetingEvents } from "@/hooks/useCustomEvent";
 
 interface BreakoutModalWrapperProps {
   isOpen: boolean;
@@ -71,11 +72,7 @@ export const BreakoutModalWrapper: React.FC<BreakoutModalWrapperProps> = ({
           await apiClient.post(`/meetings/${meetingId}/breakout-rooms/start`);
 
           // 3. Dispatch signal to participants
-          window.dispatchEvent(
-            new CustomEvent("send-breakout-start-signal", {
-              detail: roomsData,
-            }),
-          );
+          emitCustomEvent(MeetingEvents.SEND_BREAKOUT_START_SIGNAL, roomsData);
 
           toast.dismiss(startToastId);
           showSuccessToast(t('meeting.breakout_started_toast', 'Đã bắt đầu chia phòng họp nhỏ!'));

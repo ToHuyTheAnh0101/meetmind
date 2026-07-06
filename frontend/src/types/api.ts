@@ -25,6 +25,8 @@ export enum ParticipantStatus {
   ADMITTED = "admitted",
   WAITING = "waiting",
   DENIED = "denied",
+  PENDING = "pending",
+  ACTIVE = "active",
 }
 
 export enum MeetingPermission {

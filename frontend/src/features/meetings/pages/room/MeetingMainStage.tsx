@@ -31,36 +31,16 @@ import {
 import { motion, AnimatePresence } from "framer-motion";
 import { useAudioRecording } from "./useAudioRecording";
 import { useScreenCapture } from "./useScreenCapture";
+import { MeetingSidebarTab } from "@/features/meetings/types";
 
 interface MeetingMainStageProps {
   meetingId: string;
-  isSidebarOpen: boolean;
-  activeTab:
-    | "chat"
-    | "roster"
-    | "lobby"
-    | "settings"
-    | "polls"
-    | "qa"
-    | "permissions"
-    | "breakout"
-    | "attachments";
+  activeTab: `${MeetingSidebarTab}`;
   hasUnreadPolls?: boolean;
   hasUnreadQA?: boolean;
   hasWaitingLobby?: boolean;
   isOrganizer: boolean;
-  onToggleSidebar: (
-    tab:
-      | "chat"
-      | "roster"
-      | "lobby"
-      | "settings"
-      | "polls"
-      | "qa"
-      | "permissions"
-      | "breakout"
-      | "attachments",
-  ) => void;
+  onToggleSidebar: (tab: `${MeetingSidebarTab}`) => void;
   onEndSession: () => void;
   onLeaveSession?: () => void;
   onReturnToMain?: () => void;
@@ -265,7 +245,6 @@ const CustomParticipantTile = ({
 
 const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
   meetingId,
-  isSidebarOpen: _isSidebarOpen,
   hasUnreadPolls,
   hasUnreadQA,
   hasWaitingLobby,
@@ -673,16 +652,16 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
             <div className="flex items-center gap-1.5 px-2.5 py-1 lg:px-3.5 lg:py-1.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 shadow-[0_0_15px_rgba(6,182,212,0.1)]">
               <div className="h-2 w-2 rounded-full bg-cyan-400 animate-pulse shrink-0" />
               <span className="text-[10px] lg:text-xs font-bold text-cyan-400 tracking-wider animate-pulse hidden sm:inline">
-                Trợ lý AI đang ghi chép...
+                {t('meeting.ai_assistant_recording', 'Trợ lý AI đang ghi chép...')}
               </span>
             </div>
           )}
         </div>
         <div className="flex items-center gap-2 lg:gap-3">
           <button
-            onClick={() => onToggleSidebar("chat")}
+            onClick={() => onToggleSidebar(MeetingSidebarTab.CHAT)}
             className="p-2.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 lg:hidden flex items-center justify-center relative active:scale-95 transition-all"
-            title="Mở menu"
+            title={t('meeting.open_menu', 'Mở menu')}
           >
             <UsersIcon className="h-4 w-4" />
             {(hasUnreadPolls || hasUnreadQA || hasWaitingLobby) && (
@@ -710,21 +689,21 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
                       : "bg-white/5 border-white/10 hover:bg-white/10 text-white/80"
                   }`}
                   title={
-                    isRecording ? "Dừng trợ lý ghi chép" : "Trợ lý ghi chép AI"
+                    isRecording ? t('meeting.stop_ai_assistant', 'Dừng trợ lý ghi chép') : t('meeting.ai_assistant', 'Trợ lý ghi chép AI')
                   }
                 >
                   {isRecording ? (
                     <>
                       <Radio className="h-4 w-4 animate-pulse text-cyan-400" />
                       <span className="hidden md:inline">
-                        Dừng trợ lý ghi chép
+                        {t('meeting.stop_ai_assistant', 'Dừng trợ lý ghi chép')}
                       </span>
                     </>
                   ) : (
                     <>
                       <Sparkles className="h-4 w-4 text-cyan-400" />
                       <span className="hidden md:inline">
-                        Trợ lý ghi chép AI
+                        {t('meeting.ai_assistant', 'Trợ lý ghi chép AI')}
                       </span>
                     </>
                   )}
@@ -766,7 +745,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
           <div className="flex items-center gap-2.5">
             <Monitor className="h-4 w-4 text-emerald-400 animate-pulse" />
             <span className="text-sm font-bold text-emerald-400">
-              Bạn đang chia sẻ màn hình
+              {t('meeting.you_are_sharing_screen', 'Bạn đang chia sẻ màn hình')}
             </span>
           </div>
           <button
@@ -774,7 +753,7 @@ const MeetingMainStage: React.FC<MeetingMainStageProps> = ({
             className="flex items-center gap-2 px-3.5 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-rose-500/20 text-emerald-400 hover:text-rose-400 border border-emerald-500/30 hover:border-rose-500/30 text-xs font-bold transition-all"
           >
             <MonitorOff className="h-3.5 w-3.5" />
-            <span>Dừng chia sẻ</span>
+            <span>{t('meeting.stop_sharing', 'Dừng chia sẻ')}</span>
           </button>
         </div>
       )}

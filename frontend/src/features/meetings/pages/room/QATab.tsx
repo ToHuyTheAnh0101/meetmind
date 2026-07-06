@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDataChannel } from '@livekit/components-react';
 import { 
   MessageSquare, 
@@ -13,34 +13,8 @@ import { motion } from 'framer-motion';
 import apiClient from '@/lib/apiClient';
 import { useCustomEvent, MeetingEvents } from '@/hooks/useCustomEvent';
 import { getUserDisplayName } from '@/lib/userUtils';
-
-interface Answer {
-  id: string;
-  content: string;
-  answeredByUserId: string;
-  answeredByUser?: {
-    firstName: string;
-    lastName: string;
-  };
-  createdAt: string;
-}
-
-interface Question {
-  id: string;
-  content: string;
-  askedByUserId: string;
-  askedByUser?: {
-    firstName: string;
-    lastName: string;
-    picture?: string;
-  };
-  askedByParticipant?: {
-    displayName: string;
-  };
-  answers: Answer[];
-  createdAt: string;
-  revealAnswers?: boolean;
-}
+import { MeetingDataMessageType } from '@/features/meetings/types';
+import { useMeetingQuestions, meetingRoomKeys, Question } from '@/features/meetings/api/roomQueries';
 
 interface QATabProps {
   meetingId: string;
@@ -65,22 +39,12 @@ const QATab: React.FC<QATabProps> = ({
   const [newQuestion, setNewQuestion] = useState('');
 
   // Fetch Questions
-  const { data: questions = [] } = useQuery<Question[]>({
-    queryKey: ['questions', meetingId, isInBreakout, breakoutRoomId],
-    queryFn: async () => {
-      const params: Record<string, string> = {};
-      if (isInBreakout) {
-        params.breakoutRoomId = breakoutRoomId || 'current';
-      }
-      const response = await apiClient.get(`/meetings/${meetingId}/qa`, { params });
-      return response.data;
-    }
-  });
+  const { data: questions = [] } = useMeetingQuestions(meetingId, isInBreakout, breakoutRoomId);
 
   // Real-time Listener
   useCustomEvent(MeetingEvents.REFRESH_QA, (detail: any) => {
     if (detail?.meetingId === meetingId) {
-      queryClient.invalidateQueries({ queryKey: ['questions', meetingId] });
+      queryClient.invalidateQueries({ queryKey: meetingRoomKeys.questionsPrefix(meetingId) });
     }
   });
 
@@ -95,10 +59,10 @@ const QATab: React.FC<QATabProps> = ({
     },
     onSuccess: () => {
       setNewQuestion('');
-      queryClient.invalidateQueries({ queryKey: ['questions', meetingId] });
+      queryClient.invalidateQueries({ queryKey: meetingRoomKeys.questionsPrefix(meetingId) });
       // Broadcast update
       const encoder = new TextEncoder();
-      send(encoder.encode(JSON.stringify({ type: 'QA_UPDATED', meetingId })), { reliable: true });
+      send(encoder.encode(JSON.stringify({ type: MeetingDataMessageType.QA_UPDATED, meetingId })), { reliable: true });
     }
   });
 
@@ -107,10 +71,10 @@ const QATab: React.FC<QATabProps> = ({
       return apiClient.patch(`/meetings/${meetingId}/qa/${questionId}`, { revealAnswers });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['questions', meetingId] });
+      queryClient.invalidateQueries({ queryKey: meetingRoomKeys.questionsPrefix(meetingId) });
       // Broadcast update
       const encoder = new TextEncoder();
-      send(encoder.encode(JSON.stringify({ type: 'QA_UPDATED', meetingId })), { reliable: true });
+      send(encoder.encode(JSON.stringify({ type: MeetingDataMessageType.QA_UPDATED, meetingId })), { reliable: true });
     }
   });
 

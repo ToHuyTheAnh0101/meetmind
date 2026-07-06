@@ -1,6 +1,6 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useDataChannel } from '@livekit/components-react';
 import {
   BarChart3,
@@ -14,31 +14,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import apiClient from '@/lib/apiClient';
 import { useCustomEvent, MeetingEvents } from '@/hooks/useCustomEvent';
-
-// ─── Types ────────────────────────────────────────────────────────────────────
-
-interface Voter {
-  id: string;
-  name: string;
-  avatarUrl?: string;
-}
-
-interface PollOption {
-  id: string;
-  text: string;
-  voterIds: string[];
-  voters: Voter[];
-}
-
-interface Poll {
-  id: string;
-  question: string;
-  type: 'single' | 'multiple';
-  options: PollOption[];
-  closedAt: string | null;
-  createdAt: string;
-  createdByUserId: string;
-}
+import { useMeetingPolls, meetingRoomKeys, Poll, Voter } from '@/features/meetings/api/roomQueries';
+import { MeetingDataMessageType } from '@/features/meetings/types';
 
 interface PollTabProps {
   meetingId: string;
@@ -399,22 +376,12 @@ const PollTab: React.FC<PollTabProps> = ({
   const { send } = useDataChannel();
 
   // Fetch Polls
-  const { data: polls = [] } = useQuery<Poll[]>({
-    queryKey: ['polls', meetingId, isInBreakout, breakoutRoomId],
-    queryFn: async () => {
-      const params: Record<string, string> = {};
-      if (isInBreakout) {
-        params.breakoutRoomId = breakoutRoomId || 'current';
-      }
-      const response = await apiClient.get(`/meetings/${meetingId}/polls`, { params });
-      return response.data;
-    },
-  });
+  const { data: polls = [] } = useMeetingPolls(meetingId, isInBreakout, breakoutRoomId);
 
   // Listener for real-time updates
   useCustomEvent(MeetingEvents.REFRESH_POLLS, (detail: any) => {
     if (detail?.meetingId === meetingId) {
-      queryClient.invalidateQueries({ queryKey: ['polls', meetingId] });
+      queryClient.invalidateQueries({ queryKey: meetingRoomKeys.pollsPrefix(meetingId) });
     }
   });
 
@@ -432,11 +399,11 @@ const PollTab: React.FC<PollTabProps> = ({
       });
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['polls', meetingId] });
+      queryClient.invalidateQueries({ queryKey: meetingRoomKeys.pollsPrefix(meetingId) });
       const encoder = new TextEncoder();
       send(
         encoder.encode(
-          JSON.stringify({ type: 'POLL_UPDATED', pollId: meetingId }),
+          JSON.stringify({ type: MeetingDataMessageType.POLL_UPDATED, pollId: meetingId }),
         ),
         { reliable: true },
       );
@@ -449,11 +416,11 @@ const PollTab: React.FC<PollTabProps> = ({
       return apiClient.post(`/meetings/${meetingId}/polls/${pollId}/close`);
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['polls', meetingId] });
+      queryClient.invalidateQueries({ queryKey: meetingRoomKeys.pollsPrefix(meetingId) });
       const encoder = new TextEncoder();
       send(
         encoder.encode(
-          JSON.stringify({ type: 'POLL_UPDATED', pollId: meetingId }),
+          JSON.stringify({ type: MeetingDataMessageType.POLL_UPDATED, pollId: meetingId }),
         ),
         { reliable: true },
       );

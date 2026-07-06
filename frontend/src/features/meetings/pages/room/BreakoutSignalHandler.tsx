@@ -1,9 +1,10 @@
 import React, { useCallback } from "react";
-import { useLocalParticipant } from "@livekit/components-react";
+import { useDataChannel } from "@livekit/components-react";
 import { useCustomEvent, emitCustomEvent, MeetingEvents } from "@/hooks/useCustomEvent";
+import { MeetingDataMessageType } from "@/features/meetings/types";
 
 export const BreakoutSignalHandler: React.FC = () => {
-  const { localParticipant } = useLocalParticipant();
+  const { send } = useDataChannel();
 
   const handleStart = useCallback((rooms: any) => {
     const assignments = rooms.flatMap((r: any) =>
@@ -14,13 +15,13 @@ export const BreakoutSignalHandler: React.FC = () => {
       })),
     );
 
-    const payload = JSON.stringify({
-      type: "BREAKOUT_STARTED",
+    const payloadObj = {
+      type: MeetingDataMessageType.BREAKOUT_STARTED,
       assignments,
-    });
+    };
 
     try {
-      localParticipant.publishData(new TextEncoder().encode(payload), {
+      send(new TextEncoder().encode(JSON.stringify(payloadObj)), {
         reliable: true,
       });
     } catch (err) {
@@ -28,13 +29,13 @@ export const BreakoutSignalHandler: React.FC = () => {
     }
 
     // Manually trigger for the sender (Host)
-    emitCustomEvent(MeetingEvents.BREAKOUT_STARTED, JSON.parse(payload));
-  }, [localParticipant]);
+    emitCustomEvent(MeetingEvents.BREAKOUT_STARTED, payloadObj);
+  }, [send]);
 
   const handleEnd = useCallback(() => {
-    const payload = JSON.stringify({ type: "BREAKOUT_ENDED" });
+    const payloadObj = { type: MeetingDataMessageType.BREAKOUT_ENDED };
     try {
-      localParticipant.publishData(new TextEncoder().encode(payload), {
+      send(new TextEncoder().encode(JSON.stringify(payloadObj)), {
         reliable: true,
       });
     } catch (err) {
@@ -42,8 +43,8 @@ export const BreakoutSignalHandler: React.FC = () => {
     }
 
     // Manually trigger for the sender (Host)
-    emitCustomEvent(MeetingEvents.BREAKOUT_ENDED, JSON.parse(payload));
-  }, [localParticipant]);
+    emitCustomEvent(MeetingEvents.BREAKOUT_ENDED, payloadObj);
+  }, [send]);
 
   useCustomEvent(MeetingEvents.SEND_BREAKOUT_START_SIGNAL, handleStart);
   useCustomEvent(MeetingEvents.SEND_BREAKOUT_END_SIGNAL, handleEnd);

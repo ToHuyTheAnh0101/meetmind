@@ -11,38 +11,9 @@ import { useDataChannel } from '@livekit/components-react';
 import apiClient from '@/lib/apiClient';
 import BaseModal from '@/components/ui/BaseModal';
 import { getUserDisplayName } from '@/lib/userUtils';
+import { MeetingDataMessageType } from '@/features/meetings/types';
 
-interface Answer {
-  id: string;
-  content: string;
-  answeredByUserId: string;
-  answeredByUser?: {
-    firstName: string;
-    lastName: string;
-    picture?: string;
-  };
-  answeredByParticipant?: {
-    displayName: string;
-  };
-  createdAt: string;
-}
-
-interface Question {
-  id: string;
-  content: string;
-  askedByUserId: string;
-  askedByUser?: {
-    firstName: string;
-    lastName: string;
-    picture?: string;
-  };
-  askedByParticipant?: {
-    displayName: string;
-  };
-  revealAnswers: boolean;
-  createdAt: string;
-  answers: Answer[];
-}
+import { Question } from '@/features/meetings/api/roomQueries';
 
 interface QuestionDetailModalProps {
   isOpen: boolean;
@@ -97,7 +68,7 @@ const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
       queryClient.invalidateQueries({ queryKey: ['questions', meetingId] });
       
       const encoder = new TextEncoder();
-      send(encoder.encode(JSON.stringify({ type: 'QA_UPDATED', meetingId })), { reliable: true });
+      send(encoder.encode(JSON.stringify({ type: MeetingDataMessageType.QA_UPDATED, meetingId })), { reliable: true });
     }
   });
 

@@ -1,9 +1,10 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMeetingParticipants, meetingRoomKeys } from '@/features/meetings/api/roomQueries';
 import apiClient from '@/lib/apiClient';
 import { UserPlus, Check, Loader2 } from 'lucide-react';
-import { Participant, ParticipantStatus, PaginatedResponse } from '@/types/api';
+import { ParticipantStatus } from '@/types/api';
 
 interface LobbyManagementProps {
   meetingId: string;
@@ -15,26 +16,17 @@ const LobbyManagement: React.FC<LobbyManagementProps> = ({ meetingId }) => {
   const queryClient = useQueryClient();
 
   // 1. Fetch participants (including waiting ones)
-  const { data: participants, isLoading } = useQuery<PaginatedResponse<Participant>>({
-    queryKey: ['meeting-participants', meetingId],
-    queryFn: async () => {
-      const response = await apiClient.get(`/meetings/${meetingId}/participants`);
-      return response.data;
-    },
-    refetchInterval: false,
-  });
+  const { data: participants, isLoading } = useMeetingParticipants(meetingId);
 
   const waitingUsers = participants?.items?.filter(p => p.status === ParticipantStatus.WAITING) || [];
 
   // 2. Admit Mutation
   const admitMutation = useMutation({
     mutationFn: async (userId: string) => {
-      console.log(`LobbyManagement: Attempting to admit user ${userId} to meeting ${meetingId}`);
       return apiClient.post(`/meetings/${meetingId}/admit/${userId}`);
     },
     onSuccess: () => {
-      console.log('LobbyManagement: Successfully admitted user');
-      queryClient.invalidateQueries({ queryKey: ['meeting-participants', meetingId] });
+      queryClient.invalidateQueries({ queryKey: meetingRoomKeys.participants(meetingId) });
     },
     onError: (error) => {
       console.error('LobbyManagement: Failed to admit user', error);

@@ -28,32 +28,13 @@ import MeetingPermissionsTab from "../details/MeetingPermissionsTab";
 import PollTab from "./PollTab";
 import QATab from "./QATab";
 import { AttachmentManager } from "../details/permissions/AttachmentManager";
+import { MeetingSidebarTab } from "@/features/meetings/types";
 
 interface MeetingSidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  activeTab:
-    | "chat"
-    | "roster"
-    | "lobby"
-    | "settings"
-    | "polls"
-    | "qa"
-    | "permissions"
-    | "breakout"
-    | "attachments";
-  setActiveTab: (
-    tab:
-      | "chat"
-      | "roster"
-      | "lobby"
-      | "settings"
-      | "polls"
-      | "qa"
-      | "permissions"
-      | "breakout"
-      | "attachments",
-  ) => void;
+  activeTab: `${MeetingSidebarTab}`;
+  setActiveTab: (tab: `${MeetingSidebarTab}`) => void;
   meetingId: string;
   userId: string;
   organizerId: string;
@@ -115,7 +96,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   const participantsKey = participants.map((p) => p.identity).join(",");
 
   useEffect(() => {
-    if (activeTab === "breakout" && isOpen) {
+    if (activeTab === MeetingSidebarTab.BREAKOUT && isOpen) {
       fetchBreakoutRooms();
     }
   }, [participantsKey, activeTab, isOpen, fetchBreakoutRooms]);
@@ -124,31 +105,31 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   useCustomEvent(MeetingEvents.BREAKOUT_ENDED, fetchBreakoutRooms);
   const tabs = [
     {
-      id: "chat",
+      id: MeetingSidebarTab.CHAT,
       icon: MessageSquare,
       label: t("meeting.chat"),
       color: "text-cyan-400",
     },
     {
-      id: "roster",
+      id: MeetingSidebarTab.ROSTER,
       icon: Users,
       label: t("meeting.participants"),
       color: "text-indigo-400",
     },
     {
-      id: "qa",
+      id: MeetingSidebarTab.QA,
       icon: MessageCircle,
       label: t("meeting.qa"),
       color: "text-lime-400",
     },
     {
-      id: "polls",
+      id: MeetingSidebarTab.POLLS,
       icon: BarChart3,
       label: t("meeting.polls"),
       color: "text-rose-400",
     },
     {
-      id: "attachments",
+      id: MeetingSidebarTab.ATTACHMENTS,
       icon: Paperclip,
       label: t("meeting.attachments") || "Tài liệu",
       color: "text-amber-400",
@@ -157,7 +138,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
 
   if (isOrganizer || isCoHost) {
     tabs.push({
-      id: "lobby",
+      id: MeetingSidebarTab.LOBBY,
       icon: UserPlus,
       label: t("meeting.lobby"),
       color: "text-emerald-400",
@@ -165,13 +146,13 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
 
     if (isOrganizer) {
       tabs.push({
-        id: "permissions",
+        id: MeetingSidebarTab.PERMISSIONS,
         icon: Shield,
         label: t("meeting.permissions.tab_permissions"),
         color: "text-slate-100",
       });
       tabs.push({
-        id: "breakout",
+        id: MeetingSidebarTab.BREAKOUT,
         icon: Grid2X2,
         label: t("meeting.breakout_rooms_title", "Chia phòng"),
         color: "text-teal-400",
@@ -179,7 +160,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
     }
 
     tabs.push({
-      id: "settings",
+      id: MeetingSidebarTab.SETTINGS,
       icon: Settings,
       label: t("common.settings"),
       color: "text-amber-400",
@@ -215,33 +196,33 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
 
             {/* Tab Body */}
             <div className="flex-1 overflow-hidden flex flex-col bg-slate-900/30">
-              {activeTab === "chat" && (
+              {activeTab === MeetingSidebarTab.CHAT && (
                 <CustomChat
                   meetingId={meetingId}
                   isInBreakout={isInBreakout}
                   breakoutRoomId={breakoutRoomId}
                 />
               )}
-              {activeTab === "roster" && (
+              {activeTab === MeetingSidebarTab.ROSTER && (
                 <div className="flex-1 overflow-y-auto p-4 custom-scrollbar flex flex-col">
                   <CustomParticipantList
                     organizerId={organizerId}
                   />
                 </div>
               )}
-              {activeTab === "lobby" && (
+              {activeTab === MeetingSidebarTab.LOBBY && (
                 <LobbyManagement
                   meetingId={meetingId}
-                  enabled={isOpen && activeTab === "lobby"}
+                  enabled={isOpen && activeTab === MeetingSidebarTab.LOBBY}
                 />
               )}
-              {activeTab === "permissions" && (
+              {activeTab === MeetingSidebarTab.PERMISSIONS && (
                 <MeetingPermissionsTab meetingId={meetingId} />
               )}
-              {activeTab === "settings" && (
+              {activeTab === MeetingSidebarTab.SETTINGS && (
                 <InRoomSettings meetingId={meetingId} />
               )}
-              {activeTab === "polls" && (
+              {activeTab === MeetingSidebarTab.POLLS && (
                 <PollTab
                   meetingId={meetingId}
                   userId={userId}
@@ -251,7 +232,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                   breakoutRoomId={breakoutRoomId}
                 />
               )}
-              {activeTab === "qa" && (
+              {activeTab === MeetingSidebarTab.QA && (
                 <QATab
                   meetingId={meetingId}
                   userId={userId}
@@ -261,7 +242,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                   breakoutRoomId={breakoutRoomId}
                 />
               )}
-              {activeTab === "attachments" && (
+              {activeTab === MeetingSidebarTab.ATTACHMENTS && (
                 <div className="flex-1 overflow-hidden p-4 flex flex-col">
                   <AttachmentManager
                     meetingId={meetingId}
@@ -270,7 +251,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                   />
                 </div>
               )}
-              {activeTab === "breakout" && (
+              {activeTab === MeetingSidebarTab.BREAKOUT && (
                 <div className="flex-1 flex flex-col p-4 overflow-y-auto custom-scrollbar">
                   {breakoutRooms.length > 0 ? (
                     <div className="space-y-4">
@@ -416,19 +397,19 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                       {tab.label}
                     </span>
 
-                    {tab.id === "polls" &&
+                    {tab.id === MeetingSidebarTab.POLLS &&
                       hasUnreadPolls &&
-                      activeTab !== "polls" && (
+                      activeTab !== MeetingSidebarTab.POLLS && (
                         <span className="absolute top-1 right-2.5 h-2 w-2 bg-rose-500 rounded-full shadow-[0_0_8px_rgba(244,63,94,0.6)] animate-pulse" />
                       )}
 
-                    {tab.id === "qa" && hasUnreadQA && activeTab !== "qa" && (
+                    {tab.id === MeetingSidebarTab.QA && hasUnreadQA && activeTab !== MeetingSidebarTab.QA && (
                       <span className="absolute top-1 right-2.5 h-2 w-2 bg-lime-500 rounded-full shadow-[0_0_8px_rgba(132,204,22,0.6)] animate-pulse" />
                     )}
 
-                    {tab.id === "lobby" &&
+                    {tab.id === MeetingSidebarTab.LOBBY &&
                       hasWaitingLobby &&
-                      activeTab !== "lobby" && (
+                      activeTab !== MeetingSidebarTab.LOBBY && (
                         <span className="absolute top-1 right-2.5 h-2 w-2 bg-emerald-500 rounded-full shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" />
                       )}
                   </button>
@@ -446,7 +427,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
             if (isOpen) {
               onClose();
             } else {
-              setActiveTab("chat");
+              setActiveTab(MeetingSidebarTab.CHAT);
             }
           }}
           className="h-10 w-10 flex items-center justify-center rounded-xl bg-white/10 text-white hover:bg-white/20 transition-all active:scale-95 border border-white/10 shadow-lg"
@@ -478,28 +459,28 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
                 className={`h-5 w-5 ${isActive ? tab.color : ""} transition-colors`}
               />
 
-              {tab.id === "polls" &&
+              {tab.id === MeetingSidebarTab.POLLS &&
                 hasUnreadPolls &&
-                (!isOpen || activeTab !== "polls") && (
+                (!isOpen || activeTab !== MeetingSidebarTab.POLLS) && (
                   <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-rose-500 rounded-full border-2 border-slate-900 shadow-[0_0_8px_rgba(244,63,94,0.6)] animate-pulse" />
                 )}
 
-              {tab.id === "qa" &&
+              {tab.id === MeetingSidebarTab.QA &&
                 hasUnreadQA &&
-                (!isOpen || activeTab !== "qa") && (
+                (!isOpen || activeTab !== MeetingSidebarTab.QA) && (
                   <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-lime-500 rounded-full border-2 border-slate-900 shadow-[0_0_8px_rgba(132,204,22,0.6)] animate-pulse" />
                 )}
 
-              {tab.id === "lobby" &&
+              {tab.id === MeetingSidebarTab.LOBBY &&
                 hasWaitingLobby &&
-                (!isOpen || activeTab !== "lobby") && (
+                (!isOpen || activeTab !== MeetingSidebarTab.LOBBY) && (
                   <span className="absolute top-2 right-2 h-2.5 w-2.5 bg-emerald-500 rounded-full border-2 border-slate-900 shadow-[0_0_8px_rgba(16,185,129,0.6)] animate-pulse" />
                 )}
 
               {isActive && (
                 <motion.div
                   layoutId="activeTabIndicator"
-                  className={`absolute -right-[1px] w-[3px] h-6 ${tab.id === "chat" ? "bg-cyan-500" : tab.id === "roster" ? "bg-indigo-500" : tab.id === "lobby" ? "bg-emerald-500" : tab.id === "polls" ? "bg-rose-500" : tab.id === "qa" ? "bg-lime-500" : tab.id === "breakout" ? "bg-teal-500" : tab.id === "permissions" ? "bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)]" : "bg-amber-500"} rounded-l-full shadow-[0_0_15px_currentColor]`}
+                  className={`absolute -right-[1px] w-[3px] h-6 ${tab.id === MeetingSidebarTab.CHAT ? "bg-cyan-500" : tab.id === MeetingSidebarTab.ROSTER ? "bg-indigo-500" : tab.id === MeetingSidebarTab.LOBBY ? "bg-emerald-500" : tab.id === MeetingSidebarTab.POLLS ? "bg-rose-500" : tab.id === MeetingSidebarTab.QA ? "bg-lime-500" : tab.id === MeetingSidebarTab.BREAKOUT ? "bg-teal-500" : tab.id === MeetingSidebarTab.PERMISSIONS ? "bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)]" : "bg-amber-500"} rounded-l-full shadow-[0_0_15px_currentColor]`}
                 />
               )}
             </button>

@@ -59,6 +59,9 @@ const SSIM_SIMILARITY_THRESHOLD = 0.95;
 /** How often (ms) to check for slide changes — throttled to reduce Gemini API load */
 const CAPTURE_INTERVAL_MS = 30_000;
 
+/** Size of the tiny canvas used for SSIM-based change detection */
+const CHECK_CANVAS_SIZE = 64;
+
 // ─── Hook ────────────────────────────────────────────────────────────────────
 
 interface UseScreenCaptureOptions {
@@ -114,15 +117,15 @@ export function useScreenCapture({
       if (!videoEl || videoEl.paused || videoEl.ended) return;
 
       try {
-        // 1. Tiny 64×64 canvas for fast change detection
+        // 1. Tiny canvas for fast change detection
         const checkCanvas = document.createElement("canvas");
-        checkCanvas.width = 64;
-        checkCanvas.height = 64;
+        checkCanvas.width = CHECK_CANVAS_SIZE;
+        checkCanvas.height = CHECK_CANVAS_SIZE;
         const checkCtx = checkCanvas.getContext("2d");
         if (!checkCtx) return;
 
-        checkCtx.drawImage(videoEl, 0, 0, 64, 64);
-        const imgData = checkCtx.getImageData(0, 0, 64, 64).data;
+        checkCtx.drawImage(videoEl, 0, 0, CHECK_CANVAS_SIZE, CHECK_CANVAS_SIZE);
+        const imgData = checkCtx.getImageData(0, 0, CHECK_CANVAS_SIZE, CHECK_CANVAS_SIZE).data;
         const currentGray = getGrayscale(imgData);
 
         let hasChanged = false;
@@ -133,7 +136,6 @@ export function useScreenCapture({
           // Small edits (typing 1-2 chars) keep SSIM > threshold → treated as same slide
           if (ssim < SSIM_SIMILARITY_THRESHOLD) {
             hasChanged = true;
-            console.log("[ScreenCapture] Slide change detected:", { ssim });
           }
         }
 
@@ -170,10 +172,6 @@ export function useScreenCapture({
                 `/meetings/${meetingId}/screen-captures`,
                 formData,
                 { headers: { "Content-Type": "multipart/form-data" } },
-              );
-              console.log(
-                "[ScreenCapture] Uploaded at timestamp:",
-                elapsedSeconds,
               );
             } catch (err) {
               console.error("[ScreenCapture] Failed to upload:", err);

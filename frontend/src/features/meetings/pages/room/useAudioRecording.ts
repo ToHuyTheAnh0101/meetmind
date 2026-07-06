@@ -1,9 +1,10 @@
 import { useState, useRef, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
-import { useLocalParticipant } from "@livekit/components-react";
+import { useLocalParticipant, useDataChannel } from "@livekit/components-react";
 import apiClient from "@/lib/apiClient";
 import { showSuccessToast, showErrorToast } from "@/lib/toastUtils";
 import { useCustomEvent, MeetingEvents } from "@/hooks/useCustomEvent";
+import { MeetingDataMessageType } from "@/features/meetings/types";
 
 interface UseAudioRecordingOptions {
   meetingId: string;
@@ -23,6 +24,7 @@ export function useAudioRecording({
 }: UseAudioRecordingOptions): AudioRecordingControls {
   const { t } = useTranslation();
   const { localParticipant, isMicrophoneEnabled } = useLocalParticipant();
+  const { send } = useDataChannel();
 
   const [isRecording, setIsRecording] = useState(false);
   const isRecordingRef = useRef(false);
@@ -98,10 +100,6 @@ export function useAudioRecording({
               ? (Date.now() - recordingStartTimeRef.current) / 1000
               : chunkStartOffset + 15;
 
-            console.log(
-              `Uploading audio chunk ${chunkIndex}, size: ${audioBlob.size} bytes, range: ${chunkStartOffset.toFixed(1)}s - ${chunkEndOffset.toFixed(1)}s`,
-            );
-
             const formData = new FormData();
             formData.append("audio", audioBlob, `chunk_${chunkIndex}.webm`);
             formData.append("userId", localParticipant.identity);
@@ -119,7 +117,6 @@ export function useAudioRecording({
                 formData,
                 { headers: { "Content-Type": "multipart/form-data" } },
               );
-              console.log(`Successfully uploaded chunk ${chunkIndex}`);
             } catch (err) {
               console.error(`Failed to upload chunk ${chunkIndex}`, err);
             }
@@ -192,9 +189,9 @@ export function useAudioRecording({
           });
       }, 5000);
 
-      const payload = JSON.stringify({ type: "RECORDING_STOPPED" });
+      const payload = JSON.stringify({ type: MeetingDataMessageType.RECORDING_STOPPED });
       try {
-        localParticipant.publishData(new TextEncoder().encode(payload), {
+        send(new TextEncoder().encode(payload), {
           reliable: true,
         });
       } catch (err) {
@@ -221,9 +218,9 @@ export function useAudioRecording({
           aiRecordingState: 'recording',
         });
 
-        const payload = JSON.stringify({ type: "RECORDING_STARTED" });
+        const payload = JSON.stringify({ type: MeetingDataMessageType.RECORDING_STARTED });
         try {
-          await localParticipant.publishData(
+          await send(
             new TextEncoder().encode(payload),
             { reliable: true },
           );

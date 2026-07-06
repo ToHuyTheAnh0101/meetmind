@@ -10,9 +10,10 @@ import {
   ChevronDown,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useLocalParticipant } from '@livekit/components-react';
+import { useDataChannel } from '@livekit/components-react';
 import apiClient from '@/lib/apiClient';
 import { Participant, MeetingPermission } from '@/types/api';
+import { MeetingDataMessageType } from '@/features/meetings/types';
 
 interface MeetingPermissionsTabProps {
   meetingId: string;
@@ -144,21 +145,20 @@ const RoomPermissionsBroadcastHelper: React.FC<{
   meetingId: string;
   triggerRef: React.MutableRefObject<((targetUserId?: string, userIds?: string[]) => void) | null>;
 }> = ({ meetingId, triggerRef }) => {
-  const { localParticipant } = useLocalParticipant();
+  const { send } = useDataChannel();
 
   React.useEffect(() => {
     triggerRef.current = (targetUserId?: string, userIds?: string[]) => {
       try {
-        if (!localParticipant) return;
         const payload = {
-          type: 'PERMISSIONS_UPDATED',
+          type: MeetingDataMessageType.PERMISSIONS_UPDATED,
           meetingId,
           targetUserId,
           userIds,
         };
         const encoder = new TextEncoder();
         const data = encoder.encode(JSON.stringify(payload));
-        localParticipant.publishData(data, { reliable: true }).catch(err => {
+        send(data, { reliable: true }).catch(err => {
           console.error("Failed to publish permissions update data signal:", err);
         });
       } catch (err) {
@@ -168,7 +168,7 @@ const RoomPermissionsBroadcastHelper: React.FC<{
     return () => {
       triggerRef.current = null;
     };
-  }, [localParticipant, meetingId, triggerRef]);
+  }, [send, meetingId, triggerRef]);
 
   return null;
 };

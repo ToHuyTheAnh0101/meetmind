@@ -5,6 +5,7 @@ import { useDataChannel } from '@livekit/components-react';
 import { BarChart3, X } from 'lucide-react';
 import BaseModal from '@/components/ui/BaseModal';
 import apiClient from '@/lib/apiClient';
+import { MeetingDataMessageType } from '@/features/meetings/types';
 
 interface PollModalProps {
   isOpen: boolean;
@@ -74,7 +75,7 @@ const CreatePollForm: React.FC<{
     },
     onSuccess: () => {
       const encoder = new TextEncoder();
-      send(encoder.encode(JSON.stringify({ type: 'POLL_CREATED', pollId: meetingId })), { reliable: true });
+      send(encoder.encode(JSON.stringify({ type: MeetingDataMessageType.POLL_CREATED, pollId: meetingId })), { reliable: true });
       onSuccess();
     }
   });

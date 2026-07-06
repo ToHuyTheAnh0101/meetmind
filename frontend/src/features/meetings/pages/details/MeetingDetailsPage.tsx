@@ -10,13 +10,16 @@ import {
   useInfiniteQuery,
 } from "@tanstack/react-query";
 import apiClient from "@/lib/apiClient";
-import { Meeting, MeetingPermission, MeetingAccessType } from "@/types/api";
+import { Meeting, MeetingPermission } from "@/types/api";
 import { useTimeTheme } from "@/hooks/useTimeTheme";
 import { useAuth } from "@/features/auth/AuthContext";
 import {
   generateDefaultMeetingTitle,
   getOrganizerDisplayName,
 } from "@/lib/meetingTitleHelper";
+
+import { checkIsOrganizer } from "@/lib/permissions";
+import { MeetingFormData } from "@/features/meetings/types";
 
 // --- Subcomponents ---
 import { MeetingPollsQaTab } from "./polls_qa/MeetingPollsQaTab";
@@ -41,19 +44,7 @@ const MeetingDetailsPage: React.FC = () => {
   const [isInstant, setIsInstant] = useState(true);
   const [activeTab, setActiveTab] = useState<"general" | "polls_qa" | "summary" | "diary">("general");
 
-  const [formData, setFormData] = useState<{
-    title: string;
-    description: string;
-    startTime: string;
-    accessType: MeetingAccessType;
-    waitingRoomEnabled: boolean;
-    muteOnJoin: boolean;
-    allowDisplayNameEdit: boolean;
-    inviteeEmails: string[];
-    reminderMinutes: number;
-    password: string;
-    templateId: string;
-  }>({
+  const [formData, setFormData] = useState<MeetingFormData>({
     title: "",
     description: "",
     startTime: "",
@@ -159,7 +150,7 @@ const MeetingDetailsPage: React.FC = () => {
 
   const isCompleted = meeting?.status === "completed";
   const isOngoing = meeting?.status === "ongoing";
-  const isOrganizer = isNew || (meeting && meeting.organizerId === user?.id);
+  const isOrganizer = isNew || checkIsOrganizer(user?.id, meeting?.organizerId);
   const isCoHost = React.useMemo(() => {
     if (!meeting || !user) return false;
     return meeting.participants?.find((p) => p.userId === user.id)?.permissions?.includes(MeetingPermission.CO_HOST);

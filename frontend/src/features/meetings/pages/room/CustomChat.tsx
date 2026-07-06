@@ -4,6 +4,7 @@ import { useChat, useLocalParticipant } from '@livekit/components-react';
 import { MessageSquare, Send } from 'lucide-react';
 import apiClient from '@/lib/apiClient';
 import { useAuth } from '@/features/auth/AuthContext';
+import { formatTimeOnly } from '@/features/meetings/utils/formatters';
 
 interface SavedMessage {
   id: string;
@@ -149,9 +150,7 @@ const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout, breako
     }
   };
 
-  const formatTime = (ts: number) => {
-    return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-  };
+
 
   return (
     <div className="flex-1 flex flex-col overflow-hidden">
@@ -204,7 +203,7 @@ const CustomChat: React.FC<CustomChatProps> = ({ meetingId, isInBreakout, breako
                     <span className="text-sm font-bold text-white truncate">
                       {msg.from?.name || msg.from?.identity}
                     </span>
-                    <span className="text-[10px] font-medium text-slate-500 shrink-0">{formatTime(msg.timestamp)}</span>
+                    <span className="text-[10px] font-medium text-slate-500 shrink-0">{formatTimeOnly(msg.timestamp)}</span>
                   </div>
                   <div
                     className={`px-4 py-3 rounded-[1.25rem] text-[14px] leading-relaxed shadow-sm break-words max-w-full ${

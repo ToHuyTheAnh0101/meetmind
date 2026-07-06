@@ -37,11 +37,20 @@ import BreakoutSignalHandler from "./BreakoutSignalHandler";
 import BreakoutModalWrapper from "./BreakoutModalWrapper";
 import { useBreakoutRoom } from "./useBreakoutRoom";
 
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { MeetingPermission, ParticipantStatus } from "@/types/api";
+import {
+  useMeetingParticipants,
+  useMeetingQuestions,
+  meetingRoomKeys,
+} from "@/features/meetings/api/roomQueries";
+import { checkIsOrganizer, hasMeetingPermission } from "@/lib/permissions";
+import { formatMeetingStartTime } from "@/features/meetings/utils/formatters";
+import { MeetingModalType, MeetingSidebarTab, RoomMeetingDetails } from "@/features/meetings/types";
 import { Toaster, toast } from "react-hot-toast";
 import { showSuccessToast, showErrorToast } from "@/lib/toastUtils";
 import { useSSE } from "@/hooks/useSSE";
-import { useCustomEvent, MeetingEvents } from "@/hooks/useCustomEvent";
+import { useCustomEvent, emitCustomEvent, MeetingEvents } from "@/hooks/useCustomEvent";
 
 interface JoinResponse {
   meetingId: string;
@@ -53,6 +62,9 @@ interface JoinResponse {
   isBreakoutRoom?: boolean;
   room?: string;
 }
+
+type SidebarTab = `${MeetingSidebarTab}`;
+type ActiveModalType = MeetingModalType | null;
 
 const MeetingRoomPage: React.FC = () => {
   const { t } = useTranslation();
@@ -79,17 +91,7 @@ const MeetingRoomPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [requiresPassword, setRequiresPassword] = useState(false);
   const [password, setPassword] = useState("");
-  const [meetingDetails, setMeetingDetails] = useState<{
-    title: string;
-    description: string;
-    participantCount: number;
-    allowDisplayNameEdit: boolean;
-    isQaEnabled: boolean;
-    organizerId: string;
-    status?: string;
-    startTime?: string;
-    muteOnJoin?: boolean;
-  } | null>(null);
+  const [meetingDetails, setMeetingDetails] = useState<RoomMeetingDetails | null>(null);
 
   const [countdownText, setCountdownText] = useState<string>("");
   const [isEarly, setIsEarly] = useState<boolean>(false);
@@ -106,47 +108,38 @@ const MeetingRoomPage: React.FC = () => {
   const [isWaitingInLobby, setIsWaitingInLobby] = useState(false);
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(() => typeof window !== "undefined" ? window.innerWidth >= 1024 : true);
-  const [activeTab, setActiveTab] = useState<
-    | "chat"
-    | "roster"
-    | "lobby"
-    | "settings"
-    | "polls"
-    | "qa"
-    | "permissions"
-    | "breakout"
-    | "attachments"
-  >("roster");
-  const [isPollModalOpen, setIsPollModalOpen] = useState(false);
+  const [activeTab, setActiveTab] = useState<SidebarTab>(MeetingSidebarTab.ROSTER);
+  const [activeModal, setActiveModal] = useState<ActiveModalType>(null);
   const [hasUnreadPolls, setHasUnreadPolls] = useState(false);
   const [hasUnreadQA, setHasUnreadQA] = useState(false);
-  const [isQuestionModalOpen, setIsQuestionModalOpen] = useState(false);
   const [selectedQuestionId, setSelectedQuestionId] = useState<string | null>(
     null,
   );
-  const [isBreakoutModalOpen, setIsBreakoutModalOpen] = useState(false);
-  const [isConfirmEndOpen, setIsConfirmEndOpen] = useState(false);
 
-  // Derived Values
+  // Refs to track active tab and sidebar state without causing useEffect triggers
+  const activeTabRef = useRef(activeTab);
+  const isSidebarOpenRef = useRef(isSidebarOpen);
+
+  // --- 1. Queries & Network Hooks ---
+  // Fetch participants to detect waiting users in the lobby and show live lobby avatars
+  const { data: participantsData } = useMeetingParticipants(id || "");
+
+  // Queries
+  const { data: allQuestions = [] } = useMeetingQuestions(
+    id || "",
+    false,
+    undefined,
+    { enabled: !!id && (activeModal === MeetingModalType.QUESTION || activeTab === MeetingSidebarTab.QA) }
+  );
+
+  // --- 2. Derived Values (useMemo) ---
   const organizerId = useMemo(() => {
     return joinData?.organizerId || meetingDetails?.organizerId || "";
   }, [joinData, meetingDetails]);
 
-  // Poll participants to detect waiting users in the lobby and show live lobby avatars
-  const { data: participantsData } = useQuery<any>({
-    queryKey: ["meeting-participants", id],
-    queryFn: async () => {
-      const response = await apiClient.get(`/meetings/${id}/participants`);
-      return response.data;
-    },
-    enabled: !!id,
-    refetchInterval: false,
-  });
-
   const isOrganizer = useMemo(() => {
-    if (user && organizerId) return organizerId === user.id;
-    return false;
-  }, [organizerId, user]);
+    return checkIsOrganizer(user?.id, organizerId);
+  }, [organizerId, user?.id]);
 
   const currentParticipant = useMemo(() => {
     if (!participantsData?.items || !user) return null;
@@ -155,30 +148,30 @@ const MeetingRoomPage: React.FC = () => {
     );
   }, [participantsData, user]);
 
-  const canManagePolls = useMemo(() => {
-    if (isOrganizer) return true;
-    const p = currentParticipant;
-    return (
-      p?.permissions?.includes("manage_polls") ||
-      p?.permissions?.includes("co_host") ||
-      false
-    );
-  }, [isOrganizer, currentParticipant]);
-
-  const canManageQA = useMemo(() => {
-    if (isOrganizer) return true;
-    const p = currentParticipant;
-    return (
-      p?.permissions?.includes("manage_qa") ||
-      p?.permissions?.includes("co_host") ||
-      false
-    );
-  }, [isOrganizer, currentParticipant]);
-
   const isCoHost = useMemo(() => {
     const p = currentParticipant;
-    return p?.permissions?.includes("co_host") || false;
+    return p?.permissions?.includes(MeetingPermission.CO_HOST) || false;
   }, [currentParticipant]);
+
+  const canManagePolls = useMemo(() => {
+    if (!user?.id) return false;
+    return hasMeetingPermission(
+      user.id,
+      organizerId,
+      currentParticipant?.permissions,
+      MeetingPermission.MANAGE_POLLS
+    );
+  }, [organizerId, user?.id, currentParticipant?.permissions]);
+
+  const canManageQA = useMemo(() => {
+    if (!user?.id) return false;
+    return hasMeetingPermission(
+      user.id,
+      organizerId,
+      currentParticipant?.permissions,
+      MeetingPermission.MANAGE_QA
+    );
+  }, [organizerId, user?.id, currentParticipant?.permissions]);
 
   const isPasswordError = useMemo(() => {
     return (
@@ -188,29 +181,14 @@ const MeetingRoomPage: React.FC = () => {
     );
   }, [requiresPassword, error, t]);
 
-  // Queries
-  const { data: allQuestions = [] } = useQuery<any[]>({
-    queryKey: ["questions", id],
-    queryFn: async () => {
-      const res = await apiClient.get(`/meetings/${id}/qa`);
-      return res.data;
-    },
-    enabled: !!id && (isQuestionModalOpen || activeTab === "qa"),
-  });
-
-  // Listen to Server-Sent Events (SSE) for lobby updates (for Host/Co-host)
-  useSSE(
-    (id && (isOrganizer || isCoHost)) ? `/meetings/${id}/lobby/sse` : null,
-    (data: any) => {
-      if (data.type === "lobby_updated") {
-        queryClient.invalidateQueries({ queryKey: ["meeting-participants", id] });
-      }
-    }
-  );
+  const formattedStartTime = useMemo(() => {
+    const isVi = t("meeting.not_started.title").includes("chưa");
+    return formatMeetingStartTime(meetingDetails?.startTime || "", isVi);
+  }, [meetingDetails?.startTime, t]);
 
   const hasWaitingLobby = useMemo(() => {
     if (!participantsData?.items) return false;
-    return participantsData.items.some((p: any) => p.status === "waiting");
+    return participantsData.items.some((p: any) => p.status === ParticipantStatus.WAITING);
   }, [participantsData]);
 
   const selectedQuestion = useMemo(
@@ -218,7 +196,7 @@ const MeetingRoomPage: React.FC = () => {
     [allQuestions, selectedQuestionId],
   );
 
-  // Callbacks
+  // --- 3. Callbacks & Event Handlers (useCallback) ---
   const fetchMeetingDetails = useCallback(() => {
     if (!id) return;
     apiClient
@@ -238,7 +216,7 @@ const MeetingRoomPage: React.FC = () => {
         if (res.data.hasPassword) {
           setRequiresPassword(true);
         }
-        const isUserOrganizer = res.data.organizerId === user?.id;
+        const isUserOrganizer = checkIsOrganizer(user?.id, res.data.organizerId);
         if (res.data.muteOnJoin && !isUserOrganizer) {
           setIsMicOn(false);
         }
@@ -246,34 +224,25 @@ const MeetingRoomPage: React.FC = () => {
       .catch((err) => console.error("Failed to fetch meeting details", err));
   }, [id, user?.id, setIsMicOn]);
 
-  const handleOpenQuestionModal = useCallback((question: any) => {
-    setSelectedQuestionId(question.id);
-    setIsQuestionModalOpen(true);
+  const handleOpenModal = useCallback((type: ActiveModalType, questionId?: string) => {
+    setActiveModal(type);
+    if (type === MeetingModalType.QUESTION && questionId) {
+      setSelectedQuestionId(questionId);
+    }
   }, []);
 
-  const handleCloseQuestionModal = useCallback(() => {
-    setIsQuestionModalOpen(false);
+  const handleCloseModal = useCallback(() => {
+    setActiveModal(null);
     setSelectedQuestionId(null);
   }, []);
 
   const handleToggleSidebar = useCallback(
-    (
-      tab:
-        | "chat"
-        | "roster"
-        | "lobby"
-        | "settings"
-        | "polls"
-        | "permissions"
-        | "qa"
-        | "breakout"
-        | "attachments",
-    ) => {
+    (tab: SidebarTab) => {
       setIsSidebarOpen((prevOpen) => {
         if (prevOpen && activeTab === tab) return false;
-        setActiveTab(tab as any);
-        if (tab === "polls") setHasUnreadPolls(false);
-        if (tab === "qa") setHasUnreadQA(false);
+        setActiveTab(tab);
+        if (tab === MeetingSidebarTab.POLLS) setHasUnreadPolls(false);
+        if (tab === MeetingSidebarTab.QA) setHasUnreadQA(false);
         return true;
       });
     },
@@ -281,16 +250,6 @@ const MeetingRoomPage: React.FC = () => {
   );
 
   const handleCloseSidebar = useCallback(() => setIsSidebarOpen(false), []);
-  const handleOpenPollModal = useCallback(() => setIsPollModalOpen(true), []);
-  const handleClosePollModal = useCallback(() => setIsPollModalOpen(false), []);
-  const handleOpenBreakoutModal = useCallback(
-    () => setIsBreakoutModalOpen(true),
-    [],
-  );
-  const handleCloseBreakoutModal = useCallback(
-    () => setIsBreakoutModalOpen(false),
-    [],
-  );
 
   const handleEndSession = useCallback(async () => {
     const summaryToastId = toast.loading(
@@ -354,8 +313,8 @@ const MeetingRoomPage: React.FC = () => {
         );
 
         if (
-          response.data.status === "waiting" ||
-          response.data.status === "pending"
+          response.data.status === ParticipantStatus.WAITING ||
+          response.data.status === ParticipantStatus.PENDING
         ) {
           setIsWaitingInLobby(true);
           setPreJoinChoices(choices);
@@ -397,10 +356,51 @@ const MeetingRoomPage: React.FC = () => {
     [id, password, t, localVideoTrack],
   );
 
-  // Refs to track active tab and sidebar state without causing useEffect triggers
-  const activeTabRef = useRef(activeTab);
-  const isSidebarOpenRef = useRef(isSidebarOpen);
+  const handleRefreshMeeting = useCallback((detail: any) => {
+    if (detail?.meetingId === id) {
+      fetchMeetingDetails();
+      queryClient.invalidateQueries({ queryKey: meetingRoomKeys.participants(id || "") });
+    }
+  }, [id, fetchMeetingDetails, queryClient]);
 
+  const handleRefreshQA = useCallback((detail: any) => {
+    if (detail?.meetingId === id) {
+      queryClient.invalidateQueries({ queryKey: meetingRoomKeys.questions(id || "") });
+      if (activeTabRef.current !== MeetingSidebarTab.QA || !isSidebarOpenRef.current) {
+        setHasUnreadQA(true);
+      }
+    }
+  }, [id, queryClient]);
+
+  const handleRefreshPolls = useCallback((detail: any) => {
+    if (detail?.meetingId === id) {
+      queryClient.invalidateQueries({ queryKey: meetingRoomKeys.polls(id || "") });
+      if (activeTabRef.current !== MeetingSidebarTab.POLLS || !isSidebarOpenRef.current) {
+        setHasUnreadPolls(true);
+      }
+    }
+  }, [id, queryClient]);
+
+  const checkAndJoin = useCallback(async () => {
+    try {
+      const response = await apiClient.post<JoinResponse>(
+        `/meetings/${id}/join`,
+        { password },
+        { _skipLogout: true } as any,
+      );
+      if (
+        response.data.status === ParticipantStatus.ADMITTED ||
+        response.data.status === ParticipantStatus.ACTIVE
+      ) {
+        setIsWaitingInLobby(false);
+        setJoinData(response.data);
+      }
+    } catch (err) {
+      console.error("Failed to automatically join after SSE admittance notification", err);
+    }
+  }, [id, password]);
+
+  // --- 4. Side Effects & Event Listeners (useEffect, useSSE, useCustomEvent) ---
   useEffect(() => {
     activeTabRef.current = activeTab;
   }, [activeTab]);
@@ -409,7 +409,6 @@ const MeetingRoomPage: React.FC = () => {
     isSidebarOpenRef.current = isSidebarOpen;
   }, [isSidebarOpen]);
 
-  // Effects
   useEffect(() => {
     fetchMeetingDetails();
   }, [fetchMeetingDetails]);
@@ -446,95 +445,6 @@ const MeetingRoomPage: React.FC = () => {
     const interval = setInterval(checkTime, 1000);
     return () => clearInterval(interval);
   }, [meetingDetails?.startTime, meetingDetails?.status, isOrganizer, fetchMeetingDetails]);
-
-  const formattedStartTime = useMemo(() => {
-    if (!meetingDetails?.startTime) return "";
-    try {
-      const date = new Date(meetingDetails.startTime);
-      const isVi = t("meeting.not_started.title").includes("chưa");
-      if (isVi) {
-        return date.toLocaleString("vi-VN", {
-          hour: "2-digit",
-          minute: "2-digit",
-          day: "2-digit",
-          month: "long",
-          year: "numeric",
-        });
-      } else {
-        return date.toLocaleString("en-US", {
-          hour: "2-digit",
-          minute: "2-digit",
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        });
-      }
-    } catch {
-      return meetingDetails.startTime;
-    }
-  }, [meetingDetails?.startTime, t]);
-
-  const handleRefreshMeeting = useCallback((detail: any) => {
-    if (detail?.meetingId === id) {
-      fetchMeetingDetails();
-      queryClient.invalidateQueries({ queryKey: ["meeting-participants", id] });
-    }
-  }, [id, fetchMeetingDetails, queryClient]);
-
-  const handleRefreshQA = useCallback((detail: any) => {
-    if (detail?.meetingId === id) {
-      queryClient.invalidateQueries({ queryKey: ["questions", id] });
-      if (activeTabRef.current !== "qa" || !isSidebarOpenRef.current) {
-        setHasUnreadQA(true);
-      }
-    }
-  }, [id, queryClient]);
-
-  const handleRefreshPolls = useCallback((detail: any) => {
-    if (detail?.meetingId === id) {
-      queryClient.invalidateQueries({ queryKey: ["polls", id] });
-      if (activeTabRef.current !== "polls" || !isSidebarOpenRef.current) {
-        setHasUnreadPolls(true);
-      }
-    }
-  }, [id, queryClient]);
-
-  useCustomEvent(MeetingEvents.REFRESH_MEETING, handleRefreshMeeting);
-  useCustomEvent(MeetingEvents.REFRESH_QA, handleRefreshQA);
-  useCustomEvent(MeetingEvents.REFRESH_POLLS, handleRefreshPolls);
-
-  const checkAndJoin = useCallback(async () => {
-    try {
-      const response = await apiClient.post<JoinResponse>(
-        `/meetings/${id}/join`,
-        { password },
-        { _skipLogout: true } as any,
-      );
-      if (
-        response.data.status === "admitted" ||
-        response.data.status === "active"
-      ) {
-        setIsWaitingInLobby(false);
-        setJoinData(response.data);
-      }
-    } catch (err) {
-      console.error("Failed to automatically join after SSE admittance notification", err);
-    }
-  }, [id, password]);
-
-  useSSE(
-    (isWaitingInLobby && id) ? `/meetings/${id}/participants/status-sse` : null,
-    (data: any) => {
-      if (data.type === "status_updated") {
-        if (data.status === "admitted") {
-          checkAndJoin();
-        } else if (data.status === "denied") {
-          setIsWaitingInLobby(false);
-          setError(t("meeting.access_denied"));
-        }
-      }
-    }
-  );
 
   useEffect(() => {
     let activeTrack: LocalVideoTrack | null = null;
@@ -576,6 +486,33 @@ const MeetingRoomPage: React.FC = () => {
       };
     }
   }, [id]);
+
+  // Listen to Server-Sent Events (SSE) for lobby updates (for Host/Co-host)
+  useSSE(
+    (id && (isOrganizer || isCoHost)) ? `/meetings/${id}/lobby/sse` : null,
+    (data: any) => {
+      if (data.type === "lobby_updated") {
+        queryClient.invalidateQueries({ queryKey: meetingRoomKeys.participants(id || "") });
+      }
+    }
+  );
+
+  // SSE for waiting status admittance
+  useSSE(
+    (isWaitingInLobby && id) ? `/meetings/${id}/participants/status-sse` : null,
+    (data: any) => {
+      if (data.type === "status_updated") {
+        if (data.status === ParticipantStatus.ADMITTED) {
+          checkAndJoin();
+        }
+      }
+    }
+  );
+
+  // Custom Event Listeners
+  useCustomEvent(MeetingEvents.REFRESH_MEETING, handleRefreshMeeting);
+  useCustomEvent(MeetingEvents.REFRESH_QA, handleRefreshQA);
+  useCustomEvent(MeetingEvents.REFRESH_POLLS, handleRefreshPolls);
 
   // Early Returns
   if (isEarly && meetingDetails) {
@@ -715,13 +652,7 @@ const MeetingRoomPage: React.FC = () => {
         className="w-full h-full flex overflow-hidden relative lg:flex-row flex-row"
       >
         <RoomAudioRenderer />
-        <DataHandler
-          meetingId={id!}
-          onNotify={() => {
-            if (activeTab !== "polls" || !isSidebarOpen)
-              setHasUnreadPolls(true);
-          }}
-        />
+        <DataHandler meetingId={id!} />
         <BreakoutSignalHandler />
         <LayoutContextProvider>
           <motion.div
@@ -730,7 +661,6 @@ const MeetingRoomPage: React.FC = () => {
           >
             <MeetingMainStage
               meetingId={id || ""}
-              isSidebarOpen={isSidebarOpen}
               isOrganizer={isOrganizer}
               activeTab={activeTab as any}
               hasUnreadPolls={hasUnreadPolls}
@@ -750,11 +680,11 @@ const MeetingRoomPage: React.FC = () => {
             hasUnreadPolls={hasUnreadPolls}
             hasUnreadQA={hasUnreadQA}
             hasWaitingLobby={hasWaitingLobby}
-            setActiveTab={(tab: any) => {
+            setActiveTab={(tab: SidebarTab) => {
               setActiveTab(tab);
               setIsSidebarOpen(true);
-              if (tab === "polls") setHasUnreadPolls(false);
-              if (tab === "qa") setHasUnreadQA(false);
+              if (tab === MeetingSidebarTab.POLLS) setHasUnreadPolls(false);
+              if (tab === MeetingSidebarTab.QA) setHasUnreadQA(false);
             }}
             meetingId={joinData.meetingId}
             userId={user?.id || ""}
@@ -763,10 +693,10 @@ const MeetingRoomPage: React.FC = () => {
             isCoHost={isCoHost}
             canManagePolls={canManagePolls}
             canManageQA={canManageQA}
-            onOpenCreateModal={handleOpenPollModal}
-            onOpenQuestionModal={handleOpenQuestionModal}
-            onOpenBreakoutModal={handleOpenBreakoutModal}
-            onOpenConfirmEndModal={() => setIsConfirmEndOpen(true)}
+            onOpenCreateModal={() => handleOpenModal(MeetingModalType.POLL)}
+            onOpenQuestionModal={(q) => handleOpenModal(MeetingModalType.QUESTION, q.id)}
+            onOpenBreakoutModal={() => handleOpenModal(MeetingModalType.BREAKOUT)}
+            onOpenConfirmEndModal={() => handleOpenModal(MeetingModalType.CONFIRM_END)}
             onJoinBreakoutAsHost={handleJoinBreakoutAsHost}
             currentRoomName={joinData?.room}
             isInBreakout={isInBreakout}
@@ -774,21 +704,21 @@ const MeetingRoomPage: React.FC = () => {
           />
         </LayoutContextProvider>
         <PollModal
-          isOpen={isPollModalOpen}
-          onClose={handleClosePollModal}
+          isOpen={activeModal === MeetingModalType.POLL}
+          onClose={handleCloseModal}
           meetingId={joinData.meetingId}
           isInBreakout={isInBreakout}
           breakoutRoomId={joinData?.breakoutRoomId}
         />
         <BreakoutModalWrapper
-          isOpen={isBreakoutModalOpen}
-          onClose={handleCloseBreakoutModal}
+          isOpen={activeModal === MeetingModalType.BREAKOUT}
+          onClose={handleCloseModal}
           meetingId={id || ""}
           organizerId={joinData.organizerId}
         />
         <QuestionDetailModal
-          isOpen={isQuestionModalOpen}
-          onClose={handleCloseQuestionModal}
+          isOpen={activeModal === MeetingModalType.QUESTION}
+          onClose={handleCloseModal}
           question={selectedQuestion}
           userId={user?.id || ""}
           meetingId={id || ""}
@@ -796,14 +726,14 @@ const MeetingRoomPage: React.FC = () => {
           isCoHost={isCoHost}
         />
         <ConfirmEndBreakoutModal
-          isOpen={isConfirmEndOpen}
-          onClose={() => setIsConfirmEndOpen(false)}
+          isOpen={activeModal === MeetingModalType.CONFIRM_END}
+          onClose={handleCloseModal}
           onConfirm={async () => {
             try {
               await apiClient.post(`/meetings/${id}/breakout-rooms/end`);
-              window.dispatchEvent(new CustomEvent("send-breakout-end-signal"));
+              emitCustomEvent(MeetingEvents.SEND_BREAKOUT_END_SIGNAL);
               showSuccessToast(t('meeting.end_breakout_success', 'Đã kết thúc thảo luận nhóm'), "🏠");
-              setIsConfirmEndOpen(false);
+              handleCloseModal();
             } catch (err) {
               console.error("Failed to end breakout", err);
               showErrorToast(t('meeting.end_breakout_failed', 'Không thể kết thúc chia phòng'));

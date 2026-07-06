@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useMeetingDetails, meetingRoomKeys } from "@/features/meetings/api/roomQueries";
 import { useDataChannel } from "@livekit/components-react";
 import apiClient from "@/lib/apiClient";
 import { emitCustomEvent, MeetingEvents } from "@/hooks/useCustomEvent";
 import { Check, Loader2, AlertCircle } from "lucide-react";
-import { Meeting } from "@/types/api";
+import { MeetingDataMessageType, SaveStatus } from "@/features/meetings/types";
 import SettingToggle from "../details/general/SettingToggle";
 
 interface InRoomSettingsProps {
@@ -16,18 +17,10 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
   const { t } = useTranslation();
   const queryClient = useQueryClient();
   const { send } = useDataChannel();
-  const [saveStatus, setSaveStatus] = useState<
-    "idle" | "saving" | "saved" | "error"
-  >("idle");
+  const [saveStatus, setSaveStatus] = useState<SaveStatus>(SaveStatus.IDLE);
 
   // 1. Fetch current meeting state
-  const { data: meeting, isLoading } = useQuery<Meeting>({
-    queryKey: ["meeting", meetingId],
-    queryFn: async () => {
-      const response = await apiClient.get(`/meetings/${meetingId}`);
-      return response.data;
-    },
-  });
+  const { data: meeting, isLoading } = useMeetingDetails(meetingId);
 
   const [formData, setFormData] = useState({
     title: "",
@@ -49,30 +42,28 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
 
   const updateMutation = useMutation({
     mutationFn: async (data: typeof formData) => {
-      console.log("InRoomSettings: Updating meeting with data:", data);
-      setSaveStatus("saving");
+      setSaveStatus(SaveStatus.SAVING);
       return apiClient.put(`/meetings/${meetingId}`, data);
     },
     onSuccess: () => {
-      console.log("InRoomSettings: Update successful");
-      setSaveStatus("saved");
-      queryClient.invalidateQueries({ queryKey: ["meeting", meetingId] });
+      setSaveStatus(SaveStatus.SAVED);
+      queryClient.invalidateQueries({ queryKey: meetingRoomKeys.details(meetingId) });
 
       // Broadcast to others
       const encoder = new TextEncoder();
       send(
-        encoder.encode(JSON.stringify({ type: "MEETING_UPDATED", meetingId })),
+        encoder.encode(JSON.stringify({ type: MeetingDataMessageType.MEETING_UPDATED, meetingId })),
         { reliable: true },
       );
 
       // Also refresh locally for the host
       emitCustomEvent(MeetingEvents.REFRESH_MEETING, { meetingId });
 
-      setTimeout(() => setSaveStatus("idle"), 2000);
+      setTimeout(() => setSaveStatus(SaveStatus.IDLE), 2000);
     },
     onError: () => {
-      setSaveStatus("error");
-      setTimeout(() => setSaveStatus("idle"), 3000);
+      setSaveStatus(SaveStatus.ERROR);
+      setTimeout(() => setSaveStatus(SaveStatus.IDLE), 3000);
     },
   });
 
@@ -104,13 +95,13 @@ const InRoomSettings: React.FC<InRoomSettingsProps> = ({ meetingId }) => {
           </div>
 
           <div className="flex items-center gap-2">
-            {saveStatus === "saving" && (
+            {saveStatus === SaveStatus.SAVING && (
               <Loader2 className="h-4 w-4 animate-spin text-amber-500" />
             )}
-            {saveStatus === "saved" && (
+            {saveStatus === SaveStatus.SAVED && (
               <Check className="h-4 w-4 text-emerald-500" />
             )}
-            {saveStatus === "error" && (
+            {saveStatus === SaveStatus.ERROR && (
               <AlertCircle className="h-4 w-4 text-rose-500" />
             )}
           </div>

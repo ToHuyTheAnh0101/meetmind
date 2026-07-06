@@ -18,6 +18,14 @@ export function formatTime(iso: string): string {
   });
 }
 
+export function formatTimeOnly(dateOrTs: string | number | Date): string {
+  const d = new Date(dateOrTs);
+  return d.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 export function formatDateTime(iso: string | null | undefined, isVi: boolean): string {
   if (!iso) return "--";
   const d = new Date(iso);
@@ -26,6 +34,24 @@ export function formatDateTime(iso: string | null | undefined, isVi: boolean): s
   const time = d.toLocaleTimeString(locale, { hour: "2-digit", minute: "2-digit" });
   const date = d.toLocaleDateString(locale, { day: "2-digit", month: "2-digit", year: "numeric" });
   return `${time} - ${date}`;
+}
+
+export function formatMeetingStartTime(iso: string, isVi: boolean): string {
+  if (!iso) return "";
+  try {
+    const date = new Date(iso);
+    if (isNaN(date.getTime())) return iso;
+    const locale = isVi ? "vi-VN" : "en-US";
+    return date.toLocaleString(locale, {
+      hour: "2-digit",
+      minute: "2-digit",
+      day: "2-digit",
+      month: isVi ? "long" : "short",
+      year: "numeric",
+    });
+  } catch {
+    return iso;
+  }
 }
 
 export function formatDuration(ms: number, isVi: boolean): string {
