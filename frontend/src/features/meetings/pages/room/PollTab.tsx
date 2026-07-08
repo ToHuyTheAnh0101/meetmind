@@ -33,6 +33,7 @@ const VoterAvatarStack: React.FC<{
   onShowDetail: () => void;
   isSelected: boolean;
 }> = ({ voters, onShowDetail, isSelected }) => {
+  const { t } = useTranslation();
   if (voters.length === 0) return null;
 
   const MAX_VISIBLE = 4;
@@ -46,7 +47,7 @@ const VoterAvatarStack: React.FC<{
         onShowDetail();
       }}
       className="flex items-center gap-1.5 group/stack"
-      title={`${voters.length} người đã bình chọn`}
+      title={t('meeting.voters_count', '{{count}} người đã bình chọn', { count: voters.length })}
     >
       <div className="flex -space-x-2">
         {visible.map((voter, i) => (
@@ -98,6 +99,7 @@ const VoterDetailModal: React.FC<{
   voters: Voter[];
   onClose: () => void;
 }> = ({ optionText, voters, onClose }) => {
+  const { t } = useTranslation();
   return (
     <AnimatePresence>
       <motion.div
@@ -123,7 +125,7 @@ const VoterDetailModal: React.FC<{
           <div className="flex items-start justify-between p-5 pb-3 border-b border-white/5">
             <div>
               <p className="text-[10px] font-semibold text-rose-400 uppercase tracking-widest mb-1">
-                Người đã bình chọn
+                {t('meeting.voted_participants', 'Người đã bình chọn')}
               </p>
               <h3 className="text-[13px] font-bold text-white leading-snug break-all max-w-[230px]">
                 "{optionText}"
@@ -141,7 +143,7 @@ const VoterDetailModal: React.FC<{
           <div className="p-4 max-h-72 overflow-y-auto custom-scrollbar space-y-1.5">
             {voters.length === 0 ? (
               <p className="text-center text-slate-500 text-[12px] py-6">
-                Chưa có ai bình chọn
+                {t('meeting.no_votes_yet', 'Chưa có ai bình chọn')}
               </p>
             ) : (
               voters.map((voter, i) => (
@@ -176,7 +178,7 @@ const VoterDetailModal: React.FC<{
           {/* Footer count */}
           <div className="px-5 py-3 border-t border-white/5">
             <span className="text-[11px] text-slate-500 font-semibold">
-              {voters.length} lượt bình chọn
+              {t('meeting.votes_count', '{{count}} lượt bình chọn', { count: voters.length })}
             </span>
           </div>
         </motion.div>
@@ -235,13 +237,13 @@ const PollItem: React.FC<{
               onClick={onClose}
               className="px-3 py-1.5 rounded-xl bg-rose-500/10 text-rose-500 hover:bg-rose-500/20 transition-all active:scale-95 text-[10px] font-bold border border-rose-500/20 shrink-0"
             >
-              {t('meeting.lock_poll') || 'Khóa bình chọn'}
+              {t('meeting.lock_poll', 'Khóa bình chọn')}
             </button>
           ) : (
             isClosed && (
               <div className="px-3 py-1.5 rounded-xl bg-white/5 text-slate-400 text-[10px] font-bold border border-white/10 shrink-0 flex items-center gap-1.5">
                 <LockIcon className="h-3 w-3" />
-                {t('meeting.poll_closed') || 'Bình chọn đã đóng'}
+                {t('meeting.poll_closed', 'Bình chọn đã đóng')}
               </div>
             )
           )}
@@ -347,7 +349,7 @@ const PollItem: React.FC<{
 
         <div className="mt-5 pt-4 border-t border-white/5 flex items-center justify-between">
           <span className="text-[12px] font-bold text-slate-400 tracking-[0.05em]">
-            {totalVotes} {t('meeting.votes') || 'lượt bình chọn'}
+            {t('meeting.votes_count', '{{count}} lượt bình chọn', { count: totalVotes })}
           </span>
           <span className="text-[12px] font-medium text-slate-400">
             {new Date(poll.createdAt).toLocaleTimeString([], {
@@ -441,7 +443,7 @@ const PollTab: React.FC<PollTabProps> = ({
           >
             <Plus className="h-5 w-5" />
             <span className="text-[15px]">
-              {t('meeting.create_poll') || 'Tạo bình chọn mới'}
+              {t('meeting.create_poll', 'Tạo bình chọn mới')}
             </span>
           </button>
         )}
