@@ -173,6 +173,16 @@ const MeetingRoomPage: React.FC = () => {
     );
   }, [organizerId, user?.id, currentParticipant?.permissions]);
 
+  const canManageLobby = useMemo(() => {
+    if (!user?.id) return false;
+    return hasMeetingPermission(
+      user.id,
+      organizerId,
+      currentParticipant?.permissions,
+      MeetingPermission.MANAGE_LOBBY
+    );
+  }, [organizerId, user?.id, currentParticipant?.permissions]);
+
   const isPasswordError = useMemo(() => {
     return (
       requiresPassword &&
@@ -487,9 +497,9 @@ const MeetingRoomPage: React.FC = () => {
     }
   }, [id]);
 
-  // Listen to Server-Sent Events (SSE) for lobby updates (for Host/Co-host)
+  // Listen to Server-Sent Events (SSE) for lobby updates (for Host/Co-host/Lobby managers)
   useSSE(
-    (id && (isOrganizer || isCoHost)) ? `/meetings/${id}/lobby/sse` : null,
+    (id && (isOrganizer || isCoHost || canManageLobby)) ? `/meetings/${id}/lobby/sse` : null,
     (data: any) => {
       if (data.type === "lobby_updated") {
         queryClient.invalidateQueries({ queryKey: meetingRoomKeys.participants(id || "") });
@@ -693,6 +703,7 @@ const MeetingRoomPage: React.FC = () => {
             isCoHost={isCoHost}
             canManagePolls={canManagePolls}
             canManageQA={canManageQA}
+            canManageLobby={canManageLobby}
             onOpenCreateModal={() => handleOpenModal(MeetingModalType.POLL)}
             onOpenQuestionModal={(q) => handleOpenModal(MeetingModalType.QUESTION, q.id)}
             onOpenBreakoutModal={() => handleOpenModal(MeetingModalType.BREAKOUT)}

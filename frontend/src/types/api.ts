@@ -33,6 +33,7 @@ export enum MeetingPermission {
   MANAGE_POLLS = "manage_polls",
   MANAGE_QA = "manage_qa",
   CO_HOST = "co_host",
+  MANAGE_LOBBY = "manage_lobby",
 }
 
 export interface Meeting {

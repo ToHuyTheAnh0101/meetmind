@@ -504,6 +504,10 @@
           "label": "Quyền Đồng chủ trì",
           "desc": "Cấp quyền quản lý ngang hàng chủ phòng"
         },
+        "manage_lobby": {
+          "label": "Quản lý phòng chờ",
+          "desc": "Duyệt hoặc từ chối người tham gia từ phòng chờ"
+        },
         "view_transcript": {
           "label": "Xem bản dịch",
           "desc": "Truy cập nội dung transcript"

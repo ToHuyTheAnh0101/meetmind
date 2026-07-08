@@ -259,6 +259,7 @@ const MeetingPermissionsTab: React.FC<MeetingPermissionsTabProps> = ({
     { key: MeetingPermission.CO_HOST, label: t('meeting.permissions.list.co_host.label') },
     { key: MeetingPermission.MANAGE_POLLS, label: t('meeting.permissions.list.manage_polls.label') },
     { key: MeetingPermission.MANAGE_QA, label: t('meeting.permissions.list.manage_qa.label') },
+    { key: MeetingPermission.MANAGE_LOBBY, label: t('meeting.permissions.list.manage_lobby.label', 'Quản lý phòng chờ') },
   ];
 
   return (

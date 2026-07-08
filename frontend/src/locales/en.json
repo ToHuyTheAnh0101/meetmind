@@ -502,6 +502,10 @@
           "label": "Co-host permissions",
           "desc": "Grant peer management rights to the host"
         },
+        "manage_lobby": {
+          "label": "Manage lobby",
+          "desc": "Admit or deny participants from the waiting room"
+        },
         "view_transcript": {
           "label": "View transcript",
           "desc": "Access transcript content"

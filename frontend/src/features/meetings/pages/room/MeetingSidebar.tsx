@@ -42,6 +42,7 @@ interface MeetingSidebarProps {
   isCoHost: boolean;
   canManagePolls: boolean;
   canManageQA: boolean;
+  canManageLobby: boolean;
   onOpenCreateModal: () => void;
   onOpenQuestionModal: (question: any) => void;
   onOpenBreakoutModal: () => void;
@@ -67,6 +68,7 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
   isCoHost,
   canManagePolls,
   canManageQA,
+  canManageLobby,
   onOpenCreateModal,
   onOpenQuestionModal,
   onOpenBreakoutModal,
@@ -136,29 +138,31 @@ const MeetingSidebar: React.FC<MeetingSidebarProps> = ({
     },
   ];
 
-  if (isOrganizer || isCoHost) {
+  if (isOrganizer || isCoHost || canManageLobby) {
     tabs.push({
       id: MeetingSidebarTab.LOBBY,
       icon: UserPlus,
       label: t("meeting.lobby"),
       color: "text-emerald-400",
     });
+  }
 
-    if (isOrganizer) {
-      tabs.push({
-        id: MeetingSidebarTab.PERMISSIONS,
-        icon: Shield,
-        label: t("meeting.permissions.tab_permissions"),
-        color: "text-slate-100",
-      });
-      tabs.push({
-        id: MeetingSidebarTab.BREAKOUT,
-        icon: Grid2X2,
-        label: t("meeting.breakout_rooms_title", "Chia phòng"),
-        color: "text-teal-400",
-      });
-    }
+  if (isOrganizer) {
+    tabs.push({
+      id: MeetingSidebarTab.PERMISSIONS,
+      icon: Shield,
+      label: t("meeting.permissions.tab_permissions"),
+      color: "text-slate-100",
+    });
+    tabs.push({
+      id: MeetingSidebarTab.BREAKOUT,
+      icon: Grid2X2,
+      label: t("meeting.breakout_rooms_title", "Chia phòng"),
+      color: "text-teal-400",
+    });
+  }
 
+  if (isOrganizer || isCoHost) {
     tabs.push({
       id: MeetingSidebarTab.SETTINGS,
       icon: Settings,

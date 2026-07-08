@@ -276,8 +276,22 @@ export class ParticipantsService {
     const meeting = await this.meetingsRepository.findById(id);
     if (!meeting) throw new NotFoundException('Meeting not found');
 
-    if (meeting.organizerId !== hostId) {
-      throw new ForbiddenException('Only the organizer can admit participants');
+    const requester = await this.participantsRepository.findByMeetingAndUser(
+      id,
+      hostId,
+    );
+    const isOrganizer = meeting.organizerId === hostId;
+    const isCoHost = requester?.permissions?.includes(
+      MeetingPermission.CO_HOST,
+    );
+    const canManageLobby = requester?.permissions?.includes(
+      MeetingPermission.MANAGE_LOBBY,
+    );
+
+    if (!isOrganizer && !isCoHost && !canManageLobby) {
+      throw new ForbiddenException(
+        'You do not have permission to admit participants',
+      );
     }
 
     const participant = await this.participantsRepository.findByMeetingAndUser(
