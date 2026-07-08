@@ -6,23 +6,20 @@ if (!globalThis.crypto) {
 }
 
 import { NestFactory } from '@nestjs/core';
+import { NestExpressApplication } from '@nestjs/platform-express';
 import { ValidationPipe } from '@nestjs/common';
 import { AppModule } from './app.module';
-import { json, Request } from 'express';
+import { Request } from 'express';
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { rawBody: true });
+  const app = await NestFactory.create<NestExpressApplication>(AppModule, {
+    rawBody: true,
+  });
 
-  // Parse LiveKit webhook content-type application/webhook+json and preserve rawBody
-  app.use(
-    '/meetings/webhooks/livekit',
-    json({
-      type: 'application/webhook+json',
-      verify: (req: Request & { rawBody?: Buffer }, res, buf) => {
-        req.rawBody = buf;
-      },
-    }),
-  );
+  // Configure JSON body parser to accept both standard JSON and LiveKit webhook payloads
+  app.useBodyParser('json', {
+    type: ['application/json', 'application/webhook+json'],
+  });
 
   // Enable CORS
   app.enableCors({
