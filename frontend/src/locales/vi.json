@@ -592,6 +592,7 @@
       "completing_detail": "Trợ lý AI MeetMind đang tổng hợp tất cả các luồng ghi âm và dịch thoại để trích xuất các ý chính.",
       "template_label": "Mẫu tóm tắt:",
       "default_template": "Mẫu mặc định",
+      "download_pdf": "Tải xuống PDF",
       "regenerate": "Tạo lại",
       "empty_no_summary": "Chọn mẫu tóm tắt và nhấp nút khởi tạo bên dưới để bắt đầu phân tích cuộc họp.",
       "chatbot_agent_subtitle": "Trợ lý AI sẵn sàng trả lời",

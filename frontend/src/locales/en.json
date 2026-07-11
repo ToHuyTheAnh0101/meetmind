@@ -590,6 +590,7 @@
       "completing_detail": "MeetMind AI Assistant is aggregating all recording tracks and transcript streams to extract key highlights.",
       "template_label": "Template:",
       "default_template": "Default Template",
+      "download_pdf": "Download PDF",
       "regenerate": "Regenerate",
       "empty_no_summary": "Choose a template and click the generate button below to begin analyzing the meeting.",
       "chatbot_agent_subtitle": "AI Agent is ready to answer",

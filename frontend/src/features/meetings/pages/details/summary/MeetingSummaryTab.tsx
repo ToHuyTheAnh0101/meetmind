@@ -163,6 +163,7 @@ export const MeetingSummaryTab: React.FC<MeetingSummaryTabProps> = ({
                 canEdit={canEdit}
                 summaryId={currentSummary?.id}
                 updateSummaryMutation={updateSummaryMutation}
+                meetingDetail={meetingDetail}
               />
             </div>
           </div>

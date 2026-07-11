@@ -17,8 +17,10 @@ import {
   List,
   CheckSquare,
   Code,
+  Download,
 } from "lucide-react";
 import MarkdownRenderer from "@/components/MarkdownRenderer";
+import { exportSummaryToPdf } from "@/lib/pdfExport";
 
 interface SummaryContentSectionProps {
   isLoadingSummaries: boolean;
@@ -35,6 +37,7 @@ interface SummaryContentSectionProps {
   canEdit?: boolean;
   summaryId?: string;
   updateSummaryMutation?: any;
+  meetingDetail?: any;
 }
 
 export const SummaryContentSection: React.FC<SummaryContentSectionProps> = ({
@@ -52,8 +55,9 @@ export const SummaryContentSection: React.FC<SummaryContentSectionProps> = ({
   canEdit = false,
   summaryId,
   updateSummaryMutation,
+  meetingDetail,
 }) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
 
   // Edit Mode States
   const [isEditing, setIsEditing] = useState(false);
@@ -103,6 +107,10 @@ export const SummaryContentSection: React.FC<SummaryContentSectionProps> = ({
         start + prefix.length + selectedText.length
       );
     }, 0);
+  };
+
+  const handleDownloadPdf = () => {
+    exportSummaryToPdf(meetingDetail, "meeting-summary-content", i18n.language);
   };
 
   if (isLoadingSummaries) {
@@ -335,6 +343,14 @@ export const SummaryContentSection: React.FC<SummaryContentSectionProps> = ({
           </div>
 
           <div className="flex items-center gap-2">
+            <button
+              onClick={handleDownloadPdf}
+              className="px-3.5 py-2 flex items-center justify-center rounded-xl bg-slate-50 border border-slate-200 text-slate-500 hover:bg-slate-100 hover:text-slate-800 transition-all font-black text-xs gap-1.5 shadow-sm"
+              title={t("meeting.summary_tab.download_pdf")}
+            >
+              <Download className="h-3.5 w-3.5" />
+              <span>{t("meeting.summary_tab.download_pdf")}</span>
+            </button>
             {canEdit && (
               <button
                 onClick={startEditing}
@@ -356,7 +372,7 @@ export const SummaryContentSection: React.FC<SummaryContentSectionProps> = ({
           </div>
         </div>
 
-        <div className="space-y-4 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
+        <div id="meeting-summary-content" className="space-y-4 max-h-[500px] overflow-y-auto pr-1 custom-scrollbar">
           <MarkdownRenderer content={summary} />
         </div>
       </div>
