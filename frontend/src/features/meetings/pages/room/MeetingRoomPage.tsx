@@ -657,6 +657,11 @@ const MeetingRoomPage: React.FC = () => {
         options={{
           adaptiveStream: true,
           dynacast: true,
+          audioCaptureDefaults: {
+            echoCancellation: true,
+            autoGainControl: true,
+            noiseSuppression: true,
+          },
         }}
         data-lk-theme="default"
         className="w-full h-full flex overflow-hidden relative lg:flex-row flex-row"
