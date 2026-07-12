@@ -6,6 +6,7 @@ import { BarChart3, X } from 'lucide-react';
 import BaseModal from '@/components/ui/BaseModal';
 import apiClient from '@/lib/apiClient';
 import { MeetingDataMessageType } from '@/features/meetings/types';
+import { meetingRoomKeys } from '@/features/meetings/api/roomQueries';
 
 interface PollModalProps {
   isOpen: boolean;
@@ -39,7 +40,7 @@ const PollModal: React.FC<PollModalProps> = ({ isOpen, onClose, meetingId, isInB
           isInBreakout={isInBreakout}
           breakoutRoomId={breakoutRoomId}
           onSuccess={() => {
-            queryClient.invalidateQueries({ queryKey: ['polls', meetingId] });
+            queryClient.invalidateQueries({ queryKey: meetingRoomKeys.pollsPrefix(meetingId) });
             onClose();
           }}
         />

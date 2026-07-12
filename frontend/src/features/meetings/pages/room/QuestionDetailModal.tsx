@@ -13,7 +13,7 @@ import BaseModal from '@/components/ui/BaseModal';
 import { getUserDisplayName } from '@/lib/userUtils';
 import { MeetingDataMessageType } from '@/features/meetings/types';
 
-import { Question } from '@/features/meetings/api/roomQueries';
+import { Question, meetingRoomKeys } from '@/features/meetings/api/roomQueries';
 
 interface QuestionDetailModalProps {
   isOpen: boolean;
@@ -65,7 +65,7 @@ const QuestionDetailModal: React.FC<QuestionDetailModalProps> = ({
     },
     onSuccess: () => {
       setReplyContent('');
-      queryClient.invalidateQueries({ queryKey: ['questions', meetingId] });
+      queryClient.invalidateQueries({ queryKey: meetingRoomKeys.questionsPrefix(meetingId) });
       
       const encoder = new TextEncoder();
       send(encoder.encode(JSON.stringify({ type: MeetingDataMessageType.QA_UPDATED, meetingId })), { reliable: true });
